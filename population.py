@@ -57,11 +57,11 @@ class get_a_standard_subject:
 		# neural parameters
 		self.Wxx=np.array([[-0.65,-0.2,0],
 		              [0.4,-0.4,-0.3],
-		              [0,0.2,-0.3]])*t_delta+np.eye(n_region,n_region,0)
+		              [0,0.2,-0.3]],dtype=np.float32)*t_delta+np.eye(n_region,n_region,0,,dtype=np.float32)
 		self.Wxxu=np.array([[0.5,0,0.25],
 		              [0,0,0],
-		              [0,0,0.3]])*t_delta
-		self.Wxu=np.array([0.2,0,0])*t_delta
+		              [0,0,0.3]],dtype=np.float32)*t_delta
+		self.Wxu=np.array([0.2,0,0],dtype=np.float32)*t_delta
 
 
 		# Hemodynamic parameters
