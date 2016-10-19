@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import math as mth
 import matplotlib.pyplot as plt
+import pandas as pd
 
 class create_a_dcm_rnn:
 
@@ -25,10 +26,10 @@ class create_a_dcm_rnn:
 		    #self.Wxxu_init=np.array([[0.5,0,0.25],[0,0,0],[0,0,0.3]])*m.t_delta
 		    #self.Wxu_init=np.array([0.2,0,0]).reshape(3,1)*m.t_delta
 
-		    self.Wxx_init=np.array([[-0.5,-0,0],[0,-0.5,0],[0,0,-0.5]])*m.t_delta+np.eye(m.n_region,m.n_region,0)
-		    self.Wxxu_init=np.array([[0.5,0,0],[0,0.5,0],[0,0,0.5]])*m.t_delta
-		    self.Wxu_init=np.array([0.5,0.5,0.5]).reshape(3,1)*m.t_delta
-
+		    self.Wxx_init=np.array([[-0.5,-0,0],[0,-0.5,0],[0,0,-0.5]],dtype=np.float32)*m.t_delta+np.eye(m.n_region,m.n_region,0,dtype=np.float32)
+		    self.Wxxu_init=np.array([[0.5,0,0],[0,0.5,0],[0,0,0.5]],dtype=np.float32)*m.t_delta
+		    self.Wxu_init=np.array([0.5,0,0],dtype=np.float32).reshape(3,1)*m.t_delta
+		
 		# Placeholders
 		self.rnn_u = tf.placeholder(tf.float32, [m.n_stimuli, self.n_recurrent_step], name='rnn_u')
 		# self.rnn_x = tf.placeholder(tf.float32, [m.n_region, self.n_recurrent_step], name='rnn_x')
@@ -37,13 +38,16 @@ class create_a_dcm_rnn:
 
 		# create shared variables
 		with tf.variable_scope('rnn_cell'):
-		    self.Wxx = tf.get_variable('Wxx', [m.n_region,m.n_region])
-		    self.Wxxu = tf.get_variable('Wxxu', [m.n_region,m.n_region])
-		    self.Wxu = tf.get_variable('Wxu', [m.n_region,1])  
+		    #self.Wxx = tf.get_variable('Wxx', [m.n_region,m.n_region])
+		    #self.Wxxu = tf.get_variable('Wxxu', [m.n_region,m.n_region])
+		    #self.Wxu = tf.get_variable('Wxu', [m.n_region,1])  
+		    self.Wxx = tf.get_variable('Wxx',initializer=self.Wxx_init)
+		    self.Wxxu = tf.get_variable('Wxxu',initializer=self.Wxxu_init)
+		    self.Wxu = tf.get_variable('Wxu',initializer=self.Wxu_init)
 
 
 		# for h layer
-		with tf.variable_scope('rnn_cell'):
+		with tf.variable_scope('rnn_cell_h'):
 			self.alpha={}
 			self.E0={}
 			self.k={}
@@ -54,7 +58,7 @@ class create_a_dcm_rnn:
 			self.TE={}
 			self.r0={}
 			self.theta0={}
-			trainable_flag=True
+			trainable_flag=False
 			for n in range(n_region):
 				self.alpha['alpha_r'+str(n)]=tf.get_variable('alpha_r'+str(n),initializer=0.32,trainable=trainable_flag)
 				self.E0['E0_r'+str(n)]=tf.get_variable('E0_r'+str(n),initializer=0.34,trainable=trainable_flag)
@@ -62,29 +66,32 @@ class create_a_dcm_rnn:
 				self.gamma['gamma_r'+str(n)]=tf.get_variable('gamma_r'+str(n),initializer=0.41,trainable=trainable_flag)
 				self.tao['tao_r'+str(n)]=tf.get_variable('tao_r'+str(n),initializer=0.98,trainable=trainable_flag)
 				self.epsilon['epsilon_r'+str(n)]=tf.get_variable('epsilon_r'+str(n),initializer=0.4,trainable=trainable_flag)
-				self.V0['V0_r'+str(n)]=tf.get_variable('V0_r'+str(n),initializer=1.0,trainable=trainable_flag)
-				self.TE['TE_r'+str(n)]=tf.get_variable('TE_r'+str(n),initializer=0.03,trainable=trainable_flag)
+				self.V0['V0_r'+str(n)]=tf.get_variable('V0_r'+str(n),initializer=1.0,trainable=False) # This is set to untrainable by design
+				self.TE['TE_r'+str(n)]=tf.get_variable('TE_r'+str(n),initializer=0.03,trainable=False)	# This is set to untrainable by design
 				self.r0['r0_r'+str(n)]=tf.get_variable('r0_r'+str(n),initializer=25.0,trainable=trainable_flag)
 				self.theta0['theta0_r'+str(n)]=tf.get_variable('theta0_r'+str(n),initializer=40.3,trainable=trainable_flag)
 
 		# Adding rnn_cells to graph
 		# needs to pay attention to shift problem
 		## x_state
-		self.x_state_initial = tf.zeros((m.n_region,1))
-		self.x_state_previous = self.x_state_initial
-		self.x_state_current = tf.zeros((m.n_region,1))
+		self.x_state_initial = tf.zeros((m.n_region,1),dtype=np.float32)
+		#self.x_state_previous = self.x_state_initial
+		#self.x_state_current = tf.zeros((m.n_region,1))
 		self.x_state_predicted =[]
 		
 		self.x_state_predicted.append(self.x_state_initial)
 		for i in range(1,self.n_recurrent_step):
-		    self.x_state_current = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_previous)
-		    self.x_state_predicted.append(self.x_state_current)
-		    self.x_state_previous = self.x_state_current
+		    #self.x_state_current = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_previous)
+		    #self.x_state_predicted.append(self.x_state_current)
+		    #self.x_state_previous = self.x_state_current
+		    tmp = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
+		    self.x_state_predicted.append(tmp)
+
 
 		# the last element needs special handling
 		i=self.n_recurrent_step
-		self.x_state_current = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_previous)
-		self.x_state_final=self.x_state_current
+		self.x_state_final = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
+		#self.x_state_final=self.x_state_current
 
 		## h_state
 		self.h_state_initial = [tf.constant(np.array([0,1,1,1]).reshape(4,1),dtype=tf.float32) \
@@ -157,10 +164,11 @@ class create_a_dcm_rnn:
 			self.Wxx = tf.get_variable("Wxx",[n_region,n_region])
 			self.Wxxu = tf.get_variable("Wxxu",[n_region,n_region])
 			self.Wxu = tf.get_variable("Wxu",[n_region,1])
-			tmp1 = tf.matmul(self.Wxx,self.x_state_previous)
+			tmp1 = tf.matmul(self.Wxx,x_state_previous)
 			tmp2 = tf.matmul(self.Wxxu*u_current,x_state_previous)
 			tmp3 = tf.mul(self.Wxu,u_current)
-			return tf.add(tf.add(tmp1,tmp2),tmp3)
+			#return tf.add(tf.add(tmp1,tmp2),tmp3)
+			return tmp1+tmp2+tmp3
 
 	def phi_h(self, h_state_current,alpha,E0):
 		# used to map hemodynamic states into higher dimension
@@ -181,7 +189,7 @@ class create_a_dcm_rnn:
 		# model the evolving of hemodynamic states {s,f,v,q}
 		# this is independent for each region
 		# here x_state_current is a scalar for a particular region
-		with tf.variable_scope('rnn_cell', reuse=True):
+		with tf.variable_scope('rnn_cell_h', reuse=True):
 			alpha = tf.get_variable('alpha_r'+str(i_region))
 			E0 = tf.get_variable('E0_r'+str(i_region))
 			k = tf.get_variable('k_r'+str(i_region))
@@ -229,7 +237,7 @@ class create_a_dcm_rnn:
 		return o_state_augmented
 
 	def output_mapping(self,h_state_current,i_region):
-		with tf.variable_scope('rnn_cell', reuse=True):
+		with tf.variable_scope('rnn_cell_h', reuse=True):
 			alpha = tf.get_variable('alpha_r'+str(i_region))
 			E0 = tf.get_variable('E0_r'+str(i_region))
 			k = tf.get_variable('k_r'+str(i_region))
@@ -353,6 +361,7 @@ class run:
 			output['Wxx']=isess.run(dr.Wxx)
 			output['Wxxu']=isess.run(dr.Wxxu)
 			output['Wxu']=isess.run(dr.Wxu)
+		with tf.variable_scope('rnn_cell_h'):	
 			output['alpha']=isess.run(dr.alpha)
 			output['E0']=isess.run(dr.E0)
 			output['k']=isess.run(dr.k)
@@ -365,8 +374,6 @@ class run:
 			output['theta0']=isess.run(dr.theta0)
 		key_order=['Wxx','Wxxu','Wxu','alpha','E0','k','gamma','tao','epsilon','V0','TE','r0','theta0',]
 		return [output, key_order]
-
-
 
 			
 
