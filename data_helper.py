@@ -58,10 +58,6 @@ class get_a_data_helper:
 		return output
 	
 
-	def rMSE(self, x_hat, h_true):
-		return tf.div(tf.sqrt(tf.reduce_mean(tf.square(tf.sub(x_hat, h_true)))),\
-                 tf.sqrt(tf.reduce_mean(tf.square(tf.constant(h_true,dtype=tf.float32)))))
-
 	'''
 
 	def rMSE(self,x_hat,x_true):

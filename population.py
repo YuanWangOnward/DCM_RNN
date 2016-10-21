@@ -1,6 +1,7 @@
 import numpy as np
 #import tensorflow as tf
 import math as mth
+import pandas as pd
 
 class get_a_standard_subject:
 
@@ -44,20 +45,15 @@ class get_a_standard_subject:
 		n_region = n_region or self.n_region
 		n_time_point = n_time_point or self.n_time_point
 		n_stimuli = n_stimuli or self.n_stimuli
-		#if n_time_point == None:
-
+		
 		self.t_delta=t_delta
 		self.n_region=n_region
 		self.n_time_point=n_time_point
 
-		#print(t_delta)
-		#print(n_region)
-		#print(n_time_point)
-
 		# neural parameters
 		self.Wxx=np.array([[-0.65,-0.2,0],
 		              [0.4,-0.4,-0.3],
-		              [0,0.2,-0.3]],dtype=np.float32)*t_delta+np.eye(n_region,n_region,0,,dtype=np.float32)
+		              [0,0.2,-0.3]],dtype=np.float32)*t_delta+np.eye(n_region,n_region,0,dtype=np.float32)
 		self.Wxxu=np.array([[0.5,0,0.25],
 		              [0,0,0],
 		              [0,0,0.3]],dtype=np.float32)*t_delta
@@ -108,4 +104,39 @@ class get_a_standard_subject:
 		self.h_state=np.zeros((n_region,4,n_time_point))
 		self.f_output=np.zeros((n_region,1,n_time_point))	
 
+		self.parameter_key_list = ['Wxx','Wxxu','Wxu','alpha','E0','k','gamma','tao','epsilon','V0','TE','r0','theta0']
+	'''
+	def show_all_variable_value(self, visFlag=False):
+		output=[]
+		output_buff = pd.DataFrame()
+		variables=['dr.'+key for key in self.parameter_key_list]
+		values=eval('isess.run(['+', '.join(variables)+'])')
+		for idx, key in enumerate(self.parameter_key_list):
+			if key == 'Wxx':
+				tmp=pd.DataFrame(values[idx],index=['To_r'+str(i) for i in range(dr.n_region)],\
+                   columns=['From_r'+str(i) for i in range(dr.n_region)])
+				tmp.name=key
+				output.append(tmp)
+			elif key == 'Wxxu':
+				tmp=pd.DataFrame(values[idx],index=['To_r'+str(i) for i in range(dr.n_region)],\
+                   columns=['From_r'+str(i) for i in range(dr.n_region)])
+				tmp.name=key
+				output.append(tmp)
+			elif key == 'Wxu':
+				tmp = pd.DataFrame(values[idx],index=['To_r'+str(i) for i in range(dr.n_region)],\
+                   columns=['stimuli_'+str(i) for i in range(dr.n_stimuli)])
+				tmp.name=key
+				output.append(tmp)
+			else:
+				tmp = [values[idx][key+'_r'+str(i)] for i in range(dr.n_region)]
+				tmp = pd.Series(tmp,index=['region_'+str(i) for i in range(dr.n_region)])
+				output_buff[key] = tmp
+		output_buff.name='hemodynamic_parameters'
+		output.append(output_buff)
+		if visFlag:
+			for item in output:
+				print(item.name)
+				display(item)
+		return output 
+	'''
 

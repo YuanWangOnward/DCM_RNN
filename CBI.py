@@ -14,7 +14,7 @@ class configure_a_scanner:
 		self.state_size = 4
 		#self.learning_rate = 0.1
 		self.t_delta=0.25
-		self.n_time_point=int(5*60/self.t_delta)
+		self.n_time_point=int(10*60/self.t_delta)
 		self.n_time_point=int(mth.ceil(self.n_time_point/128.)*128)
 
 		# used for create stimuli
