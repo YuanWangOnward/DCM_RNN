@@ -3,6 +3,7 @@ import tensorflow as tf
 import math as mth
 import matplotlib.pyplot as plt
 import pandas as pd
+from IPython.display import display
 
 class create_a_dcm_rnn:
 
@@ -12,11 +13,13 @@ class create_a_dcm_rnn:
 		learning_rate = learning_rate or 0.01
 		n_region = m.n_region
 		t_delta = m.t_delta
+		n_stimuli = m.n_stimuli
 
 		self.n_recurrent_step = n_recurrent_step
 		self.learning_rate = learning_rate
 		self.n_region = n_region
 		self.t_delta = t_delta
+		self.n_stimuli = n_stimuli
 		#self.stored_data={}
 
 		# set state initial value
@@ -27,7 +30,7 @@ class create_a_dcm_rnn:
 		    #self.Wxu_init=np.array([0.2,0,0]).reshape(3,1)*m.t_delta
 
 		    self.Wxx_init=np.array([[-0.5,-0,0],[0,-0.5,0],[0,0,-0.5]],dtype=np.float32)*m.t_delta+np.eye(m.n_region,m.n_region,0,dtype=np.float32)
-		    self.Wxxu_init=np.array([[0.5,0,0],[0,0.5,0],[0,0,0.5]],dtype=np.float32)*m.t_delta
+		    self.Wxxu_init=np.array([[0,0,0],[0,0,0],[0,0,0]],dtype=np.float32)*m.t_delta
 		    self.Wxu_init=np.array([0.5,0,0],dtype=np.float32).reshape(3,1)*m.t_delta
 		
 		# Placeholders
@@ -40,10 +43,11 @@ class create_a_dcm_rnn:
 		with tf.variable_scope('rnn_cell'):
 		    #self.Wxx = tf.get_variable('Wxx', [m.n_region,m.n_region])
 		    #self.Wxxu = tf.get_variable('Wxxu', [m.n_region,m.n_region])
-		    #self.Wxu = tf.get_variable('Wxu', [m.n_region,1])  
-		    self.Wxx = tf.get_variable('Wxx',initializer=self.Wxx_init)
-		    self.Wxxu = tf.get_variable('Wxxu',initializer=self.Wxxu_init)
-		    self.Wxu = tf.get_variable('Wxu',initializer=self.Wxu_init)
+		    #self.Wxu = tf.get_variable('Wxu', [m.n_region,1]) 
+			trainable_flag=True
+			self.Wxx = tf.get_variable('Wxx',initializer=self.Wxx_init,trainable=trainable_flag)
+			self.Wxxu = tf.get_variable('Wxxu',initializer=self.Wxxu_init,trainable=trainable_flag)
+			self.Wxu = tf.get_variable('Wxu',initializer=self.Wxu_init,trainable=trainable_flag)
 
 
 		# for h layer
@@ -125,16 +129,20 @@ class create_a_dcm_rnn:
 
 
 		# define loss
-		self.y_true_as_list =[[] for _ in range(self.n_recurrent_step)]
-		for i in range(self.n_recurrent_step):
-		    self.y_true_as_list[i]=tf.reshape(self.y_true_input_as_array[:,i],(m.n_region,1))
+		self.y_true_as_list =[tf.reshape(self.y_true_input_as_array[:,i],(m.n_region,1)) for i in range(self.n_recurrent_step)]
+		#for i in range(self.n_recurrent_step):
+		#    self.y_true_as_list[i]=tf.reshape(self.y_true_input_as_array[:,i],(m.n_region,1))
 		# calculate loss for y
+
 		self.loss_y= [(tf.reduce_mean(tf.square(tf.sub(y_pred, y_true)))) \
 		       for y_pred, y_true in zip(self.y_state_predicted,self.y_true_as_list)]
-		self.total_loss_y = tf.reduce_mean(tf.sqrt(self.loss_y))
+		self.total_loss_y = tf.reduce_mean(self.loss_y)
 		
 		# define optimizer
 		self.train_step_y = tf.train.AdagradOptimizer(self.learning_rate).minimize(self.total_loss_y)
+		self.train_step_y_fast10 = tf.train.AdagradOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
+		self.train_step_y_fast100 = tf.train.AdagradOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
+		
 		self.opt = tf.train.AdagradOptimizer(learning_rate=self.learning_rate)
 		self.grads_and_vars = self.opt.compute_gradients(self.total_loss_y)
 		self.apply_gradient_y = self.opt.apply_gradients(self.grads_and_vars)
@@ -264,12 +272,17 @@ class create_a_dcm_rnn:
 
 
 	
-class run:
+class utilities:
 
-	def __init__(self,m,s,sess,n_recurrence=None, learning_rate=None):
+	def __init__(self,n_region=None,n_recurrence=None, learning_rate=None):
+		'''
+		self.n_region = n_region or 3
 		self.n_recurrent_step = n_recurrence or 8 
 		self.learning_rate = learning_rate or 0.01
 		self.n_region=m.n_region
+		'''
+		self.parameter_key_list = ['Wxx','Wxxu','Wxu','alpha','E0','k','gamma','tao','epsilon','V0','TE','r0','theta0']
+		
 
 	def run_forward_segment(self,dr,sess,feed_dict_in):
 		x_state, x_state_final = sess.run([dr.x_state_predicted,dr.x_state_final],\
@@ -313,8 +326,6 @@ class run:
 			# run 
 			h_current_segment,h_state_feed,x_state_feed = isess.run([dr.h_state_predicted,dr.h_state_final,dr.x_state_final],\
 			feed_dict=feed_dict)
-			#print(type(h_current_segment))
-			#print(type(h_current_segment[0]))
 			
 
 			for n in range(dr.n_region):
@@ -325,11 +336,6 @@ class run:
 					h_state_predicted[n]=h_current_segment[n]
 				else:
 					h_state_predicted[n]=np.concatenate((h_state_predicted[n],h_current_segment[n]),axis=1)
-			#tmp=np.asarray(tmp)
-			#tmp=tmp[:,:,0]
-			#h_state_predicted.append(tmp)	
-			#h_state_predicted=np.concatenate(h_state_predicted).transpose()
-			#self.x_state_predicted=x_state_predicted[:]
 		return h_state_predicted
 
 	def forward_pass_y(self,dr,dh,isess,x_state_initial=None, h_state_initial=None):
@@ -355,26 +361,47 @@ class run:
 		self.y_output_predicted=y_output_predicted[:]
 		return y_output_predicted
 
-	def show_all_variable_value(self, dr, isess):
-		output={}
-		with tf.variable_scope('rnn_cell'):
-			output['Wxx']=isess.run(dr.Wxx)
-			output['Wxxu']=isess.run(dr.Wxxu)
-			output['Wxu']=isess.run(dr.Wxu)
-		with tf.variable_scope('rnn_cell_h'):	
-			output['alpha']=isess.run(dr.alpha)
-			output['E0']=isess.run(dr.E0)
-			output['k']=isess.run(dr.k)
-			output['gamma']=isess.run(dr.gamma)
-			output['tao']=isess.run(dr.tao)
-			output['epsilon']=isess.run(dr.epsilon)
-			output['V0']=isess.run(dr.V0)
-			output['TE']=isess.run(dr.TE)
-			output['r0']=isess.run(dr.r0)
-			output['theta0']=isess.run(dr.theta0)
-		key_order=['Wxx','Wxxu','Wxu','alpha','E0','k','gamma','tao','epsilon','V0','TE','r0','theta0',]
-		return [output, key_order]
+	def show_all_variable_value(self, dr, isess, visFlag=False):
+		output=[]
+		output_buff = pd.DataFrame()
+		variables=['dr.'+key for key in self.parameter_key_list]
+		values=eval('isess.run(['+', '.join(variables)+'])')
+		for idx, key in enumerate(self.parameter_key_list):
+			if key == 'Wxx':
+				tmp=pd.DataFrame(values[idx],index=['To_r'+str(i) for i in range(dr.n_region)],\
+                   columns=['From_r'+str(i) for i in range(dr.n_region)])
+				tmp.name=key
+				output.append(tmp)
+			elif key == 'Wxxu':
+				tmp=pd.DataFrame(values[idx],index=['To_r'+str(i) for i in range(dr.n_region)],\
+                   columns=['From_r'+str(i) for i in range(dr.n_region)])
+				tmp.name=key
+				output.append(tmp)
+			elif key == 'Wxu':
+				tmp = pd.DataFrame(values[idx],index=['To_r'+str(i) for i in range(dr.n_region)],\
+                   columns=['stimuli_'+str(i) for i in range(dr.n_stimuli)])
+				tmp.name=key
+				output.append(tmp)
+			else:
+				tmp = [values[idx][key+'_r'+str(i)] for i in range(dr.n_region)]
+				tmp = pd.Series(tmp,index=['region_'+str(i) for i in range(dr.n_region)])
+				output_buff[key] = tmp
+		output_buff.name='hemodynamic_parameters'
+		output.append(output_buff)
+		if visFlag:
+			for item in output:
+				print(item.name)
+				display(item)
+		return output
 
+
+	def MSE_loss_np(self,array1,array2):
+		MSE=np.mean((array1.flatten()- array2.flatten()) ** 2)
+		return MSE
+
+	def rMSE(self, x_hat, x_true):
+		return tf.div(tf.sqrt(tf.reduce_mean(tf.square(tf.sub(x_hat, x_true)))),\
+                 tf.sqrt(tf.reduce_mean(tf.square(tf.constant(x_true,dtype=tf.float32)))))
 			
 
 
