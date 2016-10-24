@@ -30,7 +30,7 @@ class create_a_dcm_rnn:
 		    #self.Wxu_init=np.array([0.2,0,0]).reshape(3,1)*m.t_delta
 
 		    self.Wxx_init=np.array([[-0.5,-0,0],[0,-0.5,0],[0,0,-0.5]],dtype=np.float32)*m.t_delta+np.eye(m.n_region,m.n_region,0,dtype=np.float32)
-		    self.Wxxu_init=np.array([[0,0,0],[0,0,0],[0,0,0]],dtype=np.float32)*m.t_delta
+		    self.Wxxu_init=[np.array([[0,0,0],[0,0,0],[0,0,0]],dtype=np.float32)*m.t_delta for _ in range(n_region)]
 		    self.Wxu_init=np.array([0.5,0,0],dtype=np.float32).reshape(3,1)*m.t_delta
 		
 		# Placeholders
@@ -46,7 +46,7 @@ class create_a_dcm_rnn:
 		    #self.Wxu = tf.get_variable('Wxu', [m.n_region,1]) 
 			trainable_flag=True
 			self.Wxx = tf.get_variable('Wxx',initializer=self.Wxx_init,trainable=trainable_flag)
-			self.Wxxu = tf.get_variable('Wxxu',initializer=self.Wxxu_init,trainable=trainable_flag)
+			self.Wxxu = [tf.get_variable('Wxxu',initializer=self.Wxxu_init[n],trainable=trainable_flag) for n in range(n_region)]
 			self.Wxu = tf.get_variable('Wxu',initializer=self.Wxu_init,trainable=trainable_flag)
 
 
@@ -70,7 +70,7 @@ class create_a_dcm_rnn:
 				self.gamma['gamma_r'+str(n)]=tf.get_variable('gamma_r'+str(n),initializer=0.41,trainable=trainable_flag)
 				self.tao['tao_r'+str(n)]=tf.get_variable('tao_r'+str(n),initializer=0.98,trainable=trainable_flag)
 				self.epsilon['epsilon_r'+str(n)]=tf.get_variable('epsilon_r'+str(n),initializer=0.4,trainable=trainable_flag)
-				self.V0['V0_r'+str(n)]=tf.get_variable('V0_r'+str(n),initializer=1.0,trainable=False) # This is set to untrainable by design
+				self.V0['V0_r'+str(n)]=tf.get_variable('V0_r'+str(n),initializer=100.0,trainable=False) # This is set to untrainable by design
 				self.TE['TE_r'+str(n)]=tf.get_variable('TE_r'+str(n),initializer=0.03,trainable=False)	# This is set to untrainable by design
 				self.r0['r0_r'+str(n)]=tf.get_variable('r0_r'+str(n),initializer=25.0,trainable=trainable_flag)
 				self.theta0['theta0_r'+str(n)]=tf.get_variable('theta0_r'+str(n),initializer=40.3,trainable=trainable_flag)
@@ -137,6 +137,7 @@ class create_a_dcm_rnn:
 		self.loss_y= [(tf.reduce_mean(tf.square(tf.sub(y_pred, y_true)))) \
 		       for y_pred, y_true in zip(self.y_state_predicted,self.y_true_as_list)]
 		self.total_loss_y = tf.reduce_mean(self.loss_y)
+		#self.total_loss_y = tf.log(tf.reduce_mean(self.loss_y))
 		
 		# define optimizer
 		self.train_step_y = tf.train.AdagradOptimizer(self.learning_rate).minimize(self.total_loss_y)
@@ -170,10 +171,12 @@ class create_a_dcm_rnn:
 		n_region = x_state_previous.get_shape()[0]
 		with tf.variable_scope('rnn_cell', reuse=True):
 			self.Wxx = tf.get_variable("Wxx",[n_region,n_region])
-			self.Wxxu = tf.get_variable("Wxxu",[n_region,n_region])
-			self.Wxu = tf.get_variable("Wxu",[n_region,1])
+			self.Wxxu = tf.get_variable("Wxxu")
+			self.Wxu = tf.get_variable("Wxu",[n_region,n_stimuli])
+
 			tmp1 = tf.matmul(self.Wxx,x_state_previous)
-			tmp2 = tf.matmul(self.Wxxu*u_current,x_state_previous)
+			tmp2 = [tf.matmul(self.Wxxu[n]*u_current[n],x_state_previous) for n in range(n_stimuli)]
+			tmp2 = tf.add_n(tmp2)
 			tmp3 = tf.mul(self.Wxu,u_current)
 			#return tf.add(tf.add(tmp1,tmp2),tmp3)
 			return tmp1+tmp2+tmp3
