@@ -29,8 +29,8 @@ class create_a_dcm_rnn:
 		    #self.Wxxu_init=np.array([[0.5,0,0.25],[0,0,0],[0,0,0.3]])*m.t_delta
 		    #self.Wxu_init=np.array([0.2,0,0]).reshape(3,1)*m.t_delta
 
-		    self.Wxx_init=np.array([[-0.5,-0,0],[0,-0.5,0],[0,0,-0.5]],dtype=np.float32)*m.t_delta+np.eye(m.n_region,m.n_region,0,dtype=np.float32)
-		    self.Wxxu_init=[np.array([[0,0,0],[0,0,0],[0,0,0]],dtype=np.float32)*m.t_delta for _ in range(n_region)]
+		    self.Wxx_init=np.array([[-1,-0,0],[0,-1,0],[0,0,-1]],dtype=np.float32)*m.t_delta+np.eye(m.n_region,m.n_region,0,dtype=np.float32)
+		    self.Wxxu_init=[np.array([[0,0,0],[0,0,0],[0,0,0]],dtype=np.float32)*m.t_delta for _ in range(n_stimuli)]
 		    self.Wxu_init=np.array([0.5,0,0],dtype=np.float32).reshape(3,1)*m.t_delta
 		
 		# Placeholders
@@ -46,9 +46,8 @@ class create_a_dcm_rnn:
 		    #self.Wxu = tf.get_variable('Wxu', [m.n_region,1]) 
 			trainable_flag=True
 			self.Wxx = tf.get_variable('Wxx',initializer=self.Wxx_init,trainable=trainable_flag)
-			self.Wxxu = [tf.get_variable('Wxxu',initializer=self.Wxxu_init[n],trainable=trainable_flag) for n in range(n_region)]
+			self.Wxxu = [tf.get_variable('Wxxu_s'+str(n),initializer=self.Wxxu_init[n],trainable=trainable_flag) for n in range(n_stimuli)]
 			self.Wxu = tf.get_variable('Wxu',initializer=self.Wxu_init,trainable=trainable_flag)
-
 
 		# for h layer
 		with tf.variable_scope('rnn_cell_h'):
@@ -140,11 +139,11 @@ class create_a_dcm_rnn:
 		#self.total_loss_y = tf.log(tf.reduce_mean(self.loss_y))
 		
 		# define optimizer
-		self.train_step_y = tf.train.AdagradOptimizer(self.learning_rate).minimize(self.total_loss_y)
-		self.train_step_y_fast10 = tf.train.AdagradOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
-		self.train_step_y_fast100 = tf.train.AdagradOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
+		self.train_step_y = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.total_loss_y)
+		self.train_step_y_fast10 = tf.train.GradientDescentOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
+		self.train_step_y_fast100 = tf.train.GradientDescentOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
 		
-		self.opt = tf.train.AdagradOptimizer(learning_rate=self.learning_rate)
+		self.opt = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
 		self.grads_and_vars = self.opt.compute_gradients(self.total_loss_y)
 		self.apply_gradient_y = self.opt.apply_gradients(self.grads_and_vars)
 
@@ -164,14 +163,16 @@ class create_a_dcm_rnn:
 	def set_connection_matrices(self, isess, Wxx, Wxxu, Wxu):
 		with tf.variable_scope('rnn_cell'):
 			isess.run(self.Wxx.assign(Wxx))
-			isess.run(self.Wxxu.assign(Wxxu))
+			for idx, item in enumerate(Wxxu):
+				isess.run(self.Wxxu[idx].assign(item))
 			isess.run(self.Wxu.assign(Wxu))
 
 	def rnn_cell(self,u_current, x_state_previous):
 		n_region = x_state_previous.get_shape()[0]
+		n_stimuli = self.n_stimuli
 		with tf.variable_scope('rnn_cell', reuse=True):
 			self.Wxx = tf.get_variable("Wxx",[n_region,n_region])
-			self.Wxxu = tf.get_variable("Wxxu")
+			self.Wxxu = [tf.get_variable("Wxxu_s"+str(n)) for n in range(n_stimuli)]
 			self.Wxu = tf.get_variable("Wxu",[n_region,n_stimuli])
 
 			tmp1 = tf.matmul(self.Wxx,x_state_previous)
@@ -367,26 +368,34 @@ class utilities:
 	def show_all_variable_value(self, dr, isess, visFlag=False):
 		output=[]
 		output_buff = pd.DataFrame()
-		variables=['dr.'+key for key in self.parameter_key_list]
-		values=eval('isess.run(['+', '.join(variables)+'])')
+		#variables= self.parameter_key_list
+		#print(variables)
+		#values=eval('isess.run(['+', '.join(variables)+'])')
 		for idx, key in enumerate(self.parameter_key_list):
 			if key == 'Wxx':
-				tmp=pd.DataFrame(values[idx],index=['To_r'+str(i) for i in range(dr.n_region)],\
+				values = isess.run(dr.Wxx)
+				tmp=pd.DataFrame(values,index=['To_r'+str(i) for i in range(dr.n_region)],\
                    columns=['From_r'+str(i) for i in range(dr.n_region)])
 				tmp.name=key
 				output.append(tmp)
 			elif key == 'Wxxu':
-				tmp=pd.DataFrame(values[idx],index=['To_r'+str(i) for i in range(dr.n_region)],\
-                   columns=['From_r'+str(i) for i in range(dr.n_region)])
-				tmp.name=key
-				output.append(tmp)
+				values = isess.run(dr.Wxxu)
+				for n in range(dr.n_stimuli):
+					tmp=pd.DataFrame(values[n],index=['To_r'+str(i) for i in range(dr.n_region)],\
+	                   columns=['From_r'+str(i) for i in range(dr.n_region)])
+					tmp.name=key+'_s'+str(n)
+					output.append(tmp)
 			elif key == 'Wxu':
-				tmp = pd.DataFrame(values[idx],index=['To_r'+str(i) for i in range(dr.n_region)],\
+				values = isess.run(dr.Wxu)
+				tmp = pd.DataFrame(values,index=['To_r'+str(i) for i in range(dr.n_region)],\
                    columns=['stimuli_'+str(i) for i in range(dr.n_stimuli)])
 				tmp.name=key
 				output.append(tmp)
 			else:
-				tmp = [values[idx][key+'_r'+str(i)] for i in range(dr.n_region)]
+				values = eval('isess.run(dr.'+key+')')
+				#print(key)
+				#print(values)
+				tmp = [values[key+'_r'+str(i)] for i in range(dr.n_region)]
 				tmp = pd.Series(tmp,index=['region_'+str(i) for i in range(dr.n_region)])
 				output_buff[key] = tmp
 		output_buff.name='hemodynamic_parameters'
@@ -396,6 +405,36 @@ class utilities:
 				print(item.name)
 				display(item)
 		return output
+
+	def compare_parameters(self, set1, set2, visFlag=True,parameter_list=None):
+		if parameter_list ==None:
+			name_list1 = [set1[i].name for i in range(len(set1))]
+			name_list2 = [set2[i].name for i in range(len(set2))]
+			name_list = list(set(name_list1)&set(name_list2))	#common name list
+		else:
+			name_list = parameter_list
+		output = []
+		for name in name_list:
+			tmp1 = next((x for x in set1 if x.name == name), None)
+			tmp2 = next((x for x in set2 if x.name == name), None)
+			if tmp1.shape[0]>=tmp1.shape[1]:
+				tmp = pd.concat([tmp1, tmp2, tmp1-tmp2], axis=1, join_axes=[tmp1.index],keys=['set1', 'set2','difference'])
+			else:
+				tmp = pd.concat([tmp1, tmp2, tmp1-tmp2], axis=0, join_axes=[tmp1.columns],keys=['set1', 'set2','difference'])
+			tmp.name=name
+			output.append(tmp)
+		if visFlag:
+			for item in output:
+				print(item.name)
+				display(item)
+		return output
+
+	def set_connection_matrices(self, dr,isess, Wxx, Wxxu, Wxu):
+		with tf.variable_scope('rnn_cell'):
+			isess.run(dr.Wxx.assign(Wxx))
+			for idx, item in enumerate(Wxxu):
+				isess.run(dr.Wxxu[idx].assign(item))
+			isess.run(dr.Wxu.assign(Wxu))
 
 
 	def MSE_loss_np(self,array1,array2):

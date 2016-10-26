@@ -17,11 +17,12 @@ class get_a_subject:
 	n_stimuli = 1
 
 
-	def __init__(self,t_delta=None,n_region=None,n_time_point=None,n_stimuli=None,sub_type='random'):
+	def __init__(self,t_delta=None,n_region=None,n_time_point=None,n_stimuli=None,sub_type=None):
 		self.t_delta = t_delta or 0.25
 		self.n_region = n_region or 3
 		self.n_time_point = n_time_point or 128
 		self.n_stimuli = n_stimuli or 1
+		self.sub_type = sub_type or 'random'
 
 		t_delta = self.t_delta
 		n_region = self.n_region
@@ -29,17 +30,16 @@ class get_a_subject:
 		n_stimuli = self.n_stimuli
 
 		# neural parameters
-		self.Wxx=np.array([	[-0.5,0,0],
-		              		[0.3,-0.5,0],
-		              		[0.2,0,-0.5]],dtype=np.float32)*t_delta+np.eye(n_region,n_region,0,dtype=np.float32)
-		self.Wxxu=[np.array([[0,0.2,0.2],
+		self.Wxx=np.array([	[-1,0,0],
+		              		[0.8,-1,0.4],
+		              		[0.4,0.8,-1]],dtype=np.float32)*t_delta+np.eye(n_region,n_region,0,dtype=np.float32)
+		self.Wxxu=[np.array([[0,0,0],
 		              [0,0,0],
-		              [0,0,0]],dtype=np.float32)*t_delta for _ in range(n_stimuli)]
+		              [0,0,-0.4]],dtype=np.float32)*t_delta for _ in range(n_stimuli)]
 		self.Wxu=np.eye(n_region,n_stimuli,dtype=np.float32)*0.4*t_delta 
 		#np.zeros((n_region,n_stimuli),dtype=np.float32)
 		#self.Wxu[]
 		#np.array([0.8,0,0],dtype=np.float32).reshape(n_region,n_stimuli)*t_delta 
-
 
 		# Hemodynamic parameters	
 		self.hemodynamic_parameters_mean = pd.DataFrame()
@@ -60,9 +60,9 @@ class get_a_subject:
 			tmp = pd.Series(tmp, index=['region_'+str(i) for i in range(n_region)])
 			self.hemodynamic_parameters_variance[key] = tmp
 
-		if sub_type =='random':
+		if self.sub_type =='random':
 			self.hemodynamic_parameters, self.hemodynamic_parameters_deviation_normalized= self.sample_hemodynamic_parameters()
-		elif sub_type =='standard':
+		elif self.sub_type =='standard':
 			self.hemodynamic_parameters = self.hemodynamic_parameters_mean.copy(True)
 			h_shape = self.hemodynamic_parameters.shape
 			self.hemodynamic_parameters_deviation_normalized = pd.DataFrame(np.zeros(h_shape[0]*h_shape[1]).reshape(h_shape[0],h_shape[1]),\

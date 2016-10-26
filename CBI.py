@@ -22,12 +22,12 @@ class configure_a_scanner:
 		self.state_size = 4
 		#self.learning_rate = 0.1
 		self.t_delta = t_delta or 0.25
-		self.n_time_point=int(5*60/self.t_delta)
+		self.n_time_point=int(6*60/self.t_delta)
 		self.n_time_point=int(mth.ceil(self.n_time_point/48.)*48)	# make sure length can be cut into different length
 
 		# used for create stimuli
-		self.t_exitation=5 # the duration of a stimulus
-		self.t_blank_interval=10 # the resting interval between stimuli
+		self.t_exitation=4 # the duration of a stimulus
+		self.t_blank_interval=6 # the resting interval between stimuli
 		self.u_probability=0.5 # the probability a stimulus is given at a time point
 		self.n_exitation=int(self.t_exitation/self.t_delta) 
 		self.n_blank_interval=int(self.t_blank_interval/self.t_delta) 
@@ -60,7 +60,7 @@ class configure_a_scanner:
 	
 	def subject_preparation(self,sub):
 		sub.__init__(t_delta=self.t_delta,n_region=self.n_region,\
-			n_time_point=self.n_time_point,n_stimuli=self.n_stimuli)
+			n_time_point=self.n_time_point,n_stimuli=self.n_stimuli,sub_type=sub.sub_type)
 
 	
 	def x_evolve(self, sub, u=None, x_state_initial=None):
