@@ -60,7 +60,7 @@ class configure_a_scanner:
 	
 	def subject_preparation(self,sub):
 		sub.__init__(t_delta=self.t_delta,n_region=self.n_region,\
-			n_time_point=self.n_time_point,n_stimuli=self.n_stimuli,sub_type=sub.sub_type)
+			n_time_point=self.n_time_point,n_stimuli=self.n_stimuli,flags=sub.flags)
 
 	
 	def x_evolve(self, sub, u=None, x_state_initial=None):
@@ -122,8 +122,8 @@ class configure_a_scanner:
 		h_state = h_state or sub.h_state
 		f_output=sub.f_output
 
-		f_output[:,0,0]=sub.f_output_initial
-		for t in range(1,self.n_time_point):
+		#f_output[:,0,0]=sub.f_output_initial
+		for t in range(0,self.n_time_point):
 		    for n in range(0,self.n_region): 
 		        f_output[n,0,t]=np.matmul(sub.Wo[n],sub.phi_o(h_state[n,:,t]))+sub.bo[n]
 		output=f_output[:]

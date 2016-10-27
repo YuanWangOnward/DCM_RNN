@@ -17,18 +17,20 @@ class get_a_subject:
 	n_stimuli = 1
 
 
-	def __init__(self,t_delta=None,n_region=None,n_time_point=None,n_stimuli=None,sub_type=None):
+	def __init__(self,flags=None,t_delta=None,n_region=None,n_time_point=None,n_stimuli=None):
 		self.t_delta = t_delta or 0.25
 		self.n_region = n_region or 3
 		self.n_time_point = n_time_point or 128
 		self.n_stimuli = n_stimuli or 1
-		self.sub_type = sub_type or 'random'
+
+		self.flags = self.add_default_flags(flags)
 
 		t_delta = self.t_delta
 		n_region = self.n_region
 		n_time_point = self.n_time_point
 		n_stimuli = self.n_stimuli
 
+	
 		# neural parameters
 		self.Wxx=np.array([	[-1,0,0],
 		              		[0.8,-1,0.4],
@@ -60,30 +62,59 @@ class get_a_subject:
 			tmp = pd.Series(tmp, index=['region_'+str(i) for i in range(n_region)])
 			self.hemodynamic_parameters_variance[key] = tmp
 
-		if self.sub_type =='random':
+		if self.flags.random_hemodynamic_parameter:
 			self.hemodynamic_parameters, self.hemodynamic_parameters_deviation_normalized= self.sample_hemodynamic_parameters()
-		elif self.sub_type =='standard':
+		else:
 			self.hemodynamic_parameters = self.hemodynamic_parameters_mean.copy(True)
 			h_shape = self.hemodynamic_parameters.shape
 			self.hemodynamic_parameters_deviation_normalized = pd.DataFrame(np.zeros(h_shape[0]*h_shape[1]).reshape(h_shape[0],h_shape[1]),\
 																index=['region_'+str(i) for i in range(n_region)],\
 																columns=self.hemo_parameter_key_list)
-		else:
-			raise ValueError('subject type is not correctly specified')
-
 		# create hemodynamic matrices 
 		self.create_hemodynamic_matrices()
 
 		# state variables
-		self.x_state_initial=np.zeros((n_region))
-		self.h_state_initial=np.ones((n_region,4))
-		self.h_state_initial[:,0]=0
-		self.f_output_initial=np.zeros((n_region))
+		if self.flags.random_x_state_initial:
+			self.x_state_initial = np.random.normal(loc=0.2, scale=0.2, size=(n_region))
+			#self.x_state_initial=np.zeros((n_region))
+		else:
+			self.x_state_initial=np.zeros((n_region))
+
+		if self.flags.random_h_state_initial:
+			self.h_state_initial=np.ones((n_region,4))
+			self.h_state_initial[:,0] = np.random.normal(loc=0, scale=0.3, size=(n_region))	
+			self.h_state_initial[:,1] = np.random.normal(loc=1.5, scale=0.5, size=(n_region))	
+			self.h_state_initial[:,2] = np.random.normal(loc=1.15, scale=0.15, size=(n_region))	
+			self.h_state_initial[:,3] = np.random.normal(loc=0.85, scale=0.15, size=(n_region))	
+		else:
+			self.h_state_initial=np.ones((n_region,4))
+			self.h_state_initial[:,0]=0
 
 		self.u=np.zeros((n_stimuli,n_time_point))
 		self.x_state=np.zeros((n_region,1,n_time_point))
 		self.h_state=np.zeros((n_region,4,n_time_point))
 		self.f_output=np.zeros((n_region,1,n_time_point))	
+
+
+	def add_default_flags(self,flags):
+		random_hemodynamic_parameter = False
+		random_x_state_initial = False
+		random_h_state_initial = False
+		if flags == None:
+			flags = lambda:None
+			flags.random_hemodynamic_parameter = random_hemodynamic_parameter
+			flags.random_x_state_initial = random_x_state_initial
+			flags.random_h_state_initial = random_h_state_initial
+		else:
+			if not hasattr(flags, 'random_hemodynamic_parameter'):
+				flags.random_hemodynamic_parameter = random_hemodynamic_parameter
+			if not hasattr(flags, 'random_x_state_initial'):
+				flags.random_x_state_initial = random_x_state_initial
+			if not hasattr(flags, 'random_h_state_initial'):
+				flags.random_h_state_initial = random_h_state_initial
+		return flags
+
+
 
 	def phi_h(self, h_state_current,alpha,E0):
 		# used to map hemodynamic states into higher dimension
@@ -194,7 +225,7 @@ class get_a_subject:
 					output.append(tmp) 
 			elif key == 'Wxu':
 				tmp = pd.DataFrame(self.Wxu,index=['To_r'+str(i) for i in range(self.n_region)],\
-                   columns=['From_s'+str(i) for i in range(self.n_stimuli)])
+                   columns=['stimuli_'+str(i) for i in range(self.n_stimuli)])
 				tmp.name=key
 				output.append(tmp)
 		output.append(self.hemodynamic_parameters)
@@ -205,5 +236,5 @@ class get_a_subject:
 				display(item)
 		return output 
 
-	
+
 

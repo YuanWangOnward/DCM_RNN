@@ -22,13 +22,16 @@ class create_a_dcm_rnn:
 		self.n_stimuli = n_stimuli
 		#self.stored_data={}
 
+		'''
+		self.flag = flag 
+		self.flag.random_hemodynamic_parameter = self.flag.random_hemodynamic_parameter or False
+		self.flag.random_x_state_initial = self.flag.random_x_state_initial or False
+		self.flag.random_h_state_initial = self.flag.random_h_state_initial or False
+		'''
+
 		# set state initial value
 		# for x layer
 		with tf.variable_scope('rnn_cell'):
-		    #self.Wxx_init=np.array([[-0.65,-0.2,0],[0.4,-0.4,-0.3],[0,0.2,-0.3]])*m.t_delta+np.eye(m.n_region,m.n_region,0)
-		    #self.Wxxu_init=np.array([[0.5,0,0.25],[0,0,0],[0,0,0.3]])*m.t_delta
-		    #self.Wxu_init=np.array([0.2,0,0]).reshape(3,1)*m.t_delta
-
 		    self.Wxx_init=np.array([[-1,-0,0],[0,-1,0],[0,0,-1]],dtype=np.float32)*m.t_delta+np.eye(m.n_region,m.n_region,0,dtype=np.float32)
 		    self.Wxxu_init=[np.array([[0,0,0],[0,0,0],[0,0,0]],dtype=np.float32)*m.t_delta for _ in range(n_stimuli)]
 		    self.Wxu_init=np.array([0.5,0,0],dtype=np.float32).reshape(3,1)*m.t_delta
@@ -41,9 +44,6 @@ class create_a_dcm_rnn:
 
 		# create shared variables
 		with tf.variable_scope('rnn_cell'):
-		    #self.Wxx = tf.get_variable('Wxx', [m.n_region,m.n_region])
-		    #self.Wxxu = tf.get_variable('Wxxu', [m.n_region,m.n_region])
-		    #self.Wxu = tf.get_variable('Wxu', [m.n_region,1]) 
 			trainable_flag=True
 			self.Wxx = tf.get_variable('Wxx',initializer=self.Wxx_init,trainable=trainable_flag)
 			self.Wxxu = [tf.get_variable('Wxxu_s'+str(n),initializer=self.Wxxu_init[n],trainable=trainable_flag) for n in range(n_stimuli)]
@@ -61,18 +61,18 @@ class create_a_dcm_rnn:
 			self.TE={}
 			self.r0={}
 			self.theta0={}
-			trainable_flag=False
+			trainable_flag=True
 			for n in range(n_region):
 				self.alpha['alpha_r'+str(n)]=tf.get_variable('alpha_r'+str(n),initializer=0.32,trainable=trainable_flag)
 				self.E0['E0_r'+str(n)]=tf.get_variable('E0_r'+str(n),initializer=0.34,trainable=trainable_flag)
 				self.k['k_r'+str(n)]=tf.get_variable('k_r'+str(n),initializer=0.65,trainable=trainable_flag)
 				self.gamma['gamma_r'+str(n)]=tf.get_variable('gamma_r'+str(n),initializer=0.41,trainable=trainable_flag)
 				self.tao['tao_r'+str(n)]=tf.get_variable('tao_r'+str(n),initializer=0.98,trainable=trainable_flag)
-				self.epsilon['epsilon_r'+str(n)]=tf.get_variable('epsilon_r'+str(n),initializer=0.4,trainable=trainable_flag)
+				self.epsilon['epsilon_r'+str(n)]=tf.get_variable('epsilon_r'+str(n),initializer=0.4,trainable=False) # This is set to untrainable by design
 				self.V0['V0_r'+str(n)]=tf.get_variable('V0_r'+str(n),initializer=100.0,trainable=False) # This is set to untrainable by design
 				self.TE['TE_r'+str(n)]=tf.get_variable('TE_r'+str(n),initializer=0.03,trainable=False)	# This is set to untrainable by design
-				self.r0['r0_r'+str(n)]=tf.get_variable('r0_r'+str(n),initializer=25.0,trainable=trainable_flag)
-				self.theta0['theta0_r'+str(n)]=tf.get_variable('theta0_r'+str(n),initializer=40.3,trainable=trainable_flag)
+				self.r0['r0_r'+str(n)]=tf.get_variable('r0_r'+str(n),initializer=25.0,trainable=False) # This is set to untrainable by design
+				self.theta0['theta0_r'+str(n)]=tf.get_variable('theta0_r'+str(n),initializer=40.3,trainable=False) # This is set to untrainable by design
 
 		# Adding rnn_cells to graph
 		# needs to pay attention to shift problem
@@ -97,8 +97,11 @@ class create_a_dcm_rnn:
 		#self.x_state_final=self.x_state_current
 
 		## h_state
-		self.h_state_initial = [tf.constant(np.array([0,1,1,1]).reshape(4,1),dtype=tf.float32) \
-		for _ in range(n_region)]
+		# self.h_state_initial = [tf.constant(np.array([0,1,1,1]).reshape(4,1),dtype=tf.float32) \
+		# for _ in range(n_region)]
+		self.h_state_initial = [tf.get_variable('h_state_initial_r'+str(n),shape=[4,1],initializer=self.get_random_h_state_initial(),trainable=False) \
+								for n in range(n_region)]
+		
 		# h_state_predicted[region][time]
 		self.h_state_predicted = [[] for _ in range(n_region)]
 		for n in range(n_region):
@@ -139,13 +142,18 @@ class create_a_dcm_rnn:
 		#self.total_loss_y = tf.log(tf.reduce_mean(self.loss_y))
 		
 		# define optimizer
-		self.train_step_y = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.total_loss_y)
-		self.train_step_y_fast10 = tf.train.GradientDescentOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
-		self.train_step_y_fast100 = tf.train.GradientDescentOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
+		#self.train_step_y = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.total_loss_y)
+		#self.train_step_y_fast10 = tf.train.GradientDescentOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
+		#self.train_step_y_fast100 = tf.train.GradientDescentOptimizer(self.learning_rate*100).minimize(self.total_loss_y)
 		
+		# optimizer with gradient manipulate
+		# self.
 		self.opt = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
 		self.grads_and_vars = self.opt.compute_gradients(self.total_loss_y)
-		self.apply_gradient_y = self.opt.apply_gradients(self.grads_and_vars)
+		# do some thing to the gradients
+		self.gradients_weights = [1 if i<=2 else 0.01 for i in range(len(self.grads_and_vars))]
+		self.capped_grads_and_vars = [(gv[0]*self.gradients_weights[idx], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
+		self.apply_gradient_y = self.opt.apply_gradients(self.capped_grads_and_vars)
 
 
 	def reset_connection_matrices_initial(self, Wxx=None, Wxxu=None, Wxu=None):
@@ -274,6 +282,12 @@ class create_a_dcm_rnn:
 
 			return y
 
+	def get_random_h_state_initial(self):
+		h_state_initial = np.zeros((4,1))
+		h_state_initial[0] = np.random.normal(loc=0, scale=0.3)	
+		h_state_initial[1] = np.random.normal(loc=1.5, scale=0.5)	
+		h_state_initial[2] = np.random.normal(loc=1.15, scale=0.15)	
+		h_state_initial[3] = np.random.normal(loc=0.85, scale=0.15)	
 
 	
 class utilities:
