@@ -63,7 +63,7 @@ class get_a_subject:
 			self.hemodynamic_parameters_variance[key] = tmp
 
 		if self.flags.random_hemodynamic_parameter:
-			self.hemodynamic_parameters, self.hemodynamic_parameters_deviation_normalized= self.sample_hemodynamic_parameters()
+			self.hemodynamic_parameters, self.hemodynamic_parameters_deviation_normalized = self.sample_hemodynamic_parameters()
 		else:
 			self.hemodynamic_parameters = self.hemodynamic_parameters_mean.copy(True)
 			h_shape = self.hemodynamic_parameters.shape

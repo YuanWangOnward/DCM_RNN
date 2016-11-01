@@ -29,20 +29,19 @@ class create_a_dcm_rnn:
 		self.flag.random_h_state_initial = self.flag.random_h_state_initial or False
 		'''
 
-		# set state initial value
-		# for x layer
-		with tf.variable_scope('rnn_cell'):
-		    self.Wxx_init=np.array([[-1,-0,0],[0,-1,0],[0,0,-1]],dtype=np.float32)*m.t_delta+np.eye(m.n_region,m.n_region,0,dtype=np.float32)
-		    self.Wxxu_init=[np.array([[0,0,0],[0,0,0],[0,0,0]],dtype=np.float32)*m.t_delta for _ in range(n_stimuli)]
-		    self.Wxu_init=np.array([0.5,0,0],dtype=np.float32).reshape(3,1)*m.t_delta
-		
 		# Placeholders
 		self.rnn_u = tf.placeholder(tf.float32, [m.n_stimuli, self.n_recurrent_step], name='rnn_u')
 		# self.rnn_x = tf.placeholder(tf.float32, [m.n_region, self.n_recurrent_step], name='rnn_x')
 		self.y_true_input_as_array = tf.placeholder(tf.float32, [m.n_region, self.n_recurrent_step], name='y_true_input_as_array')
 		#self.x_state_initial = tf.placeholder(tf.float32, [m.n_region, 1], name='x_state_initial')
 
-		# create shared variables
+		# set state initial value
+		with tf.variable_scope('rnn_cell'):
+		    self.Wxx_init=np.array([[-1,-0,0],[0,-1,0],[0,0,-1]],dtype=np.float32)*m.t_delta+np.eye(m.n_region,m.n_region,0,dtype=np.float32)
+		    self.Wxxu_init=[np.array([[0,0,0],[0,0,0],[0,0,0]],dtype=np.float32)*m.t_delta for _ in range(n_stimuli)]
+		    self.Wxu_init=np.array([0.5,0,0],dtype=np.float32).reshape(3,1)*m.t_delta
+
+		# create shared variables in computation graph
 		with tf.variable_scope('rnn_cell'):
 			trainable_flag=True
 			self.Wxx = tf.get_variable('Wxx',initializer=self.Wxx_init,trainable=trainable_flag)
@@ -139,7 +138,16 @@ class create_a_dcm_rnn:
 		self.loss_y= [(tf.reduce_mean(tf.square(tf.sub(y_pred, y_true)))) \
 		       for y_pred, y_true in zip(self.y_state_predicted,self.y_true_as_list)]
 		self.total_loss_y = tf.reduce_mean(self.loss_y)
-		#self.total_loss_y = tf.log(tf.reduce_mean(self.loss_y))
+
+		# add loss induced by hemodynamic parameter priory
+		self.hemo_parameter_mean_list=[0.32, 0.34, 0.65, 0.41, 0.98]
+		self.hemo_parameter_std_list=np.diag(np.sqrt([0.0015, 0.0024, 0.015, 0.002, 0.0568]))
+
+
+		#mu = [1, 2, 3]
+		#sigma = [[1, 0, 0], [0, 3, 0], [0, 0, 2]]
+		#dist = tf.contrib.distributions.MultivariateNormal(mu=self.hemo_parameter_mean_list, sigma=self.hemo_parameter_std_list)
+
 		
 		# define optimizer
 		#self.train_step_y = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.total_loss_y)
@@ -150,10 +158,31 @@ class create_a_dcm_rnn:
 		# self.
 		self.opt = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
 		self.grads_and_vars = self.opt.compute_gradients(self.total_loss_y)
+
+		# define mask 
+		names=[var.name for (_,var) in self.grads_and_vars]
+		self.gradient_masks = {}
+		for idx,name in enumerate(names):
+			tmp=tf.get_default_graph().get_tensor_by_name(name).get_shape()
+			#self.gradient_masks['mask_'+str(idx)] = tf.placeholder(tf.float32, tmp, name='mask_'+str(idx))
+			#self.gradient_masks[name+'_mask'] = tf.placeholder(tf.float32, tmp, name='mask_'+str(idx))
+			self.gradient_masks[name] = tf.placeholder(tf.float32, tmp, name='mask_'+str(idx))	
+
+
 		# do some thing to the gradients
-		self.gradients_weights = [1 if i<=2 else 0.01 for i in range(len(self.grads_and_vars))]
-		self.capped_grads_and_vars = [(gv[0]*self.gradients_weights[idx], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
+		#self.capped_grads_and_vars = [(gv[0]*self.gradient_masks['mask_'+str(idx)], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
+		self.capped_grads_and_vars = [(gv[0]*self.gradient_masks[names[idx]], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
+		
+		# apply mask
 		self.apply_gradient_y = self.opt.apply_gradients(self.capped_grads_and_vars)
+
+		'''
+		self.opt_Wxu = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate,[self.Wxu])
+		self.grads_and_vars_C = self.opt.compute_gradients(self.total_loss_y)
+		self.capped_grads_and_vars_C = [(gv[0]*self.gradients_weights[idx], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
+		self.apply_gradient_y_C = self.opt.apply_gradients(self.capped_grads_and_vars_C)
+		'''
+
 
 
 	def reset_connection_matrices_initial(self, Wxx=None, Wxxu=None, Wxu=None):
@@ -299,6 +328,7 @@ class utilities:
 		self.learning_rate = learning_rate or 0.01
 		self.n_region=m.n_region
 		'''
+		#self.default_dr = dr
 		self.parameter_key_list = ['Wxx','Wxxu','Wxu','alpha','E0','k','gamma','tao','epsilon','V0','TE','r0','theta0']
 		
 
@@ -449,6 +479,31 @@ class utilities:
 			for idx, item in enumerate(Wxxu):
 				isess.run(dr.Wxxu[idx].assign(item))
 			isess.run(dr.Wxu.assign(Wxu))
+
+	def get_parameter_names(self,opt_calculate_gradient):
+		return [var.name for (_,var) in opt_calculate_gradient]
+
+	def set_up_parameter_profile(self,graph,names,mask_type=None):
+		mask_type = mask_type or 'ones'
+		parameter_dictionary={}
+		for name in names:
+			tmp=lambda:None
+			tmp.name=name
+			tmp.shape=graph.get_tensor_by_name(name).get_shape()
+			if mask_type == 'ones':
+				tmp.mask = np.ones(tmp.shape)
+			elif mask_type == 'zeros':
+				tmp.mask = np.zeros(tmp.shape)
+			else:
+				raise ValueError('set_up_parameter_profile(): mask_type error')
+			parameter_dictionary[name] = tmp
+		return parameter_dictionary
+
+	def add_gradient_mask_to_feed_dict(self,dr,feed_dict,variable_profile_dict):
+		for idx,name in enumerate(variable_profile_dict):
+			feed_dict[dr.gradient_masks[name]]=variable_profile_dict[name].mask
+
+
 
 
 	def MSE_loss_np(self,array1,array2):
