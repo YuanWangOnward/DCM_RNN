@@ -60,7 +60,7 @@ class create_a_dcm_rnn:
 			self.TE={}
 			self.r0={}
 			self.theta0={}
-			trainable_flag=True
+			trainable_flag=False
 			for n in range(n_region):
 				self.alpha['alpha_r'+str(n)]=tf.get_variable('alpha_r'+str(n),initializer=0.32,trainable=trainable_flag)
 				self.E0['E0_r'+str(n)]=tf.get_variable('E0_r'+str(n),initializer=0.34,trainable=trainable_flag)
@@ -129,52 +129,51 @@ class create_a_dcm_rnn:
 			self.y_state_predicted.append(tmp)
 
 
+		
 		# define loss
 		self.y_true_as_list =[tf.reshape(self.y_true_input_as_array[:,i],(m.n_region,1)) for i in range(self.n_recurrent_step)]
-		#for i in range(self.n_recurrent_step):
-		#    self.y_true_as_list[i]=tf.reshape(self.y_true_input_as_array[:,i],(m.n_region,1))
-		# calculate loss for y
-
-		self.loss_y= [(tf.reduce_mean(tf.square(tf.sub(y_pred, y_true)))) \
+		self.loss_y_list= [(tf.reduce_mean(tf.square(tf.sub(y_pred, y_true)))) \
 		       for y_pred, y_true in zip(self.y_state_predicted,self.y_true_as_list)]
-		self.total_loss_y = tf.reduce_mean(self.loss_y)
-
-		# add loss induced by hemodynamic parameter priory
-		self.hemo_parameter_mean_list=[0.32, 0.34, 0.65, 0.41, 0.98]
-		self.hemo_parameter_std_list=np.diag(np.sqrt([0.0015, 0.0024, 0.015, 0.002, 0.0568]))
-
-
-		#mu = [1, 2, 3]
-		#sigma = [[1, 0, 0], [0, 3, 0], [0, 0, 2]]
-		#dist = tf.contrib.distributions.MultivariateNormal(mu=self.hemo_parameter_mean_list, sigma=self.hemo_parameter_std_list)
-
+		self.loss_y = tf.reduce_mean(self.loss_y_list)
 		
 		# define optimizer
 		#self.train_step_y = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.total_loss_y)
 		#self.train_step_y_fast10 = tf.train.GradientDescentOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
 		#self.train_step_y_fast100 = tf.train.GradientDescentOptimizer(self.learning_rate*100).minimize(self.total_loss_y)
 		
+
 		# optimizer with gradient manipulate
-		# self.
-		self.opt = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
-		self.grads_and_vars = self.opt.compute_gradients(self.total_loss_y)
+		self.opt_pre = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
+		self.grads_and_vars_pre = self.opt_pre.compute_gradients(self.loss_y)
 
 		# define mask 
-		names=[var.name for (_,var) in self.grads_and_vars]
-		self.gradient_masks = {}
+		names=[var.name for (_,var) in self.grads_and_vars_pre]
+		self.masks = type('container', (object,), {})()
+		self.masks.gradient = {}
+		self.masks.sparse = {}
 		for idx,name in enumerate(names):
 			tmp=tf.get_default_graph().get_tensor_by_name(name).get_shape()
-			#self.gradient_masks['mask_'+str(idx)] = tf.placeholder(tf.float32, tmp, name='mask_'+str(idx))
-			#self.gradient_masks[name+'_mask'] = tf.placeholder(tf.float32, tmp, name='mask_'+str(idx))
-			self.gradient_masks[name] = tf.placeholder(tf.float32, tmp, name='mask_'+str(idx))	
+			self.masks.gradient[name] = tf.placeholder(tf.float32, tmp, name='mask_gradient_'+str(idx))
+			self.masks.sparse[name] = tf.placeholder(tf.float32, tmp, name='mask_sparse_'+str(idx))	
+
+		# add loss induced by sparsity
+		self.loss_sparse_list = [tf.reduce_sum(tf.reshape(tf.abs(gv[1]*self.masks.sparse[names[idx]]),[-1])) for idx,gv in enumerate(self.grads_and_vars_pre)]
+		self.loss_sparse = tf.add_n(self.loss_sparse_list)
+
+		# add loss induced by hemodynamic parameter priory
+		# self.hemo_parameter_mean_list=[0.32, 0.34, 0.65, 0.41, 0.98]
+		# self.hemo_parameter_std_list=np.diag(np.sqrt([0.0015, 0.0024, 0.015, 0.002, 0.0568]))
+
+		self.loss_total = self.loss_y + self.loss_sparse
+		self.opt = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
+		self.grads_and_vars = self.opt.compute_gradients(self.loss_total)
 
 
 		# do some thing to the gradients
-		#self.capped_grads_and_vars = [(gv[0]*self.gradient_masks['mask_'+str(idx)], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
-		self.capped_grads_and_vars = [(gv[0]*self.gradient_masks[names[idx]], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
+		self.capped_grads_and_vars = [(gv[0]*self.masks.gradient[names[idx]], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
 		
 		# apply mask
-		self.apply_gradient_y = self.opt.apply_gradients(self.capped_grads_and_vars)
+		self.apply_gradient = self.opt.apply_gradients(self.capped_grads_and_vars)
 
 		'''
 		self.opt_Wxu = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate,[self.Wxu])
@@ -182,8 +181,6 @@ class create_a_dcm_rnn:
 		self.capped_grads_and_vars_C = [(gv[0]*self.gradients_weights[idx], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
 		self.apply_gradient_y_C = self.opt.apply_gradients(self.capped_grads_and_vars_C)
 		'''
-
-
 
 	def reset_connection_matrices_initial(self, Wxx=None, Wxxu=None, Wxu=None):
 		with tf.variable_scope('rnn_cell'):
@@ -483,26 +480,36 @@ class utilities:
 	def get_parameter_names(self,opt_calculate_gradient):
 		return [var.name for (_,var) in opt_calculate_gradient]
 
-	def set_up_parameter_profile(self,graph,names,mask_type=None):
-		mask_type = mask_type or 'ones'
-		parameter_dictionary={}
+	def set_up_parameter_profile(self,graph,names,mask_value_gradient=None,mask_value_sparse=None,mask_value_prior=None):
+		
+		if mask_value_gradient == None:
+			mask_value_gradient = 1
+		if mask_value_sparse == None:
+			mask_value_sparse = 0
+		if mask_value_prior == None:
+			mask_value_prior = 0
+
+		parameters={}
 		for name in names:
-			tmp=lambda:None
+			tmp=type('container', (object,), {})()
 			tmp.name=name
 			tmp.shape=graph.get_tensor_by_name(name).get_shape()
-			if mask_type == 'ones':
-				tmp.mask = np.ones(tmp.shape)
-			elif mask_type == 'zeros':
-				tmp.mask = np.zeros(tmp.shape)
-			else:
-				raise ValueError('set_up_parameter_profile(): mask_type error')
-			parameter_dictionary[name] = tmp
-		return parameter_dictionary
-
+			tmp.masks = type('container', (object,), {})()
+			tmp.masks.gradient = np.ones(tmp.shape)*mask_value_gradient
+			tmp.masks.sparse = np.ones(tmp.shape)*mask_value_sparse
+			tmp.masks.prior = np.ones(tmp.shape)*mask_value_prior
+			parameters[name] = tmp
+		return parameters
+	'''
 	def add_gradient_mask_to_feed_dict(self,dr,feed_dict,variable_profile_dict):
 		for idx,name in enumerate(variable_profile_dict):
-			feed_dict[dr.gradient_masks[name]]=variable_profile_dict[name].mask
+			feed_dict[dr.masks.gradient[name]]=variable_profile_dict[name].mask.gradient
+	'''
 
+	def append_masks_to_feed_dict(self,dr,feed_dict,variable_profile_dict):
+		for idx,name in enumerate(variable_profile_dict):
+			feed_dict[dr.masks.gradient[name]]=variable_profile_dict[name].masks.gradient
+			feed_dict[dr.masks.sparse[name]]=variable_profile_dict[name].masks.sparse
 
 
 
