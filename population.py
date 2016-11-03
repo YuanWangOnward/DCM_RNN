@@ -36,7 +36,18 @@ class get_a_subject:
 		              		[0.8,-1,0.4],
 		              		[0.4,0.8,-1]],dtype=np.float32)*t_delta+np.eye(n_region,n_region,0,dtype=np.float32)
 		self.Wxxu=[np.array([[0,0,0],
-		              [0,0,0],
+		              [0,0,0],self.x_state_initial = tf.zeros((m.n_region,1),dtype=np.float32)
+		self.x_state_predicted =[]
+		
+		self.x_state_predicted.append(self.x_state_initial)
+		for i in range(1,self.n_recurrent_step):
+		    tmp = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
+		    self.x_state_predicted.append(tmp)
+
+		# the last element needs special handling
+		i=self.n_recurrent_step
+		self.x_state_final = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
+	
 		              [0,0,-0.4]],dtype=np.float32)*t_delta for _ in range(n_stimuli)]
 		self.Wxu=np.eye(n_region,n_stimuli,dtype=np.float32)*0.4*t_delta 
 		#np.zeros((n_region,n_stimuli),dtype=np.float32)
@@ -113,7 +124,6 @@ class get_a_subject:
 			if not hasattr(flags, 'random_h_state_initial'):
 				flags.random_h_state_initial = random_h_state_initial
 		return flags
-
 
 
 	def phi_h(self, h_state_current,alpha,E0):

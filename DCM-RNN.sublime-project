@@ -1,0 +1,22 @@
+{
+	"folders":
+	[
+		{
+			"file_exclude_patterns":
+			[
+				".*",
+				"*.ipynb",
+				"develop_log.txt",
+				"readme.txt",
+				"timeline.json"
+			],
+			"folder_exclude_patterns":
+			[
+				".ipynb_checkpoints",
+				"__pycache__",
+				"summary"
+			],
+			"path": "."
+		}
+	]
+}

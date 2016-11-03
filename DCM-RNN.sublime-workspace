@@ -1,0 +1,471 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"variable_",
+				"variable_values"
+			],
+			[
+				"masks",
+				"masks"
+			],
+			[
+				"gra",
+				"gradient"
+			],
+			[
+				"W",
+				"Wxu"
+			],
+			[
+				"random_h",
+				"random_h_state_initial"
+			],
+			[
+				"self",
+				"self"
+			],
+			[
+				"sub",
+				"sub_type"
+			],
+			[
+				"name_",
+				"name_list"
+			],
+			[
+				"n_r",
+				"n_region"
+			],
+			[
+				"n_",
+				"n_stimuli"
+			],
+			[
+				"hemo",
+				"hemodynamic_parameters"
+			],
+			[
+				"hemodynamic_parameters_",
+				"hemodynamic_parameters_mean"
+			],
+			[
+				"n_re",
+				"n_region"
+			],
+			[
+				"x_s",
+				"x_state_predicted"
+			],
+			[
+				"n_e",
+				"n_recurrent_step"
+			],
+			[
+				"n",
+				"n_region"
+			],
+			[
+				"f_",
+				"f_output"
+			],
+			[
+				"x",
+				"x_evolve"
+			],
+			[
+				"__",
+				"__init__"
+			],
+			[
+				"cre",
+				"create_stimulus"
+			],
+			[
+				"h_s",
+				"h_state"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "DCM_RNN.py",
+			"settings":
+			{
+				"buffer_size": 22801,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 127.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 449.0
+	},
+	"console":
+	{
+		"height": 126.0,
+		"history":
+		[
+			"import urllib.request,os,hashlib; h = 'df21e130d211cfc94d9b0905775a7c0f' + '1e3d39e33b79698005270310898eea76'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)",
+			"pwd",
+			"restart",
+			"import urllib.request,os,hashlib; h = 'df21e130d211cfc94d9b0905775a7c0f' + '1e3d39e33b79698005270310898eea76'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN"
+	],
+	"file_history":
+	[
+		"/Users/yuanwang/Desktop/untitled.py",
+		"/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/DCM_RNN.py",
+		"/Users/yuanwang/Desktop/DCM_RNN.py",
+		"/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/population.py",
+		"/Users/yuanwang/Google_Drive/projects/DCM-RNN_1101/DCM_RNN.py",
+		"/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/DCM-RNN.sublime-project",
+		"/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/data_helper.py",
+		"/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/data_helper (1).py",
+		"/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/DCM_RNN.pyc",
+		"/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/CBI.py",
+		"/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/emptyClass.py",
+		"/Users/yuanwang/Google Drive/projects/DCM-RNN/population.py",
+		"/Users/yuanwang/Google Drive/projects/DCM-RNN/DCM_RNN.py",
+		"/Users/yuanwang/Google Drive/projects/DCM-RNN/data_helper.py",
+		"/Users/yuanwang/Google Drive/projects/DCM-RNN/CBI.py",
+		"/Users/yuanwang/Google Drive/projects/DCM-RNN/DCM_RNN_copy4.py",
+		"/Users/yuanwang/Google Drive/projects/DCM-RNN/DCM_RNN_copy3.py",
+		"/Users/yuanwang/Google Drive/projects/DCM-RNN/DCM_RNN_copy2.py",
+		"/Users/yuanwang/Documents/course/NLP/A1/text_cnn.py",
+		"/Users/yuanwang/Google Drive/projects/DCM-RNN/DCM_RNN_copy1.py",
+		"/Users/yuanwang/Google Drive/projects/DCM_RNN_data_creation.py",
+		"/Users/yuanwang/Google Drive/projects/virtual_subject_d1.py",
+		"/Users/yuanwang/Google Drive/projects/virtual_subject_v1.1.py",
+		"/Users/yuanwang/Google Drive/projects/DCM-RNN_data_creation.py",
+		"/Users/yuanwang/Library/Mobile Documents/com~apple~CloudDocs/projects/DCM-RNN/DCM-RNN.py",
+		"/Users/yuanwang/Documents/course/NLP/learning/MNIST_with_summary.py",
+		"/Users/yuanwang/Documents/course/NLP/A1/eval.py",
+		"/Users/yuanwang/Documents/course/NLP/A1/data_helpers.py",
+		"/Users/yuanwang/Documents/course/NLP/learning/fully_connected_feed.py",
+		"/Users/yuanwang/Documents/course/NLP/learning/mnist.py",
+		"/Users/yuanwang/Documents/course/NLP/A1/train.py"
+	],
+	"find":
+	{
+		"height": 35.0
+	},
+	"find_in_files":
+	{
+		"height": 93.0,
+		"where_history":
+		[
+			"",
+			"mask_gradient"
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"get_random_h_state_initial",
+			"container",
+			"m.",
+			"collect_losses",
+			"add_loss_prior",
+			"m.",
+			"create_shared_variables",
+			"hemodynamic_parameters",
+			"total_loss_y",
+			"mask_",
+			"masks.gradient",
+			"gradient_masks",
+			"mask_type",
+			"set_connection_matrices",
+			"sample_hemodynamic_parameters",
+			"prepare",
+			"conf",
+			"flags",
+			"flag",
+			"subject_preparation",
+			"sub_type",
+			"initi",
+			"x_state_initial",
+			"gra",
+			"get_random_h_state_initial",
+			"h_state_initial_r",
+			"self.Wxx = tf.get_variable('Wxx',initializer=se",
+			".Wxx = tf.get_v",
+			"get_random_h_state_initial",
+			"h_state_initial",
+			"x_in",
+			"f_output_initial",
+			"h_state_initial",
+			"f_output_initial",
+			"initi",
+			"grads_and_vars",
+			"compare_parameters",
+			"subject_preparation",
+			"quick_scan",
+			"hemodynamic_parameters",
+			"set_connection_matrices",
+			"train_step_y",
+			"get_a_subject",
+			"Wxxu",
+			"tf.get_variable(\"Wxxu",
+			"Wxxu",
+			"Wxu",
+			"hi_h(h_state[n,:,t-1],alpha,E0",
+			"phi_h",
+			"sample_a_subject",
+			"self.k.loc",
+			"n_stimuli",
+			"create_stimulus",
+			"n_region",
+			"neural_parameter_key_list",
+			"parameter_key_list",
+			"parameter_key_list\nparameter_key_list",
+			"parameter_key_list",
+			"Whh",
+			"parameter_key_list",
+			"hemodynamic_parameters",
+			"V0",
+			"t_blank_interval",
+			"V0",
+			"loss",
+			"y_state_predicted",
+			"loat32)*t_delta+np.eye(n_",
+			"apply_gradient_y",
+			"rnn_cell",
+			"Wxx",
+			"self.x_state_predicted",
+			"self.Wxx",
+			"Wxx",
+			"Wxxu",
+			"Wxx_init",
+			"x_state_previous",
+			"rnn_cell",
+			"'rnn_cell_h'",
+			"rnn_cell_h",
+			"flag",
+			"rnn_cell_h",
+			"h_state_final",
+			"x_state_final",
+			"h_state_final",
+			"y_state_final",
+			"h_state_initial",
+			"initi",
+			"y_state_predicted",
+			"y_true_input_as_array",
+			"train_step",
+			"y_state_predicted",
+			"y_current_segment",
+			"y_state_predicted",
+			"y_current_segment",
+			"output_mapping",
+			"return o_state_augmente",
+			"forward",
+			"phi_h",
+			"h_state_predicted",
+			"rnn_cell_h",
+			"h_state_predicted",
+			"x_state_predicted",
+			"h_state_feed",
+			"\nh_state_feed",
+			"h_state_feed",
+			"h_state_initial",
+			"h_state_feed",
+			"h_state_predicted",
+			"h_state_final",
+			"rnn_x",
+			"\t\tself.h_state_initial",
+			"phi_h",
+			"n_recurrence",
+			"n_recurrent_step",
+			"TE",
+			"41",
+			"t_delta",
+			"llearning_rate",
+			"rnn_cell",
+			"rnn_cell\nrnn_cell",
+			"n_region",
+			"n_stimuli",
+			"n_time_point",
+			"n_region",
+			"x_state_predicted",
+			"x_state_initial",
+			"n_re",
+			"x_state_predicted"
+		],
+		"highlight": false,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"mask_gradient",
+			"flags",
+			"self.hemodynamic_parameters.loc"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "DCM_RNN.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 22801,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								337,
+								337
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 218.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				}
+			]
+		},
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 23.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			],
+			[
+				0,
+				1,
+				1,
+				2
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			0.924924924925,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "DCM-RNN.sublime-project",
+	"replace":
+	{
+		"height": 42.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 188.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

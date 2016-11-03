@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from IPython.display import display
 
-class create_a_dcm_rnn:
+class DCM_RNN:
 
 	def __init__(self,m,n_recurrent_step=None, learning_rate=None):
 		#self.batch_size = 1
@@ -20,173 +20,40 @@ class create_a_dcm_rnn:
 		self.n_region = n_region
 		self.t_delta = t_delta
 		self.n_stimuli = n_stimuli
-		#self.stored_data={}
-
-		'''
-		self.flag = flag 
-		self.flag.random_hemodynamic_parameter = self.flag.random_hemodynamic_parameter or False
-		self.flag.random_x_state_initial = self.flag.random_x_state_initial or False
-		self.flag.random_h_state_initial = self.flag.random_h_state_initial or False
-		'''
-
-		# Placeholders
-		self.rnn_u = tf.placeholder(tf.float32, [m.n_stimuli, self.n_recurrent_step], name='rnn_u')
-		# self.rnn_x = tf.placeholder(tf.float32, [m.n_region, self.n_recurrent_step], name='rnn_x')
-		self.y_true_input_as_array = tf.placeholder(tf.float32, [m.n_region, self.n_recurrent_step], name='y_true_input_as_array')
-		#self.x_state_initial = tf.placeholder(tf.float32, [m.n_region, 1], name='x_state_initial')
-
-		# set state initial value
+		
+		# set connection initial value
 		with tf.variable_scope('rnn_cell'):
-		    self.Wxx_init=np.array([[-1,-0,0],[0,-1,0],[0,0,-1]],dtype=np.float32)*m.t_delta+np.eye(m.n_region,m.n_region,0,dtype=np.float32)
-		    self.Wxxu_init=[np.array([[0,0,0],[0,0,0],[0,0,0]],dtype=np.float32)*m.t_delta for _ in range(n_stimuli)]
-		    self.Wxu_init=np.array([0.5,0,0],dtype=np.float32).reshape(3,1)*m.t_delta
+			self.Wxx_init=np.array([[-1,-0,0],[0,-1,0],[0,0,-1]],dtype=np.float32)*m.t_delta+np.eye(m.n_region,m.n_region,0,dtype=np.float32)
+			self.Wxxu_init=[np.array([[0,0,0],[0,0,0],[0,0,0]],dtype=np.float32)*m.t_delta for _ in range(n_stimuli)]
+			self.Wxu_init=np.array([0.5,0,0],dtype=np.float32).reshape(3,1)*m.t_delta
+
+	def build_a_model(self):
+		self.add_placeholders()
 
 		# create shared variables in computation graph
-		with tf.variable_scope('rnn_cell'):
-			trainable_flag=True
-			self.Wxx = tf.get_variable('Wxx',initializer=self.Wxx_init,trainable=trainable_flag)
-			self.Wxxu = [tf.get_variable('Wxxu_s'+str(n),initializer=self.Wxxu_init[n],trainable=trainable_flag) for n in range(n_stimuli)]
-			self.Wxu = tf.get_variable('Wxu',initializer=self.Wxu_init,trainable=trainable_flag)
+		self.set_up_hemodynamic_parameter_prior()
+		self.create_shared_variables()
 
-		# for h layer
-		with tf.variable_scope('rnn_cell_h'):
-			self.alpha={}
-			self.E0={}
-			self.k={}
-			self.gamma={}
-			self.tao={}
-			self.epsilon={}
-			self.V0={}
-			self.TE={}
-			self.r0={}
-			self.theta0={}
-			trainable_flag=False
-			for n in range(n_region):
-				self.alpha['alpha_r'+str(n)]=tf.get_variable('alpha_r'+str(n),initializer=0.32,trainable=trainable_flag)
-				self.E0['E0_r'+str(n)]=tf.get_variable('E0_r'+str(n),initializer=0.34,trainable=trainable_flag)
-				self.k['k_r'+str(n)]=tf.get_variable('k_r'+str(n),initializer=0.65,trainable=trainable_flag)
-				self.gamma['gamma_r'+str(n)]=tf.get_variable('gamma_r'+str(n),initializer=0.41,trainable=trainable_flag)
-				self.tao['tao_r'+str(n)]=tf.get_variable('tao_r'+str(n),initializer=0.98,trainable=trainable_flag)
-				self.epsilon['epsilon_r'+str(n)]=tf.get_variable('epsilon_r'+str(n),initializer=0.4,trainable=False) # This is set to untrainable by design
-				self.V0['V0_r'+str(n)]=tf.get_variable('V0_r'+str(n),initializer=100.0,trainable=False) # This is set to untrainable by design
-				self.TE['TE_r'+str(n)]=tf.get_variable('TE_r'+str(n),initializer=0.03,trainable=False)	# This is set to untrainable by design
-				self.r0['r0_r'+str(n)]=tf.get_variable('r0_r'+str(n),initializer=25.0,trainable=False) # This is set to untrainable by design
-				self.theta0['theta0_r'+str(n)]=tf.get_variable('theta0_r'+str(n),initializer=40.3,trainable=False) # This is set to untrainable by design
-
-		# Adding rnn_cells to graph
-		# needs to pay attention to shift problem
-		## x_state
-		self.x_state_initial = tf.zeros((m.n_region,1),dtype=np.float32)
-		#self.x_state_previous = self.x_state_initial
-		#self.x_state_current = tf.zeros((m.n_region,1))
-		self.x_state_predicted =[]
-		
-		self.x_state_predicted.append(self.x_state_initial)
-		for i in range(1,self.n_recurrent_step):
-		    #self.x_state_current = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_previous)
-		    #self.x_state_predicted.append(self.x_state_current)
-		    #self.x_state_previous = self.x_state_current
-		    tmp = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
-		    self.x_state_predicted.append(tmp)
-
-
-		# the last element needs special handling
-		i=self.n_recurrent_step
-		self.x_state_final = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
-		#self.x_state_final=self.x_state_current
-
-		## h_state
-		# self.h_state_initial = [tf.constant(np.array([0,1,1,1]).reshape(4,1),dtype=tf.float32) \
-		# for _ in range(n_region)]
-		self.h_state_initial = [tf.get_variable('h_state_initial_r'+str(n),shape=[4,1],initializer=self.get_random_h_state_initial(),trainable=False) \
-								for n in range(n_region)]
-		
-		# h_state_predicted[region][time]
-		self.h_state_predicted = [[] for _ in range(n_region)]
-		for n in range(n_region):
-			self.h_state_predicted[n].append(self.h_state_initial[n])
-		for i in range(1,self.n_recurrent_step):
-			for n in range(n_region):
-				self.h_state_predicted[n].append(\
-					self.rnn_cell_h(self.h_state_predicted[n][i-1],\
-						self.x_state_predicted[i-1][n],n))
-		# the last element needs special handling
-		i=self.n_recurrent_step
-		self.h_state_final=[]
-		for n in range(n_region):
-			self.h_state_final.append(\
-				self.rnn_cell_h(self.h_state_predicted[n][i-1],\
-					self.x_state_predicted[i-1][n],n))
-
-
-		## y_output
-		self.y_state_predicted = []
-		for i in range(0,self.n_recurrent_step):
-			tmp = []
-			for n in range(n_region):
-				tmp.append(self.output_mapping(self.h_state_predicted[n][i],n))
-			tmp = tf.pack(tmp)
-			self.y_state_predicted.append(tmp)
-
-
-		
-		# define loss
-		self.y_true_as_list =[tf.reshape(self.y_true_input_as_array[:,i],(m.n_region,1)) for i in range(self.n_recurrent_step)]
-		self.loss_y_list= [(tf.reduce_mean(tf.square(tf.sub(y_pred, y_true)))) \
-		       for y_pred, y_true in zip(self.y_state_predicted,self.y_true_as_list)]
-		self.loss_y = tf.reduce_mean(self.loss_y_list)
-		
-		# define optimizer
-		#self.train_step_y = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.total_loss_y)
-		#self.train_step_y_fast10 = tf.train.GradientDescentOptimizer(self.learning_rate*10).minimize(self.total_loss_y)
-		#self.train_step_y_fast100 = tf.train.GradientDescentOptimizer(self.learning_rate*100).minimize(self.total_loss_y)
-		
+		# build layers
+		self.add_neural_layer()
+		self.add_hemodynamic_layer()
+		self.add_output_layer()
 
 		# optimizer with gradient manipulate
-		self.opt_pre = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
-		self.grads_and_vars_pre = self.opt_pre.compute_gradients(self.loss_y)
+		self.names = [item.name for item in tf.all_variables()]
 
-		# define mask 
-		names=[var.name for (_,var) in self.grads_and_vars_pre]
-		self.masks = type('container', (object,), {})()
-		self.masks.gradient = {}
-		self.masks.sparse = {}
-		for idx,name in enumerate(names):
-			tmp=tf.get_default_graph().get_tensor_by_name(name).get_shape()
-			self.masks.gradient[name] = tf.placeholder(tf.float32, tmp, name='mask_gradient_'+str(idx))
-			self.masks.sparse[name] = tf.placeholder(tf.float32, tmp, name='mask_sparse_'+str(idx))	
-
-		# add loss induced by sparsity
-		self.loss_sparse_list = [tf.reduce_sum(tf.reshape(tf.abs(gv[1]*self.masks.sparse[names[idx]]),[-1])) for idx,gv in enumerate(self.grads_and_vars_pre)]
-		self.loss_sparse = tf.add_n(self.loss_sparse_list)
-
-		# add loss induced by hemodynamic parameter priory
-		# self.hemo_parameter_mean_list=[0.32, 0.34, 0.65, 0.41, 0.98]
-		# self.hemo_parameter_std_list=np.diag(np.sqrt([0.0015, 0.0024, 0.015, 0.002, 0.0568]))
-
-		self.loss_total = self.loss_y + self.loss_sparse
-		self.opt = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
-		self.grads_and_vars = self.opt.compute_gradients(self.loss_total)
-
-
-		# do some thing to the gradients
-		self.capped_grads_and_vars = [(gv[0]*self.masks.gradient[names[idx]], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
+		# masks for penalty weighting and connection support
+		self.define_masks()
 		
-		# apply mask
-		self.apply_gradient = self.opt.apply_gradients(self.capped_grads_and_vars)
-
-		'''
-		self.opt_Wxu = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate,[self.Wxu])
-		self.grads_and_vars_C = self.opt.compute_gradients(self.total_loss_y)
-		self.capped_grads_and_vars_C = [(gv[0]*self.gradients_weights[idx], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
-		self.apply_gradient_y_C = self.opt.apply_gradients(self.capped_grads_and_vars_C)
-		'''
-
-	def reset_connection_matrices_initial(self, Wxx=None, Wxxu=None, Wxu=None):
-		with tf.variable_scope('rnn_cell'):
-			self.Wxx_init = Wxx or self.Wxx_init
-			self.Wxxu_init = Wxxu or self.Wxxu_init
-			self.Wxu_init = Wxu or self.Wxu_init
+		# define loss
+		self.add_loss_prediction()
+		self.add_loss_sparse()
+		self.add_loss_prior()
+		self.collect_losses()
+		
+		self.calculate_gradients()
+		self.process_gradients()
+		self.apply_gradients()
 
 	def set_connection_matrices_from_initial(self, isess):
 		with tf.variable_scope('rnn_cell'):
@@ -205,14 +72,14 @@ class create_a_dcm_rnn:
 		n_region = x_state_previous.get_shape()[0]
 		n_stimuli = self.n_stimuli
 		with tf.variable_scope('rnn_cell', reuse=True):
-			self.Wxx = tf.get_variable("Wxx",[n_region,n_region])
-			self.Wxxu = [tf.get_variable("Wxxu_s"+str(n)) for n in range(n_stimuli)]
-			self.Wxu = tf.get_variable("Wxu",[n_region,n_stimuli])
+			Wxx = tf.get_variable("Wxx",[n_region,n_region])
+			Wxxu = [tf.get_variable("Wxxu_s"+str(n)) for n in range(n_stimuli)]
+			Wxu = tf.get_variable("Wxu",[n_region,n_stimuli])
 
-			tmp1 = tf.matmul(self.Wxx,x_state_previous)
-			tmp2 = [tf.matmul(self.Wxxu[n]*u_current[n],x_state_previous) for n in range(n_stimuli)]
+			tmp1 = tf.matmul(Wxx,x_state_previous)
+			tmp2 = [tf.matmul(Wxxu[n]*u_current[n],x_state_previous) for n in range(n_stimuli)]
 			tmp2 = tf.add_n(tmp2)
-			tmp3 = tf.mul(self.Wxu,u_current)
+			tmp3 = tf.mul(Wxu,u_current)
 			#return tf.add(tf.add(tmp1,tmp2),tmp3)
 			return tmp1+tmp2+tmp3
 
@@ -229,7 +96,6 @@ class create_a_dcm_rnn:
 		tmp=tf.mul(tf.div(tmp,E0),h_state_current[1])
 		h_state_augmented.append(tmp)
 		return h_state_augmented
-		  
 
 	def rnn_cell_h(self,h_state_current,x_state_current,i_region):
 		# model the evolving of hemodynamic states {s,f,v,q}
@@ -241,11 +107,6 @@ class create_a_dcm_rnn:
 			k = tf.get_variable('k_r'+str(i_region))
 			gamma = tf.get_variable('gamma_r'+str(i_region))
 			tao = tf.get_variable('tao_r'+str(i_region))
-			epsilon = tf.get_variable('epsilon_r'+str(i_region))
-			V0 = tf.get_variable('V0_r'+str(i_region))
-			TE = tf.get_variable('TE_r'+str(i_region))
-			r0 = tf.get_variable('r0_r'+str(i_region))
-			theta0 = tf.get_variable('theta0_r'+str(i_region))
 			t_delta = self.t_delta
 
 			h_state_augmented=self.phi_h(h_state_current,alpha,E0)
@@ -284,18 +145,12 @@ class create_a_dcm_rnn:
 
 	def output_mapping(self,h_state_current,i_region):
 		with tf.variable_scope('rnn_cell_h', reuse=True):
-			alpha = tf.get_variable('alpha_r'+str(i_region))
 			E0 = tf.get_variable('E0_r'+str(i_region))
-			k = tf.get_variable('k_r'+str(i_region))
-			gamma = tf.get_variable('gamma_r'+str(i_region))
-			tao = tf.get_variable('tao_r'+str(i_region))
 			epsilon = tf.get_variable('epsilon_r'+str(i_region))
 			V0 = tf.get_variable('V0_r'+str(i_region))
 			TE = tf.get_variable('TE_r'+str(i_region))
 			r0 = tf.get_variable('r0_r'+str(i_region))
 			theta0 = tf.get_variable('theta0_r'+str(i_region))
-			t_delta = self.t_delta
-
 			k1 = 4.3*theta0*E0*TE
 			k2 = epsilon*r0*E0*TE
 			k3 = 1-epsilon
@@ -308,6 +163,10 @@ class create_a_dcm_rnn:
 
 			return y
 
+	def add_placeholders(self):
+		self.rnn_u = tf.placeholder(tf.float32, [self.n_stimuli, self.n_recurrent_step], name='rnn_u')
+		self.y_true_input_as_array = tf.placeholder(tf.float32, [self.n_region, self.n_recurrent_step], name='y_true_input_as_array')
+
 	def get_random_h_state_initial(self):
 		h_state_initial = np.zeros((4,1))
 		h_state_initial[0] = np.random.normal(loc=0, scale=0.3)	
@@ -315,7 +174,163 @@ class create_a_dcm_rnn:
 		h_state_initial[2] = np.random.normal(loc=1.15, scale=0.15)	
 		h_state_initial[3] = np.random.normal(loc=0.85, scale=0.15)	
 
-	
+	def set_up_hemodynamic_parameter_prior(self):
+		self.hemodynamic_parameters={}
+		self.hemodynamic_parameters['alpha']=type('container', (object,), {})()
+		self.hemodynamic_parameters['alpha'].mean = 0.32
+		self.hemodynamic_parameters['alpha'].std = np.sqrt(0.0015)
+		self.hemodynamic_parameters['E0']=type('container', (object,), {})()
+		self.hemodynamic_parameters['E0'].mean = 0.34
+		self.hemodynamic_parameters['E0'].std = np.sqrt(0.0024)
+		self.hemodynamic_parameters['k']=type('container', (object,), {})()
+		self.hemodynamic_parameters['k'].mean = 0.65
+		self.hemodynamic_parameters['k'].std = np.sqrt(0.015)
+		self.hemodynamic_parameters['gamma']=type('container', (object,), {})()
+		self.hemodynamic_parameters['gamma'].mean = 0.41
+		self.hemodynamic_parameters['gamma'].std = np.sqrt(0.002)
+		self.hemodynamic_parameters['tao']=type('container', (object,), {})()
+		self.hemodynamic_parameters['tao'].mean = 0.98
+		self.hemodynamic_parameters['tao'].std = np.sqrt(0.0568)
+		self.hemodynamic_parameters['epsilon']=type('container', (object,), {})()
+		self.hemodynamic_parameters['epsilon'].mean = 0.4
+		self.hemodynamic_parameters['epsilon'].std = np.finfo(float).eps
+		self.hemodynamic_parameters['V0']=type('container', (object,), {})()
+		self.hemodynamic_parameters['V0'].mean = 100.
+		self.hemodynamic_parameters['V0'].std = np.finfo(float).eps
+		self.hemodynamic_parameters['TE']=type('container', (object,), {})()
+		self.hemodynamic_parameters['TE'].mean = 0.03
+		self.hemodynamic_parameters['TE'].std = np.finfo(float).eps
+		self.hemodynamic_parameters['r0']=type('container', (object,), {})()
+		self.hemodynamic_parameters['r0'].mean = 25.
+		self.hemodynamic_parameters['r0'].std = np.finfo(float).eps
+		self.hemodynamic_parameters['theta0']=type('container', (object,), {})()
+		self.hemodynamic_parameters['theta0'].mean = 40.3
+		self.hemodynamic_parameters['theta0'].std = np.finfo(float).eps
+
+	def create_shared_variables(self):
+		# for neural level
+		with tf.variable_scope('rnn_cell'):
+			trainable_flag=True
+			self.Wxx = tf.get_variable('Wxx',initializer=self.Wxx_init,trainable=trainable_flag)
+			self.Wxxu = [tf.get_variable('Wxxu_s'+str(n),initializer=self.Wxxu_init[n],trainable=trainable_flag) for n in range(self.n_stimuli)]
+			self.Wxu = tf.get_variable('Wxu',initializer=self.Wxu_init,trainable=trainable_flag)
+
+		# for hemodynamic level
+		with tf.variable_scope('rnn_cell_h'):
+			self.alpha={}
+			self.E0={}
+			self.k={}
+			self.gamma={}
+			self.tao={}
+			self.epsilon={}
+			self.V0={}
+			self.TE={}
+			self.r0={}
+			self.theta0={}
+			trainable_flag=False
+			for n in range(self.n_region):
+				self.alpha['alpha_r'+str(n)]=tf.get_variable('alpha_r'+str(n),initializer=self.hemodynamic_parameters['alpha'].mean,trainable=trainable_flag)
+				self.E0['E0_r'+str(n)]=tf.get_variable('E0_r'+str(n),initializer=self.hemodynamic_parameters['E0'].mean,trainable=trainable_flag)
+				self.k['k_r'+str(n)]=tf.get_variable('k_r'+str(n),initializer=self.hemodynamic_parameters['k'].mean,trainable=trainable_flag)
+				self.gamma['gamma_r'+str(n)]=tf.get_variable('gamma_r'+str(n),initializer=self.hemodynamic_parameters['gamma'].mean,trainable=trainable_flag)
+				self.tao['tao_r'+str(n)]=tf.get_variable('tao_r'+str(n),initializer=self.hemodynamic_parameters['tao'].mean,trainable=trainable_flag)
+				self.epsilon['epsilon_r'+str(n)]=tf.get_variable('epsilon_r'+str(n),initializer=self.hemodynamic_parameters['epsilon'].mean,trainable=False) # This is set to untrainable by design
+				self.V0['V0_r'+str(n)]=tf.get_variable('V0_r'+str(n),initializer=self.hemodynamic_parameters['V0'].mean,trainable=False) # This is set to untrainable by design
+				self.TE['TE_r'+str(n)]=tf.get_variable('TE_r'+str(n),initializer=self.hemodynamic_parameters['TE'].mean,trainable=False)	# This is set to untrainable by design
+				self.r0['r0_r'+str(n)]=tf.get_variable('r0_r'+str(n),initializer=self.hemodynamic_parameters['r0'].mean,trainable=False) # This is set to untrainable by design
+				self.theta0['theta0_r'+str(n)]=tf.get_variable('theta0_r'+str(n),initializer=self.hemodynamic_parameters['theta0'].mean,trainable=False) # This is set to untrainable by design
+
+	def add_neural_layer(self):
+		self.x_state_initial = tf.zeros((self.n_region,1),dtype=np.float32)
+
+		self.x_state_predicted =[]
+		self.x_state_predicted.append(self.x_state_initial)
+		for i in range(1,self.n_recurrent_step):
+			tmp = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
+			self.x_state_predicted.append(tmp)
+		# the last element needs special handling
+		i=self.n_recurrent_step
+		self.x_state_final = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
+
+	def add_hemodynamic_layer(self):
+		n_region = self.n_region
+		self.h_state_initial = [tf.get_variable('h_state_initial_r'+str(n),shape=[4,1],initializer=self.get_random_h_state_initial(),trainable=False) \
+								for n in range(n_region)]
+
+		# format: h_state_predicted[region][time]
+		self.h_state_predicted = [[] for _ in range(n_region)]
+		for n in range(n_region):
+			self.h_state_predicted[n].append(self.h_state_initial[n])
+		for i in range(1,self.n_recurrent_step):
+			for n in range(n_region):
+				self.h_state_predicted[n].append(\
+					self.rnn_cell_h(self.h_state_predicted[n][i-1],\
+						self.x_state_predicted[i-1][n],n))
+		# the last element needs special handling
+		i=self.n_recurrent_step
+		self.h_state_final=[]
+		for n in range(n_region):
+			self.h_state_final.append(\
+				self.rnn_cell_h(self.h_state_predicted[n][i-1],\
+					self.x_state_predicted[i-1][n],n))
+
+	def add_output_layer(self):
+		self.y_state_predicted = []
+		for i in range(0,self.n_recurrent_step):
+			tmp = []
+			for n in range(self.n_region):
+				tmp.append(self.output_mapping(self.h_state_predicted[n][i],n))
+			tmp = tf.pack(tmp)
+			self.y_state_predicted.append(tmp)
+
+	def define_masks(self):
+		names=self.names
+		self.masks = type('container', (object,), {})()
+		self.masks.gradient = {}
+		self.masks.sparse = {}
+		self.masks.prior = {}
+		for idx,name in enumerate(names):
+			tmp=tf.get_default_graph().get_tensor_by_name(name).get_shape()
+			self.masks.gradient[name] = tf.placeholder(tf.float32, tmp, name='mask_gradient_'+str(idx))
+			self.masks.sparse[name] = tf.placeholder(tf.float32, tmp, name='mask_sparse_'+str(idx))
+			self.masks.prior[name] = tf.placeholder(tf.float32, tmp, name='mask_prior_'+str(idx))	
+
+	def add_loss_prediction(self):
+		self.y_true_as_list =[tf.reshape(self.y_true_input_as_array[:,i],(self.n_region,1)) for i in range(self.n_recurrent_step)]
+		self.loss_y_list= [(tf.reduce_mean(tf.square(tf.sub(y_pred, y_true)))) \
+				for y_pred, y_true in zip(self.y_state_predicted,self.y_true_as_list)]
+		self.loss_y = tf.reduce_mean(self.loss_y_list)
+
+	def add_loss_sparse(self):
+		# got all variable values
+		variable_names = self.names
+		variable_values = tf.get_collection(tf.GraphKeys.VARIABLES)
+		self.loss_sparse_list = [tf.reduce_sum(tf.reshape(tf.abs(value*self.masks.sparse[name]),[-1])) for name,value in zip(variable_names, variable_values)]
+		self.loss_sparse = tf.add_n(self.loss_sparse_list)
+
+	def add_loss_prior(self):
+		self.loss_prior=0
+		self.hemo_parameter_mean_list=[0.32, 0.34, 0.65, 0.41, 0.98]
+		self.hemo_parameter_std_list=np.diag(np.sqrt([0.0015, 0.0024, 0.015, 0.002, 0.0568]))
+		for name in self.names:
+			tmp=tf.get_default_graph().get_tensor_by_name(name)
+			#if 'alpha' in name:
+			#	pass
+
+	def collect_losses(self):
+		self.loss_total = self.loss_y + self.loss_sparse + self.loss_prior
+
+	def calculate_gradients(self):
+		self.opt = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
+		self.grads_and_vars = self.opt.compute_gradients(self.loss_total)
+
+	def process_gradients(self):
+		self.processed_grads_and_vars = [(gv[0]*self.masks.gradient[self.names[idx]], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
+
+	def apply_gradients(self):
+		self.apply_gradient = self.opt.apply_gradients(self.processed_grads_and_vars)
+
+
 class utilities:
 
 	def __init__(self,n_region=None,n_recurrence=None, learning_rate=None):
@@ -327,14 +342,12 @@ class utilities:
 		'''
 		#self.default_dr = dr
 		self.parameter_key_list = ['Wxx','Wxxu','Wxu','alpha','E0','k','gamma','tao','epsilon','V0','TE','r0','theta0']
-		
 
 	def run_forward_segment(self,dr,sess,feed_dict_in):
 		x_state, x_state_final = sess.run([dr.x_state_predicted,dr.x_state_final],\
 		                                   feed_dict={dr.rnn_u:feed_dict_in['rnn_u'],\
 		                                   dr.rnn_x:feed_dict_in['rnn_x'],
 		                                   dr.x_state_initial:feed_dict_in['x_state_initial']})
-		                                   
 		return [x_state, x_state_final]
 
 	def forward_pass_x(self, dr, dh, isess, x_state_initial=None):
@@ -500,18 +513,11 @@ class utilities:
 			tmp.masks.prior = np.ones(tmp.shape)*mask_value_prior
 			parameters[name] = tmp
 		return parameters
-	'''
-	def add_gradient_mask_to_feed_dict(self,dr,feed_dict,variable_profile_dict):
-		for idx,name in enumerate(variable_profile_dict):
-			feed_dict[dr.masks.gradient[name]]=variable_profile_dict[name].mask.gradient
-	'''
 
 	def append_masks_to_feed_dict(self,dr,feed_dict,variable_profile_dict):
 		for idx,name in enumerate(variable_profile_dict):
 			feed_dict[dr.masks.gradient[name]]=variable_profile_dict[name].masks.gradient
 			feed_dict[dr.masks.sparse[name]]=variable_profile_dict[name].masks.sparse
-
-
 
 	def MSE_loss_np(self,array1,array2):
 		MSE=np.mean((array1.flatten()- array2.flatten()) ** 2)
@@ -520,7 +526,7 @@ class utilities:
 	def rMSE(self, x_hat, x_true):
 		return tf.div(tf.sqrt(tf.reduce_mean(tf.square(tf.sub(x_hat, x_true)))),\
                  tf.sqrt(tf.reduce_mean(tf.square(tf.constant(x_true,dtype=tf.float32)))))
-			
+		
 
 
 
