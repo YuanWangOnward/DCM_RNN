@@ -95,7 +95,7 @@
 			"file": "DCM_RNN.py",
 			"settings":
 			{
-				"buffer_size": 22801,
+				"buffer_size": 22111,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -191,6 +191,11 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"self.names",
+			"tf.variables()",
+			"tf.variable(",
+			"tf.vari",
+			"mask",
 			"get_random_h_state_initial",
 			"container",
 			"m.",
@@ -313,12 +318,7 @@
 			"rnn_cell\nrnn_cell",
 			"n_region",
 			"n_stimuli",
-			"n_time_point",
-			"n_region",
-			"x_state_predicted",
-			"x_state_initial",
-			"n_re",
-			"x_state_predicted"
+			"n_time_point"
 		],
 		"highlight": false,
 		"in_selection": false,
@@ -348,15 +348,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 22801,
+						"buffer_size": 22111,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								337,
-								337
+								2050,
+								2053
 							]
 						],
 						"settings":
@@ -365,7 +365,7 @@
 							"translate_tabs_to_spaces": false
 						},
 						"translation.x": 0.0,
-						"translation.y": 218.0,
+						"translation.y": 48.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,

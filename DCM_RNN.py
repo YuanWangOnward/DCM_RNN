@@ -28,10 +28,10 @@ class DCM_RNN:
 			self.Wxu_init=np.array([0.5,0,0],dtype=np.float32).reshape(3,1)*m.t_delta
 
 	def build_a_model(self):
-		self.add_placeholders()
+		[self.input_u, self.input_y_true] = self.add_placeholders()
 
 		# create shared variables in computation graph
-		self.set_up_hemodynamic_parameter_prior()
+		self.hemodynamic_parameters = self.set_up_hemodynamic_parameter_prior()
 		self.create_shared_variables()
 
 		# build layers
@@ -40,7 +40,8 @@ class DCM_RNN:
 		self.add_output_layer()
 
 		# optimizer with gradient manipulate
-		self.names = [item.name for item in tf.all_variables()]
+		# self.names = [item.name for item in tf.all_variables()]
+		self.names = [item.name for item in tf.trainable_variables()]
 
 		# masks for penalty weighting and connection support
 		self.define_masks()
@@ -164,8 +165,9 @@ class DCM_RNN:
 			return y
 
 	def add_placeholders(self):
-		self.rnn_u = tf.placeholder(tf.float32, [self.n_stimuli, self.n_recurrent_step], name='rnn_u')
-		self.y_true_input_as_array = tf.placeholder(tf.float32, [self.n_region, self.n_recurrent_step], name='y_true_input_as_array')
+		input_u = tf.placeholder(tf.float32, [self.n_stimuli, self.n_recurrent_step], name='input_u')
+		input_y_true = tf.placeholder(tf.float32, [self.n_region, self.n_recurrent_step], name='input_y_true')
+		return [input_u, input_y_true]
 
 	def get_random_h_state_initial(self):
 		h_state_initial = np.zeros((4,1))
@@ -175,37 +177,38 @@ class DCM_RNN:
 		h_state_initial[3] = np.random.normal(loc=0.85, scale=0.15)	
 
 	def set_up_hemodynamic_parameter_prior(self):
-		self.hemodynamic_parameters={}
-		self.hemodynamic_parameters['alpha']=type('container', (object,), {})()
-		self.hemodynamic_parameters['alpha'].mean = 0.32
-		self.hemodynamic_parameters['alpha'].std = np.sqrt(0.0015)
-		self.hemodynamic_parameters['E0']=type('container', (object,), {})()
-		self.hemodynamic_parameters['E0'].mean = 0.34
-		self.hemodynamic_parameters['E0'].std = np.sqrt(0.0024)
-		self.hemodynamic_parameters['k']=type('container', (object,), {})()
-		self.hemodynamic_parameters['k'].mean = 0.65
-		self.hemodynamic_parameters['k'].std = np.sqrt(0.015)
-		self.hemodynamic_parameters['gamma']=type('container', (object,), {})()
-		self.hemodynamic_parameters['gamma'].mean = 0.41
-		self.hemodynamic_parameters['gamma'].std = np.sqrt(0.002)
-		self.hemodynamic_parameters['tao']=type('container', (object,), {})()
-		self.hemodynamic_parameters['tao'].mean = 0.98
-		self.hemodynamic_parameters['tao'].std = np.sqrt(0.0568)
-		self.hemodynamic_parameters['epsilon']=type('container', (object,), {})()
-		self.hemodynamic_parameters['epsilon'].mean = 0.4
-		self.hemodynamic_parameters['epsilon'].std = np.finfo(float).eps
-		self.hemodynamic_parameters['V0']=type('container', (object,), {})()
-		self.hemodynamic_parameters['V0'].mean = 100.
-		self.hemodynamic_parameters['V0'].std = np.finfo(float).eps
-		self.hemodynamic_parameters['TE']=type('container', (object,), {})()
-		self.hemodynamic_parameters['TE'].mean = 0.03
-		self.hemodynamic_parameters['TE'].std = np.finfo(float).eps
-		self.hemodynamic_parameters['r0']=type('container', (object,), {})()
-		self.hemodynamic_parameters['r0'].mean = 25.
-		self.hemodynamic_parameters['r0'].std = np.finfo(float).eps
-		self.hemodynamic_parameters['theta0']=type('container', (object,), {})()
-		self.hemodynamic_parameters['theta0'].mean = 40.3
-		self.hemodynamic_parameters['theta0'].std = np.finfo(float).eps
+		hemodynamic_parameters={}
+		hemodynamic_parameters['alpha']=type('container', (object,), {})()
+		hemodynamic_parameters['alpha'].mean = 0.32
+		hemodynamic_parameters['alpha'].std = np.sqrt(0.0015)
+		hemodynamic_parameters['E0']=type('container', (object,), {})()
+		hemodynamic_parameters['E0'].mean = 0.34
+		hemodynamic_parameters['E0'].std = np.sqrt(0.0024)
+		hemodynamic_parameters['k']=type('container', (object,), {})()
+		hemodynamic_parameters['k'].mean = 0.65
+		hemodynamic_parameters['k'].std = np.sqrt(0.015)
+		hemodynamic_parameters['gamma']=type('container', (object,), {})()
+		hemodynamic_parameters['gamma'].mean = 0.41
+		hemodynamic_parameters['gamma'].std = np.sqrt(0.002)
+		hemodynamic_parameters['tao']=type('container', (object,), {})()
+		hemodynamic_parameters['tao'].mean = 0.98
+		hemodynamic_parameters['tao'].std = np.sqrt(0.0568)
+		hemodynamic_parameters['epsilon']=type('container', (object,), {})()
+		hemodynamic_parameters['epsilon'].mean = 0.4
+		hemodynamic_parameters['epsilon'].std = np.finfo(float).eps
+		hemodynamic_parameters['V0']=type('container', (object,), {})()
+		hemodynamic_parameters['V0'].mean = 100.
+		hemodynamic_parameters['V0'].std = np.finfo(float).eps
+		hemodynamic_parameters['TE']=type('container', (object,), {})()
+		hemodynamic_parameters['TE'].mean = 0.03
+		hemodynamic_parameters['TE'].std = np.finfo(float).eps
+		hemodynamic_parameters['r0']=type('container', (object,), {})()
+		hemodynamic_parameters['r0'].mean = 25.
+		hemodynamic_parameters['r0'].std = np.finfo(float).eps
+		hemodynamic_parameters['theta0']=type('container', (object,), {})()
+		hemodynamic_parameters['theta0'].mean = 40.3
+		hemodynamic_parameters['theta0'].std = np.finfo(float).eps
+		return hemodynamic_parameters
 
 	def create_shared_variables(self):
 		# for neural level
@@ -246,11 +249,11 @@ class DCM_RNN:
 		self.x_state_predicted =[]
 		self.x_state_predicted.append(self.x_state_initial)
 		for i in range(1,self.n_recurrent_step):
-			tmp = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
+			tmp = self.rnn_cell(self.input_u[0,i-1], self.x_state_predicted[i-1])
 			self.x_state_predicted.append(tmp)
 		# the last element needs special handling
 		i=self.n_recurrent_step
-		self.x_state_final = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
+		self.x_state_final = self.rnn_cell(self.input_u[0,i-1], self.x_state_predicted[i-1])
 
 	def add_hemodynamic_layer(self):
 		n_region = self.n_region
@@ -296,7 +299,7 @@ class DCM_RNN:
 			self.masks.prior[name] = tf.placeholder(tf.float32, tmp, name='mask_prior_'+str(idx))	
 
 	def add_loss_prediction(self):
-		self.y_true_as_list =[tf.reshape(self.y_true_input_as_array[:,i],(self.n_region,1)) for i in range(self.n_recurrent_step)]
+		self.y_true_as_list =[tf.reshape(self.input_y_true[:,i],(self.n_region,1)) for i in range(self.n_recurrent_step)]
 		self.loss_y_list= [(tf.reduce_mean(tf.square(tf.sub(y_pred, y_true)))) \
 				for y_pred, y_true in zip(self.y_state_predicted,self.y_true_as_list)]
 		self.loss_y = tf.reduce_mean(self.loss_y_list)
@@ -304,8 +307,8 @@ class DCM_RNN:
 	def add_loss_sparse(self):
 		# got all variable values
 		variable_names = self.names
-		variable_values = tf.get_collection(tf.GraphKeys.VARIABLES)
-		self.loss_sparse_list = [tf.reduce_sum(tf.reshape(tf.abs(value*self.masks.sparse[name]),[-1])) for name,value in zip(variable_names, variable_values)]
+		variable_values = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+		self.loss_sparse_list = [tf.reduce_sum(tf.reshape(tf.abs(value*self.masks.sparse[name]),[-1])) for name,value in zip(variable_names, variable_values)]	
 		self.loss_sparse = tf.add_n(self.loss_sparse_list)
 
 	def add_loss_prior(self):
@@ -345,7 +348,7 @@ class utilities:
 
 	def run_forward_segment(self,dr,sess,feed_dict_in):
 		x_state, x_state_final = sess.run([dr.x_state_predicted,dr.x_state_final],\
-		                                   feed_dict={dr.rnn_u:feed_dict_in['rnn_u'],\
+		                                   feed_dict={dr.input_u:feed_dict_in['input_u'],\
 		                                   dr.rnn_x:feed_dict_in['rnn_x'],
 		                                   dr.x_state_initial:feed_dict_in['x_state_initial']})
 		return [x_state, x_state_final]
@@ -356,7 +359,7 @@ class utilities:
 		x_state_predicted=[]
 		for i in range(len(dh.u_list)):
 			tmp,training_state = isess.run([dr.x_state_predicted,dr.x_state_final],\
-			feed_dict={dr.rnn_u:dh.u_list[i],
+			feed_dict={dr.input_u:dh.u_list[i],
 			#dr.rnn_x:dh.x_list[i],
 			dr.x_state_initial:training_state})
 			tmp=np.asarray(tmp)
@@ -380,7 +383,7 @@ class utilities:
 			# build feed_dictionary
 			feed_dict={i: d for i, d in zip(dr.h_state_initial, h_state_feed)}
 			feed_dict[dr.x_state_initial]=x_state_feed
-			feed_dict[dr.rnn_u]=dh.u_list[i]
+			feed_dict[dr.input_u]=dh.u_list[i]
 			# run 
 			h_current_segment,h_state_feed,x_state_feed = isess.run([dr.h_state_predicted,dr.h_state_final,dr.x_state_final],\
 			feed_dict=feed_dict)
@@ -405,7 +408,7 @@ class utilities:
 			# build feed_dictionary
 			feed_dict={i: d for i, d in zip(dr.h_state_initial, h_state_feed)}
 			feed_dict[dr.x_state_initial]=x_state_feed
-			feed_dict[dr.rnn_u]=dh.u_list[i]
+			feed_dict[dr.input_u]=dh.u_list[i]
 			# run 
 			y_current_segment,h_state_feed,x_state_feed = isess.run([dr.y_state_predicted,dr.h_state_final,dr.x_state_final],\
 			feed_dict=feed_dict)
@@ -490,8 +493,9 @@ class utilities:
 				isess.run(dr.Wxxu[idx].assign(item))
 			isess.run(dr.Wxu.assign(Wxu))
 
-	def get_parameter_names(self,opt_calculate_gradient):
-		return [var.name for (_,var) in opt_calculate_gradient]
+	def get_trainable_parameter_names_in_graph(self):
+		return [item.name for item in tf.trainable_variables()]
+		#return [var.name for (_,var) in opt_calculate_gradient]
 
 	def set_up_parameter_profile(self,graph,names,mask_value_gradient=None,mask_value_sparse=None,mask_value_prior=None):
 		
