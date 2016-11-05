@@ -36,18 +36,7 @@ class get_a_subject:
 		              		[0.8,-1,0.4],
 		              		[0.4,0.8,-1]],dtype=np.float32)*t_delta+np.eye(n_region,n_region,0,dtype=np.float32)
 		self.Wxxu=[np.array([[0,0,0],
-		              [0,0,0],self.x_state_initial = tf.zeros((m.n_region,1),dtype=np.float32)
-		self.x_state_predicted =[]
-		
-		self.x_state_predicted.append(self.x_state_initial)
-		for i in range(1,self.n_recurrent_step):
-		    tmp = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
-		    self.x_state_predicted.append(tmp)
-
-		# the last element needs special handling
-		i=self.n_recurrent_step
-		self.x_state_final = self.rnn_cell(self.rnn_u[0,i-1], self.x_state_predicted[i-1])
-	
+		              [0,0,0],
 		              [0,0,-0.4]],dtype=np.float32)*t_delta for _ in range(n_stimuli)]
 		self.Wxu=np.eye(n_region,n_stimuli,dtype=np.float32)*0.4*t_delta 
 		#np.zeros((n_region,n_stimuli),dtype=np.float32)
@@ -62,6 +51,7 @@ class get_a_subject:
 		self.hemo_parameter_key_list=['alpha','E0','k','gamma','tao','epsilon','V0','TE','r0','theta0']
 		self.hemo_parameter_mean_list=[0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3]
 		self.hemo_parameter_variance_list=[0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0.]
+		#self.hemo_parameter_variance_list=[num**2 for num in self.hemo_parameter_variance_list]
 
 		for idx, key in enumerate(self.hemo_parameter_key_list):
 			# add mean
@@ -151,7 +141,7 @@ class get_a_subject:
 		n_region = None or self.n_region
 		n_time_point = None or self.n_time_point
 
-	def sample_hemodynamic_parameters(self, hemodynamic_parameters_mean=None, hemodynamic_parameters_variance=None, deviation_constraint=1):
+	def sample_hemodynamic_parameters(self, hemodynamic_parameters_mean=None, hemodynamic_parameters_variance=None, deviation_constraint=3):
 		# sample a subject from hemodynamic parameter distribution
 		h_mean = hemodynamic_parameters_mean or self.hemodynamic_parameters_mean
 		h_vari = hemodynamic_parameters_variance or self.hemodynamic_parameters_variance
@@ -245,6 +235,4 @@ class get_a_subject:
 				print(item.name)
 				display(item)
 		return output 
-
-
 

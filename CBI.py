@@ -98,25 +98,29 @@ class configure_a_scanner:
 				E0 = sub.hemodynamic_parameters.loc['region_'+str(n),'E0']
 				h_state[n,:,t]=(np.matmul(sub.Whh[n],sub.phi_h(h_state[n,:,t-1],alpha,E0)).reshape(4,1)\
 				+sub.Whx[n]*x_state[n,0,t-1]+sub.bh[n]).reshape(4)
-				'''
-				if self.h_state_suspicious(h_state[n,:,t]):
-					print(Fore.RED + 'Warning: region_'+str(n)+' h_states go into suspicious range!')
-					#print(Fore.RED + 'Warning: h_states go into suspicious range!')
-					index_start = max(t-5,0)
-					print('x_state')
-					tmp = pd.DataFrame(x_state[:,0,index_start:t+1],index=['region_'+str(nn) for nn in range(self.n_region)],\
-										columns=[tt for tt in range(index_start,t+1)])
-					display(tmp)
-					print('h_state')
-					tmp = pd.DataFrame(h_state[n,:,index_start:t+1],index=['s','f','v','q'],\
-										columns=[tt for tt in range(index_start,t+1)])
-					display(tmp)
-					print(Style.RESET_ALL)
-					input("Press Enter to continue...")
-				'''
 		output=h_state[:]
 		return output
 	
+	def h_impulse_response(self,sub):
+		t_duration = 15.
+		n_duration = int(t_duration/self.t_delta)
+		h_state_initial=np.ones((self.n_region,4))
+		h_state_initial[:,0]=0
+		x_state = np.zeros((self.n_region,1,n_duration))
+		x_state[:,0,0] = 1
+		h_state = np.zeros((self.n_region,4,n_duration))
+
+		h_state[:,:,0]=h_state_initial
+		h_state[:,:,0]=h_state_initial
+		for t in range(1,n_duration):
+			for n in range(0,self.n_region):
+				alpha = sub.hemodynamic_parameters.loc['region_'+str(n),'alpha']
+				E0 = sub.hemodynamic_parameters.loc['region_'+str(n),'E0']
+				h_state[n,:,t]=(np.matmul(sub.Whh[n],sub.phi_h(h_state[n,:,t-1],alpha,E0)).reshape(4,1)\
+				+sub.Whx[n]*x_state[n,0,t-1]+sub.bh[n]).reshape(4)
+		return h_state 
+
+
 	def f_evolve(self, sub, h_state=None):
 		# given h_state, find observable fMRI signal
 		h_state = h_state or sub.h_state
