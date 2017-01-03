@@ -141,7 +141,7 @@ class get_a_subject:
 		n_region = None or self.n_region
 		n_time_point = None or self.n_time_point
 
-	def sample_hemodynamic_parameters(self, hemodynamic_parameters_mean=None, hemodynamic_parameters_variance=None, deviation_constraint=3):
+	def sample_hemodynamic_parameters(self, hemodynamic_parameters_mean=None, hemodynamic_parameters_variance=None, deviation_constraint=0.4):
 		# sample a subject from hemodynamic parameter distribution
 		h_mean = hemodynamic_parameters_mean or self.hemodynamic_parameters_mean
 		h_vari = hemodynamic_parameters_variance or self.hemodynamic_parameters_variance

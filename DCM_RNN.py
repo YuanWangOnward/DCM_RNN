@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from IPython.display import display
 import inspect
+import tensorflow as tf
 
 class DCM_RNN:
 
@@ -304,19 +305,13 @@ class DCM_RNN:
 		for name in variable_names:
 			hyperparameter_masks[name] = {}
 			if self.variable_scope_name_x in name:
-				hyperparameter_masks[name]['scope'] = self.variable_scope_name_x
+				self.add_a_parameter_profile(name,self.variable_scope_name_x,hyperparameter_values,hyperparameter_masks)
 			elif self.variable_scope_name_h in name:
-				hyperparameter_masks[name]['scope'] = self.variable_scope_name_h
+				self.add_a_parameter_profile(name,self.variable_scope_name_h,hyperparameter_values,hyperparameter_masks)
 			else:
 				function_name = inspect.stack()[0][3]
-				raise ValueError(function_name+'() unknown variable scope')
-			variable_shape = tf.get_default_graph().get_tensor_by_name(name).get_shape()
-			hyperparameter_masks[name]['shape'] = variable_shape
-			hyperparameter_masks[name]['keyword'] = self.find_keyword(name)
-			hyperparameter_masks[name]['mask_gradient'] = np.ones(variable_shape)*hyperparameter_values[hyperparameter_masks[name]['scope']]['gradient']
-			hyperparameter_masks[name]['mask_sparse'] = np.ones(variable_shape)*hyperparameter_values[hyperparameter_masks[name]['scope']]['sparse']
-			hyperparameter_masks[name]['mask_prior'] = np.ones(variable_shape)*hyperparameter_values[hyperparameter_masks[name]['scope']]['prior']
-		self.parameter_profile = hyperparameter_masks
+				raise ValueError(function_name+'() unknown variable scope')			
+		self.parameter_profile = hyperparameter_masks	
 
 	def find_keyword(self, name):
 		if 'Wxx' in name:
@@ -349,6 +344,27 @@ class DCM_RNN:
 			function_name = inspect.stack()[0][3]
 			raise ValueError(function_name+'() cannot find proper keyword')	
 		return keyword
+
+	def clip_name(self,name):
+		start_index = name.rfind('/')
+		end_index = name.find(':')
+		return name[start_index+1:end_index]
+
+	def add_a_parameter_profile(self,name,scope,hyperparameter_values,hyperparameter_masks):
+		with tf.variable_scope(scope):
+			hyperparameter_masks[name]['scope'] = scope
+			variable_shape = tf.get_default_graph().get_tensor_by_name(name).get_shape()
+			hyperparameter_masks[name]['shape'] = variable_shape
+			hyperparameter_masks[name]['keyword'] = self.find_keyword(name)
+			hyperparameter_masks[name]['mask_gradient'] = tf.get_variable(self.clip_name(name)+'_mask_gradient',\
+															initializer=np.float32(np.ones(variable_shape)*hyperparameter_values[hyperparameter_masks[name]['scope']]['gradient']),\
+															trainable=False)
+			hyperparameter_masks[name]['mask_sparse'] = tf.get_variable(self.clip_name(name)+'_mask_sparse',\
+															initializer=np.float32(np.ones(variable_shape)*hyperparameter_values[hyperparameter_masks[name]['scope']]['sparse']),\
+															trainable=False)
+			hyperparameter_masks[name]['mask_prior'] = tf.get_variable(self.clip_name(name)+'_mask_prior',\
+																initializer=np.float32(np.ones(variable_shape)*hyperparameter_values[hyperparameter_masks[name]['scope']]['prior']),\
+																trainable=False)
 
 	def add_loss_prediction(self):
 		y_true_as_list =[tf.reshape(self.input_y_true[:,i],(self.n_region,1)) for i in range(self.n_recurrent_step)]
@@ -432,7 +448,7 @@ class DCM_RNN:
 
 class utilities:
 
-	def __init__(self,n_region=None,n_recurrence=None, learning_rate=None):
+	def __init__(self, default_model=None, default_session=None,n_region=None,n_recurrence=None, learning_rate=None):
 		'''
 		self.n_region = n_region or 3
 		self.n_recurrent_step = n_recurrence or 8 
@@ -441,6 +457,8 @@ class utilities:
 		'''
 		#self.default_dr = dr
 		self.parameter_key_list = ['Wxx','Wxxu','Wxu','alpha','E0','k','gamma','tao','epsilon','V0','TE','r0','theta0']
+		self.default_model = default_model
+		self.default_sess = default_session
 
 	def run_forward_segment(self,dr,sess,feed_dict_in):
 		x_state, x_state_final = sess.run([dr.x_state_predicted,dr.x_state_final],\
@@ -589,6 +607,32 @@ class utilities:
 				isess.run(dr.Wxxu[idx].assign(item))
 			isess.run(dr.Wxu.assign(Wxu))
 
+	def update_parameter_profile(self,dr=None,session=None):
+		dr = dr or self.default_model
+		session = session or self.default_session
+
+		hyperparameter_values = dr.hyperparameter_values
+		parameter_profile = dr.parameter_profile
+
+		for name in parameter_profile:
+			item = parameter_profile[name]
+			variable_shape = item['shape']
+			with tf.variable_scope(item['scope']):
+				session.run(item['mask_gradient'].assign( np.float32(np.ones(variable_shape)*hyperparameter_values[item['scope']]['gradient']) ))
+				session.run(item['mask_sparse'].assign( np.float32(np.ones(variable_shape)*hyperparameter_values[item['scope']]['sparse']) ))
+				session.run(item['mask_prior'].assign( np.float32(np.ones(variable_shape)*hyperparameter_values[item['scope']]['prior']) ))
+
+	def check_parameter_profile_item(self,parameter_profile,item_name, session=None):
+		session = session or self.default_session
+		item = parameter_profile[item_name]
+		print('\''+item_name+'\''+' profile')
+		for keyword in item:
+			if isinstance(item[keyword], tf.Variable):
+				print(keyword+': ',session.run(item[keyword]))
+			else:
+				print(keyword+': ',item[keyword])
+
+
 	def get_trainable_parameter_names_in_graph(self):
 		return [item.name for item in tf.trainable_variables()]
 		#return [var.name for (_,var) in opt_calculate_gradient]
@@ -626,7 +670,7 @@ class utilities:
 	def rMSE(self, x_hat, x_true):
 		return tf.div(tf.sqrt(tf.reduce_mean(tf.square(tf.sub(x_hat, x_true)))),\
                  tf.sqrt(tf.reduce_mean(tf.square(tf.constant(x_true,dtype=tf.float32)))))
-		
+
 
 
 

@@ -4,6 +4,7 @@ import math as mth
 import pandas as pd
 from colorama import Fore, Style
 from IPython.display import display
+import statistics as st
 
 '''
 unified states representation:
@@ -28,7 +29,8 @@ class configure_a_scanner:
 		# used for create stimuli
 		self.t_exitation=4 # the duration of a stimulus
 		self.t_blank_interval=6 # the resting interval between stimuli
-		self.u_probability=0.5 # the probability a stimulus is given at a time point
+		self.u_probability=0.5
+		 # the probability a stimulus is given at a time point
 		self.n_exitation=int(self.t_exitation/self.t_delta) 
 		self.n_blank_interval=int(self.t_blank_interval/self.t_delta) 
 
@@ -101,6 +103,11 @@ class configure_a_scanner:
 		output=h_state[:]
 		return output
 	
+	def add_noise(self,target_signal,SNR=2):
+		signal_shape = target_signal.shape
+		noise = np.random.normal(0,np.sqrt(st.variance(target_signal.flatten()))/SNR,signal_shape)
+		return target_signal + noise
+
 	def h_impulse_response(self,sub):
 		t_duration = 15.
 		n_duration = int(t_duration/self.t_delta)
@@ -118,8 +125,12 @@ class configure_a_scanner:
 				E0 = sub.hemodynamic_parameters.loc['region_'+str(n),'E0']
 				h_state[n,:,t]=(np.matmul(sub.Whh[n],sub.phi_h(h_state[n,:,t-1],alpha,E0)).reshape(4,1)\
 				+sub.Whx[n]*x_state[n,0,t-1]+sub.bh[n]).reshape(4)
-		return h_state 
 
+		y_output = np.zeros((self.n_region,1,n_duration))
+		for t in range(0,n_duration):
+		    for n in range(0,self.n_region): 
+		        y_output[n,0,t]=np.matmul(sub.Wo[n],sub.phi_o(h_state[n,:,t]))+sub.bo[n]
+		return y_output
 
 	def f_evolve(self, sub, h_state=None):
 		# given h_state, find observable fMRI signal
@@ -139,7 +150,9 @@ class configure_a_scanner:
 		self.x_evolve(sub)
 		self.h_evolve(sub)
 		self.f_evolve(sub)
-		output = [self.u, sub.f_output]
+		fmri_noised = self.add_noise(sub.f_output,)
+		sub.f_output_noised = fmri_noised
+		output = [self.u, sub.f_output, fmri_noised]
 		if return_x:
 			output.append(sub.x_state)
 		if return_h:
@@ -154,6 +167,8 @@ class configure_a_scanner:
 		h_state[2]>2,
 		h_state[3]>2]
 		return True in flag_list
+
+
 
 
 

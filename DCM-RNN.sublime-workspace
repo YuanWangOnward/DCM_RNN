@@ -4,6 +4,30 @@
 		"selected_items":
 		[
 			[
+				"def",
+				"default_session"
+			],
+			[
+				"t_",
+				"t_delta"
+			],
+			[
+				"name",
+				"name"
+			],
+			[
+				"che",
+				"check_prior_effectiveness"
+			],
+			[
+				"hyper",
+				"hyperparameter_values"
+			],
+			[
+				"variable",
+				"variable_scope"
+			],
+			[
 				"variable_",
 				"variable_values"
 			],
@@ -95,7 +119,25 @@
 			"file": "DCM_RNN.py",
 			"settings":
 			{
-				"buffer_size": 22111,
+				"buffer_size": 27507,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "population.py",
+			"settings":
+			{
+				"buffer_size": 9306,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "CBI.py",
+			"settings":
+			{
+				"buffer_size": 5938,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -191,6 +233,46 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"0.4",
+			"u_probability",
+			"quick_scan",
+			"profile",
+			"get_variable",
+			"hyperparameter_values",
+			"variable_scope",
+			"with_variable_",
+			"h_state_initial",
+			"sample_hemodynamic_parameters",
+			"flags",
+			"apply_gradient",
+			"inspect",
+			"parameter_profile",
+			"type(",
+			"type",
+			"self.names",
+			"hemodynamic_parameters_prior",
+			"set_up_hemodynamic_parameter_prior",
+			"parameter_profile",
+			"hemodynamic_parameters_prior",
+			"\t\t\t\n",
+			"set_up_hemodynamic_parameter_prior",
+			"hemodynamic_parameters_prior",
+			"set_up_hemodynamic_parameter_prior",
+			"ValueError",
+			"set_up_parameter_profile",
+			"add_hyperparameter_masks",
+			"self.variable_scope_na",
+			"hemodynamic_parameters",
+			"raise",
+			"rnn_cell_h",
+			"rnn_cell",
+			"set_up",
+			"show_al",
+			"profile",
+			"show_all_variable_value",
+			"compare",
+			"show_all",
+			"show",
 			"self.names",
 			"tf.variables()",
 			"tf.variable(",
@@ -278,47 +360,7 @@
 			"flag",
 			"rnn_cell_h",
 			"h_state_final",
-			"x_state_final",
-			"h_state_final",
-			"y_state_final",
-			"h_state_initial",
-			"initi",
-			"y_state_predicted",
-			"y_true_input_as_array",
-			"train_step",
-			"y_state_predicted",
-			"y_current_segment",
-			"y_state_predicted",
-			"y_current_segment",
-			"output_mapping",
-			"return o_state_augmente",
-			"forward",
-			"phi_h",
-			"h_state_predicted",
-			"rnn_cell_h",
-			"h_state_predicted",
-			"x_state_predicted",
-			"h_state_feed",
-			"\nh_state_feed",
-			"h_state_feed",
-			"h_state_initial",
-			"h_state_feed",
-			"h_state_predicted",
-			"h_state_final",
-			"rnn_x",
-			"\t\tself.h_state_initial",
-			"phi_h",
-			"n_recurrence",
-			"n_recurrent_step",
-			"TE",
-			"41",
-			"t_delta",
-			"llearning_rate",
-			"rnn_cell",
-			"rnn_cell\nrnn_cell",
-			"n_region",
-			"n_stimuli",
-			"n_time_point"
+			"x_state_final"
 		],
 		"highlight": false,
 		"in_selection": false,
@@ -326,6 +368,11 @@
 		"regex": false,
 		"replace_history":
 		[
+			"self.names_in_graph",
+			"parameter_prior",
+			"hemodynamic_parameters_prior",
+			"self.variable_scope_name_h",
+			"self.variable_scope_name_x",
 			"mask_gradient",
 			"flags",
 			"self.hemodynamic_parameters.loc"
@@ -339,7 +386,7 @@
 	"groups":
 	[
 		{
-			"selected": 0,
+			"selected": 3,
 			"sheets":
 			[
 				{
@@ -348,15 +395,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 22111,
+						"buffer_size": 27507,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								2050,
-								2053
+								7242,
+								7245
 							]
 						],
 						"settings":
@@ -365,7 +412,71 @@
 							"translate_tabs_to_spaces": false
 						},
 						"translation.x": 0.0,
-						"translation.y": 48.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"file": "estimationAccuracy.png",
+					"semi_transient": true,
+					"stack_index": 2,
+					"type": "image"
+				},
+				{
+					"buffer": 1,
+					"file": "population.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 9306,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								5745,
+								5745
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 1663.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "CBI.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 5938,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								248,
+								248
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
@@ -425,7 +536,7 @@
 	"project": "DCM-RNN.sublime-project",
 	"replace":
 	{
-		"height": 42.0
+		"height": 64.0
 	},
 	"save_all_on_build": true,
 	"select_file":
