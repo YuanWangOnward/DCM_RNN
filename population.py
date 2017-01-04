@@ -8,7 +8,6 @@ from IPython.display import display
 
 
 class get_a_subject:
-
 	
 	# global parameters, need to be changed before scanning
 	t_delta=0.25
