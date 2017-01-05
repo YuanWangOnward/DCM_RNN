@@ -1,25 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/DCM_RNN/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/DCM_RNN/population.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/experiment_1/experiment_main.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/experiment_1/readme.txt" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.project" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.pydevproject" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/DCM-RNN.sublime-project" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/DCM-RNN.sublime-workspace" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/population.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/test.py" afterPath="" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/CBI.py" afterPath="$PROJECT_DIR$/DCM_RNN/CBI.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/DCM_RNN.py" afterPath="$PROJECT_DIR$/DCM_RNN/main_module.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/check_loss_and_BP.py" afterPath="$PROJECT_DIR$/DCM_RNN/check_loss_and_BP.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/data_helper.py" afterPath="$PROJECT_DIR$/DCM_RNN/data_helper.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/develop_log.txt" afterPath="$PROJECT_DIR$/DCM_RNN/develop_log.txt" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/readme.txt" afterPath="$PROJECT_DIR$/DCM_RNN/readme.txt" />
+    <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="Elemenate some unused files.&#10;Add DCM_RNN package.&#10;Capsulate each experiments into an individual folder to make sure that each can be excuted independently and is reproducable.&#10;Next step:&#10;modify population module so that connection matrices can be randomly drawn.">
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/dictionaries/yuanwang.xml" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/DCM_RNN/tests.py" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/DCM_RNN/utilities.py" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/experiment_1/experiment_main.py" afterPath="$PROJECT_DIR$/experiment1/experiment1_main.py" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/experiment_1/readme.txt" afterPath="$PROJECT_DIR$/experiment1/readme.txt" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/main_module.py" afterPath="$PROJECT_DIR$/DCM_RNN/main_module.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -37,7 +26,7 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="BP_check_with_buildin_masks_and_3_losses.ipynb" pinned="false" current-in-tab="true">
+      <file leaf-file-name="BP_check_with_buildin_masks_and_3_losses.ipynb" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/BP_check_with_buildin_masks_and_3_losses.ipynb">
           <provider selected="true" editor-type-id="ipnb-editor">
             <state>
@@ -49,22 +38,59 @@
       <file leaf-file-name="population.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/population.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="195">
-              <caret line="13" column="22" lean-forward="true" selection-start-line="13" selection-start-column="22" selection-end-line="13" selection-end-column="22" />
+            <state relative-caret-position="210">
+              <caret line="14" column="17" lean-forward="true" selection-start-line="14" selection-start-column="17" selection-end-line="14" selection-end-column="17" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
+                <element signature="e#421#4551#0" expanded="false" />
+                <element signature="e#4601#5430#0" expanded="false" />
+                <element signature="e#5489#6039#0" expanded="false" />
+                <element signature="e#6087#6369#0" expanded="false" />
+                <element signature="e#6457#6577#0" expanded="false" />
+                <element signature="e#6768#7969#0" expanded="false" />
+                <element signature="e#8022#9923#0" expanded="false" />
+                <element signature="e#9987#11301#0" expanded="false" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="experiment_main.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/experiment_1/experiment_main.py">
+      <file leaf-file-name="experiment1_main.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="245">
-              <caret line="35" column="16" lean-forward="false" selection-start-line="35" selection-start-column="16" selection-end-line="35" selection-end-column="16" />
+            <state relative-caret-position="140">
+              <caret line="28" column="0" lean-forward="true" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
               <folding>
                 <element signature="e#0#16#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="utilities.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/DCM_RNN/utilities.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="255">
+              <caret line="40" column="16" lean-forward="true" selection-start-line="40" selection-start-column="16" selection-end-line="40" selection-end-column="16" />
+              <folding>
+                <element signature="e#0#13#0" expanded="true" />
+                <element signature="e#133#137#0" expanded="false" />
+                <element signature="e#197#616#1" expanded="false" />
+                <element signature="e#664#825#0" expanded="false" />
+                <element signature="e#868#1084#0" expanded="false" />
+                <element signature="e#1184#1355#0" expanded="false" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="tests.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/DCM_RNN/tests.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="150">
+              <caret line="14" column="0" lean-forward="true" selection-start-line="14" selection-start-column="0" selection-end-line="14" selection-end-column="0" />
+              <folding>
+                <element signature="e#0#15#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -76,15 +102,23 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Python Script" />
+        <option value="Python Unit Test" />
       </list>
     </option>
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
       <find>flags</find>
+      <find>p_matrix</find>
+      <find>p</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
+    <option name="PREVIOUS_COMMIT_AUTHORS">
+      <list>
+        <option value="Yuan Wang &lt;wangyuan.onward@gmail.com&gt;" />
+      </list>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="IdeDocumentHistory">
@@ -100,13 +134,16 @@
         <option value="$PROJECT_DIR$/experiment_main.py" />
         <option value="$PROJECT_DIR$/BP_check_with_buildin_masks_and_3_losses.ipynb" />
         <option value="$PROJECT_DIR$/experiment_1/experiment_main.py" />
+        <option value="$PROJECT_DIR$/DCM_RNN/main_module.py" />
+        <option value="$PROJECT_DIR$/DCM_RNN/tests.py" />
+        <option value="$PROJECT_DIR$/DCM_RNN/utilities.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="29" />
+    <option name="x" value="28" />
     <option name="y" value="23" />
-    <option name="width" value="1158" />
+    <option name="width" value="1251" />
     <option name="height" value="712" />
   </component>
   <component name="ProjectInspectionProfilesVisibleTreeState">
@@ -169,7 +206,7 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="experiment_1" />
+              <option name="myItemId" value="experiment1" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -204,7 +241,7 @@
       <recent name="$PROJECT_DIR$/DCM_RNN" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.experiment_main (1)">
+  <component name="RunManager" selected="Python.tests">
     <configuration default="false" name="test" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -251,7 +288,41 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <module name="DCM-RNN" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/experiment_1/experiment_main.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/experiment_1/experiment1_main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <method />
+    </configuration>
+    <configuration default="false" name="experiment1_main" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/experiment1" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="DCM-RNN" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/experiment1/experiment1_main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <method />
+    </configuration>
+    <configuration default="false" name="tests" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/DCM_RNN" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="DCM-RNN" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/DCM_RNN/tests.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <method />
@@ -390,16 +461,20 @@
       <option name="USE_KEYWORD" value="false" />
       <method />
     </configuration>
-    <list size="3">
+    <list size="5">
       <item index="0" class="java.lang.String" itemvalue="Python.test" />
       <item index="1" class="java.lang.String" itemvalue="Python.experiment_main" />
       <item index="2" class="java.lang.String" itemvalue="Python.experiment_main (1)" />
+      <item index="3" class="java.lang.String" itemvalue="Python.experiment1_main" />
+      <item index="4" class="java.lang.String" itemvalue="Python.tests" />
     </list>
     <recent_temporary>
-      <list size="3">
-        <item index="0" class="java.lang.String" itemvalue="Python.experiment_main (1)" />
-        <item index="1" class="java.lang.String" itemvalue="Python.experiment_main" />
-        <item index="2" class="java.lang.String" itemvalue="Python.test" />
+      <list size="5">
+        <item index="0" class="java.lang.String" itemvalue="Python.tests" />
+        <item index="1" class="java.lang.String" itemvalue="Python.experiment1_main" />
+        <item index="2" class="java.lang.String" itemvalue="Python.experiment_main (1)" />
+        <item index="3" class="java.lang.String" itemvalue="Python.experiment_main" />
+        <item index="4" class="java.lang.String" itemvalue="Python.test" />
       </list>
     </recent_temporary>
   </component>
@@ -414,17 +489,26 @@
       <option name="presentableId" value="Default" />
       <updated>1483470932457</updated>
     </task>
+    <task id="LOCAL-00001" summary="Elemenate some unused files.&#10;Add DCM_RNN package.&#10;Capsulate each experiments into an individual folder to make sure that each can be excuted independently and is reproducable.&#10;Next step:&#10;modify population module so that connection matrices can be randomly drawn.">
+      <created>1483556413610</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1483556413610</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="29" y="23" width="1158" height="712" extended-state="0" />
+    <frame x="28" y="23" width="1251" height="712" extended-state="0" />
     <editor active="false" />
     <layout>
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.27202073" sideWeight="0.49455675" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25179857" sideWeight="0.49455675" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.31881803" sideWeight="0.5034542" order="7" side_tool="true" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.31881803" sideWeight="0.49654576" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
@@ -435,15 +519,20 @@
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="VcsContentAnnotationSettings">
     <option name="myLimit" value="2678400000" />
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Elemenate some unused files.&#10;Add DCM_RNN package.&#10;Capsulate each experiments into an individual folder to make sure that each can be excuted independently and is reproducable.&#10;Next step:&#10;modify population module so that connection matrices can be randomly drawn." />
+    <option name="LAST_COMMIT_MESSAGE" value="Elemenate some unused files.&#10;Add DCM_RNN package.&#10;Capsulate each experiments into an individual folder to make sure that each can be excuted independently and is reproducable.&#10;Next step:&#10;modify population module so that connection matrices can be randomly drawn." />
+  </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager />
+    <breakpoint-manager>
+      <option name="time" value="2" />
+    </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
@@ -460,11 +549,19 @@
           <caret line="12" column="16" lean-forward="true" selection-start-line="12" selection-start-column="16" selection-end-line="12" selection-end-column="16" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
+            <element signature="e#421#4551#0" expanded="false" />
+            <element signature="e#4601#5430#0" expanded="false" />
+            <element signature="e#5489#6039#0" expanded="false" />
+            <element signature="e#6087#6369#0" expanded="false" />
+            <element signature="e#6457#6577#0" expanded="false" />
+            <element signature="e#6768#7969#0" expanded="false" />
+            <element signature="e#8022#9923#0" expanded="false" />
+            <element signature="e#9987#11301#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/experiment_1/experiment_main.py">
+    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
@@ -487,12 +584,20 @@
           <caret line="125" column="0" lean-forward="false" selection-start-line="125" selection-start-column="0" selection-end-line="125" selection-end-column="0" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
+            <element signature="e#421#4551#0" expanded="false" />
+            <element signature="e#4601#5430#0" expanded="false" />
+            <element signature="e#5489#6039#0" expanded="false" />
+            <element signature="e#6087#6369#0" expanded="false" />
+            <element signature="e#6457#6577#0" expanded="false" />
+            <element signature="e#6768#7969#0" expanded="false" />
+            <element signature="e#8022#9923#0" expanded="false" />
+            <element signature="e#9987#11301#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/experiment_1/readme.txt" />
-    <entry file="file://$PROJECT_DIR$/experiment_1/experiment_main.py" />
+    <entry file="file://$PROJECT_DIR$/experiment1/readme.txt" />
+    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py" />
     <entry file="file://$PROJECT_DIR$/DCM_RNN/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -514,12 +619,20 @@
           <caret line="125" column="0" lean-forward="false" selection-start-line="125" selection-start-column="0" selection-end-line="125" selection-end-column="0" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
+            <element signature="e#421#4551#0" expanded="false" />
+            <element signature="e#4601#5430#0" expanded="false" />
+            <element signature="e#5489#6039#0" expanded="false" />
+            <element signature="e#6087#6369#0" expanded="false" />
+            <element signature="e#6457#6577#0" expanded="false" />
+            <element signature="e#6768#7969#0" expanded="false" />
+            <element signature="e#8022#9923#0" expanded="false" />
+            <element signature="e#9987#11301#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/experiment_1/readme.txt" />
-    <entry file="file://$PROJECT_DIR$/experiment_1/experiment_main.py" />
+    <entry file="file://$PROJECT_DIR$/experiment1/readme.txt" />
+    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py" />
     <entry file="file://$PROJECT_DIR$/BP_check_with_buildin_masks_and_3_losses.ipynb">
       <provider selected="true" editor-type-id="ipnb-editor">
         <state>
@@ -533,12 +646,20 @@
           <caret line="125" column="0" lean-forward="false" selection-start-line="125" selection-start-column="0" selection-end-line="125" selection-end-column="0" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
+            <element signature="e#421#4551#0" expanded="false" />
+            <element signature="e#4601#5430#0" expanded="false" />
+            <element signature="e#5489#6039#0" expanded="false" />
+            <element signature="e#6087#6369#0" expanded="false" />
+            <element signature="e#6457#6577#0" expanded="false" />
+            <element signature="e#6768#7969#0" expanded="false" />
+            <element signature="e#8022#9923#0" expanded="false" />
+            <element signature="e#9987#11301#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/experiment_1/readme.txt" />
-    <entry file="file://$PROJECT_DIR$/experiment_1/experiment_main.py" />
+    <entry file="file://$PROJECT_DIR$/experiment1/readme.txt" />
+    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py" />
     <entry file="file://$PROJECT_DIR$/BP_check_with_buildin_masks_and_3_losses.ipynb">
       <provider selected="true" editor-type-id="ipnb-editor">
         <state>
@@ -584,54 +705,116 @@
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#0#18#0" expanded="true" />
+            <element signature="e#0#18#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/experiment_1/experiment_main.py" />
-    <entry file="file://$PROJECT_DIR$/experiment_1/readme.txt" />
-    <entry file="file://$PROJECT_DIR$/experiment_1/readme.txt">
+    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py" />
+    <entry file="file://$PROJECT_DIR$/experiment1/readme.txt" />
+    <entry file="file://$PROJECT_DIR$/experiment1/readme.txt">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="30">
           <caret line="2" column="0" lean-forward="true" selection-start-line="2" selection-start-column="0" selection-end-line="2" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/DCM_RNN/main_module.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="240">
-          <caret line="16" column="27" lean-forward="true" selection-start-line="16" selection-start-column="27" selection-end-line="16" selection-end-column="27" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/DCM_RNN/population.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="195">
-          <caret line="13" column="22" lean-forward="true" selection-start-line="13" selection-start-column="22" selection-end-line="13" selection-end-column="22" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/experiment_1/experiment_main.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="245">
-          <caret line="35" column="16" lean-forward="false" selection-start-line="35" selection-start-column="16" selection-end-line="35" selection-end-column="16" />
-          <folding>
-            <element signature="e#0#16#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/BP_check_with_buildin_masks_and_3_losses.ipynb">
       <provider selected="true" editor-type-id="ipnb-editor">
         <state>
-          <selected id="3" />
+          <selected id="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/population.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="210">
+          <caret line="14" column="17" lean-forward="true" selection-start-line="14" selection-start-column="17" selection-end-line="14" selection-end-column="17" />
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
+            <element signature="e#421#4551#0" expanded="false" />
+            <element signature="e#4601#5430#0" expanded="false" />
+            <element signature="e#5489#6039#0" expanded="false" />
+            <element signature="e#6087#6369#0" expanded="false" />
+            <element signature="e#6457#6577#0" expanded="false" />
+            <element signature="e#6768#7969#0" expanded="false" />
+            <element signature="e#8022#9923#0" expanded="false" />
+            <element signature="e#9987#11301#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/main_module.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="90">
+          <caret line="490" column="16" lean-forward="true" selection-start-line="490" selection-start-column="16" selection-end-line="490" selection-end-column="16" />
+          <folding>
+            <element signature="e#210#24571#0" expanded="false" />
+            <element signature="e#896#1315#0" expanded="false" />
+            <element signature="e#24719#24877#1" expanded="false" />
+            <element signature="e#26856#26983#0" expanded="false" />
+            <element signature="e#27089#28006#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/develop_log.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/anaconda/envs/tensorFlow/lib/python3.5/unittest/case.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3509">
+          <caret line="437" column="8" lean-forward="false" selection-start-line="437" selection-start-column="8" selection-end-line="437" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../assignment7/yw1225/test.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="140">
+          <caret line="28" column="0" lean-forward="true" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#16#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/utilities.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="255">
+          <caret line="40" column="16" lean-forward="true" selection-start-line="40" selection-start-column="16" selection-end-line="40" selection-end-column="16" />
+          <folding>
+            <element signature="e#0#13#0" expanded="true" />
+            <element signature="e#133#137#0" expanded="false" />
+            <element signature="e#197#616#1" expanded="false" />
+            <element signature="e#664#825#0" expanded="false" />
+            <element signature="e#868#1084#0" expanded="false" />
+            <element signature="e#1184#1355#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/tests.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="150">
+          <caret line="14" column="0" lean-forward="true" selection-start-line="14" selection-start-column="0" selection-end-line="14" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
