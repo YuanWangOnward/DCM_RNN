@@ -42,6 +42,7 @@ class Utilities:
         :param n_node: number of nodes (brain areas)
         :return: an A matrix
         """
+
         def get_a_matrix(n_node):
             A = (np.random.random((n_node, n_node)) - 0.5) * 0.9
             A = A * (1 - np.identity(n_node)) - np.diag(np.random.random(n_node) * 0.5)
@@ -83,7 +84,6 @@ class Utilities:
             B.append(B_current)
         return B
 
-
     def randomly_generate_C_matrix(self, n_node, n_stimuli):
         """
         Generate the C matrix for neural level equation x'=Ax+\sigma(xBu)+Cu.
@@ -101,7 +101,3 @@ class Utilities:
         for culumn_index, row_index in enumerate(node_indexes):
             C[row_index, culumn_index] = np.random.random(1) * 0.5 + 0.5
         return C
-
-
-
-
