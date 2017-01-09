@@ -43,6 +43,14 @@ class MyTestCase(unittest.TestCase):
                 temp = sum(abs(column) > 0)
                 self.assertTrue(temp == 1, 'assignment number error')
 
+    def test_randomly_generate_B_matrix(self):
+        # n_node = random.randint(3, 10)
+        # n_stimuli = random.sample(range(1, n_node), 1)[0]
+        n_node = 3
+        n_stimuli = 2
+        B = self.utl.randomly_generate_B_matrix(n_node, n_stimuli)
+        print(B)
+
 
 if __name__ == '__main__':
     unittest.main()
