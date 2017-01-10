@@ -1,11 +1,22 @@
 import random
 import numpy as np
-
+import pandas as pd
 
 class Utilities:
-    def randomly_initilize_connection_matrices(self, n_node, n_stimuli, flags={}):
-
-        pass
+    def randomly_initialize_connection_matrices(self, n_node, n_stimuli, sparse_level=0.5):
+        """
+        Generate a set of matrices for neural level equation x'=Ax+\sigma(xBu)+Cu.
+        For assumptions about each matrix, please refer to each individual generating function.
+        :param n_node: number of nodes (brain areas)
+        :param n_stimuli: number of stimuli
+        :param sparse_level: sparse level of off_diagonal elements, [0, 1],
+        actual non-zeros elements equal int(sparse_level * (n_node-1) * n_node)
+        :return: a dictionary with elements 'A', 'B', and 'C'
+        """
+        connection_matrices = {'A': self.randomly_generate_sparse_A_matrix(n_node, sparse_level),
+                               'B': self.randomly_generate_B_matrix(n_node, n_stimuli),
+                               'C': self.randomly_generate_C_matrix(n_stimuli, n_stimuli)}
+        return connection_matrices
 
     def roll(self, probability):
         """
@@ -139,3 +150,18 @@ class Utilities:
         for culumn_index, row_index in enumerate(node_indexes):
             C[row_index, culumn_index] = np.random.random(1) * 0.5 + 0.5
         return C
+
+    def randomly_initialize_hemodynamic_parameters(self):
+        pass
+
+    def get_stardard_hemodynamic_parameters(self, n_region):
+        hemodynamic_parameters_mean = pd.DataFrame()
+        hemo_parameter_key_list = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']
+        hemo_parameter_mean_list = [0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3]
+        for idx, key in enumerate(hemo_parameter_key_list):
+            tmp = [hemo_parameter_mean_list[idx] for _ in range(n_region)]
+            tmp = pd.Series(tmp, index=['region_' + str(i) for i in range(n_region)])
+            hemodynamic_parameters_mean[key] = tmp
+        return hemodynamic_parameters_mean
+
+
