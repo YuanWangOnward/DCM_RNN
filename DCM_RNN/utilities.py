@@ -3,7 +3,8 @@ import numpy as np
 
 
 class Utilities:
-    def randomly_initilize_connection_matrices(self, n_node, n_stimuli):
+    def randomly_initilize_connection_matrices(self, n_node, n_stimuli, flags={}):
+
         pass
 
     def roll(self, probability):
@@ -53,6 +54,43 @@ class Utilities:
         max_count = 5000
         while not self.check_transition_matrix(A):
             A = get_a_matrix(n_node)
+            count += 1
+            if count > max_count:
+                raise ValueError('Can not generate qualified A matrix with max trail number!')
+        return A
+
+    def randomly_generate_sparse_A_matrix(self, n_node, sparse_level):
+        """
+        Generate the A matrix for neural level equation x'=Ax+\sigma(xBu)+Cu.
+        Eigenvalues of A must to negative to ensure the system is stable.
+        A is sparse on off-diagonal places
+        Assumption:
+        Diagonal elements are negative meaning self-feedback is negative.
+        Strength range of diagonal elements is (-0.5, 0].
+        Strength range of off-diagonal elements is [-0.45, 0.45)
+        :param n_node: number of nodes (brain areas)
+        :param sparse_level: sparse level of off_diagonal elements, [0, 1],
+        actual non-zeros elements equal int(sparse_level * (n_node-1) * n_node)
+        :return: a sparse A matrix
+        """
+
+        def get_a_sparse_matrix(n_node, sparse_level):
+            A = (np.random.random((n_node, n_node)) - 0.5) * 0.9
+            A = (A * (1 - np.identity(n_node))).flatten()
+            sorted_indexes = np.argsort(np.abs(A), None)  # ascending order
+            kept_number = int(sparse_level * (n_node - 1) * n_node)
+            A[sorted_indexes[list(range(0, len(A)-kept_number))]] = 0
+            A = A.reshape([n_node, n_node])
+            A = A * (1 - np.identity(n_node)) - np.diag(np.random.random(n_node) * 0.5)
+            return A
+
+        if sparse_level > 1 or sparse_level < 0:
+            raise ValueError('Imporper sparse_level, it should be [0,1]')
+        A = get_a_sparse_matrix(n_node, sparse_level)
+        count = 0
+        max_count = 5000
+        while not self.check_transition_matrix(A):
+            A = get_a_sparse_matrix(n_node, sparse_level)
             count += 1
             if count > max_count:
                 raise ValueError('Can not generate qualified A matrix with max trail number!')

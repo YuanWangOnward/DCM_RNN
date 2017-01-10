@@ -24,6 +24,24 @@ class MyTestCase(unittest.TestCase):
                 print('max real part = ' + str(max(w.real)))
             self.assertTrue(max(w) < 0, 'eigenvalues of A are not all negtive')
 
+    def test_randomly_generate_sparse_A_matrix(self):
+        if_print = False
+        n_test = 10
+        for n in range(n_test):
+            n_node = random.randint(3, 10)
+            sparse_level = random.random()
+            A = self.utl.randomly_generate_sparse_A_matrix(n_node, sparse_level)
+            w, v = np.linalg.eig(A)
+            if if_print:
+                print('created A matrix:')
+                print(A)
+                print('max real part = ' + str(max(w.real)))
+            # eigenvalues must be negative
+            self.assertTrue(max(w) < 0, 'eigenvalues of A are not all negative')
+            # sparsity check
+            self.assertTrue(sum(abs(A.flatten()) > 0) == n_node + int(sparse_level * (n_node - 1) * n_node),
+                            'A matrix sparsity level error')
+
     def test_randomly_generate_C_matrix(self):
         if_print = False
         n_test = 10

@@ -2,6 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="">
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/DCM_RNN/notes.py" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/experiment1/experiment1_main.py" afterPath="$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/experiment1/readme.txt" afterPath="$PROJECT_DIR$/experiment1-t_delta/readme.txt" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/tests.py" afterPath="$PROJECT_DIR$/DCM_RNN/tests.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/utilities.py" afterPath="$PROJECT_DIR$/DCM_RNN/utilities.py" />
@@ -26,7 +29,7 @@
         <entry file="file://$PROJECT_DIR$/BP_check_with_buildin_masks_and_3_losses.ipynb">
           <provider selected="true" editor-type-id="ipnb-editor">
             <state>
-              <selected id="5" />
+              <selected id="2" />
             </state>
           </provider>
         </entry>
@@ -51,7 +54,7 @@
         </entry>
       </file>
       <file leaf-file-name="experiment1_main.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py">
+        <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="210">
               <caret line="28" column="0" lean-forward="false" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
@@ -62,40 +65,51 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="utilities.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="utilities.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/utilities.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="135">
-              <caret line="20" column="0" lean-forward="false" selection-start-line="20" selection-start-column="0" selection-end-line="20" selection-end-column="0" />
+            <state relative-caret-position="98">
+              <caret line="80" column="23" lean-forward="false" selection-start-line="80" selection-start-column="12" selection-end-line="80" selection-end-column="23" />
               <folding>
-                <element signature="e#180#507#0" expanded="false" />
-                <element signature="e#964#1973#0" expanded="false" />
-                <element signature="e#2044#3164#0" expanded="false" />
-                <element signature="e#3235#3924#0" expanded="false" />
+                <element signature="e#191#518#0" expanded="false" />
+                <element signature="e#570#915#0" expanded="false" />
+                <element signature="e#975#1984#0" expanded="false" />
+                <element signature="e#3852#4972#0" expanded="false" />
+                <element signature="e#5043#5732#0" expanded="false" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="tests.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="notes.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/DCM_RNN/notes.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="105">
+              <caret line="7" column="47" lean-forward="false" selection-start-line="7" selection-start-column="47" selection-end-line="7" selection-end-column="47" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="tests.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/tests.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="240">
-              <caret line="65" column="0" lean-forward="true" selection-start-line="65" selection-start-column="0" selection-end-line="65" selection-end-column="0" />
+            <state relative-caret-position="270">
+              <caret line="43" column="0" lean-forward="true" selection-start-line="43" selection-start-column="0" selection-end-line="43" selection-end-column="0" />
               <folding>
                 <element signature="e#147#179#0" expanded="false" />
                 <element signature="e#213#225#0" expanded="false" />
                 <element signature="e#282#719#0" expanded="false" />
                 <element signature="e#363#719#0" expanded="false" />
                 <element signature="e#527#639#0" expanded="false" />
-                <element signature="e#776#1515#0" expanded="false" />
-                <element signature="e#857#1515#0" expanded="false" />
-                <element signature="e#1141#1215#0" expanded="false" />
-                <element signature="e#1418#1515#0" expanded="false" />
-                <element signature="e#1572#2490#0" expanded="false" />
-                <element signature="e#1628#2490#0" expanded="false" />
-                <element signature="e#1905#2224#0" expanded="false" />
-                <element signature="e#2284#2490#0" expanded="false" />
+                <element signature="e#1588#2327#0" expanded="false" />
+                <element signature="e#1669#2327#0" expanded="false" />
+                <element signature="e#1953#2027#0" expanded="false" />
+                <element signature="e#2230#2327#0" expanded="false" />
+                <element signature="e#2384#3302#0" expanded="false" />
+                <element signature="e#2440#3302#0" expanded="false" />
+                <element signature="e#2717#3036#0" expanded="false" />
+                <element signature="e#3096#3302#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -144,6 +158,7 @@
         <option value="$PROJECT_DIR$/experiment0/experiment0_main.py" />
         <option value="$PROJECT_DIR$/experiment0/readme.txt" />
         <option value="$PROJECT_DIR$/DCM_RNN/utilities.py" />
+        <option value="$PROJECT_DIR$/DCM_RNN/notes.py" />
         <option value="$PROJECT_DIR$/DCM_RNN/tests.py" />
       </list>
     </option>
@@ -151,7 +166,7 @@
   <component name="ProjectFrameBounds">
     <option name="x" value="32" />
     <option name="y" value="23" />
-    <option name="width" value="1212" />
+    <option name="width" value="1231" />
     <option name="height" value="712" />
   </component>
   <component name="ProjectInspectionProfilesVisibleTreeState">
@@ -525,7 +540,14 @@
       <option name="project" value="LOCAL" />
       <updated>1483983834678</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Add Utilities.randomly_generate_B_matrix&#10;add Utilities.roll&#10;tested">
+      <created>1483986185394</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1483986185394</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TodoView">
@@ -538,14 +560,14 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="32" y="23" width="1212" height="712" extended-state="0" />
+    <frame x="32" y="23" width="1231" height="712" extended-state="0" />
     <editor active="false" />
     <layout>
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.259901" sideWeight="0.49455675" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25588953" sideWeight="0.49455675" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.31881803" sideWeight="0.5034542" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4541213" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.31881803" sideWeight="0.49654576" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.2495935" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
@@ -569,7 +591,8 @@
     <MESSAGE value="Seperate utilities.check_transition_matrix from utilities.randomly_generate_A_matrix" />
     <MESSAGE value="Add utilities.randomly_generate_C_matrix.&#10;Separate utilities.check_transition_matrix from utilities.randomly_generate_A_matrix, so that it can be reused in tobe function utilities.randomly_generate_sparse_A_matrix" />
     <MESSAGE value="Add Utilities.randomly_generate_B_matrix&#10;add Utilities.roll&#10;untested" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add Utilities.randomly_generate_B_matrix&#10;add Utilities.roll&#10;untested" />
+    <MESSAGE value="Add Utilities.randomly_generate_B_matrix&#10;add Utilities.roll&#10;tested" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add Utilities.randomly_generate_B_matrix&#10;add Utilities.roll&#10;tested" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -578,24 +601,7 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/DCM_RNN/population.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="510">
-          <caret line="34" column="17" lean-forward="false" selection-start-line="34" selection-start-column="13" selection-end-line="34" selection-end-column="17" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-            <element signature="e#4601#5430#0" expanded="false" />
-            <element signature="e#5489#6039#0" expanded="false" />
-            <element signature="e#6087#6369#0" expanded="false" />
-            <element signature="e#6457#6577#0" expanded="false" />
-            <element signature="e#6768#7969#0" expanded="false" />
-            <element signature="e#8022#9923#0" expanded="false" />
-            <element signature="e#9987#11301#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py">
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="210">
           <caret line="28" column="0" lean-forward="false" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
@@ -610,10 +616,11 @@
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#180#507#0" expanded="false" />
-            <element signature="e#964#1973#0" expanded="false" />
-            <element signature="e#2044#3164#0" expanded="false" />
-            <element signature="e#3235#3924#0" expanded="false" />
+            <element signature="e#191#518#0" expanded="false" />
+            <element signature="e#570#915#0" expanded="false" />
+            <element signature="e#975#1984#0" expanded="false" />
+            <element signature="e#3852#4972#0" expanded="false" />
+            <element signature="e#5043#5732#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -628,14 +635,14 @@
             <element signature="e#282#719#0" expanded="false" />
             <element signature="e#363#719#0" expanded="false" />
             <element signature="e#527#639#0" expanded="false" />
-            <element signature="e#776#1515#0" expanded="false" />
-            <element signature="e#857#1515#0" expanded="false" />
-            <element signature="e#1141#1215#0" expanded="false" />
-            <element signature="e#1418#1515#0" expanded="false" />
-            <element signature="e#1572#2490#0" expanded="false" />
-            <element signature="e#1628#2490#0" expanded="false" />
-            <element signature="e#1905#2224#0" expanded="false" />
-            <element signature="e#2284#2490#0" expanded="false" />
+            <element signature="e#1588#2327#0" expanded="false" />
+            <element signature="e#1669#2327#0" expanded="false" />
+            <element signature="e#1953#2027#0" expanded="false" />
+            <element signature="e#2230#2327#0" expanded="false" />
+            <element signature="e#2384#3302#0" expanded="false" />
+            <element signature="e#2440#3302#0" expanded="false" />
+            <element signature="e#2717#3036#0" expanded="false" />
+            <element signature="e#3096#3302#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -664,7 +671,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py">
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
@@ -698,8 +705,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/experiment1/readme.txt" />
-    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py" />
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/readme.txt" />
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py" />
     <entry file="file://$PROJECT_DIR$/DCM_RNN/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -731,8 +738,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/experiment1/readme.txt" />
-    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py" />
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/readme.txt" />
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py" />
     <entry file="file://$PROJECT_DIR$/BP_check_with_buildin_masks_and_3_losses.ipynb">
       <provider selected="true" editor-type-id="ipnb-editor">
         <state>
@@ -757,8 +764,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/experiment1/readme.txt" />
-    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py" />
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/readme.txt" />
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py" />
     <entry file="file://$PROJECT_DIR$/BP_check_with_buildin_masks_and_3_losses.ipynb">
       <provider selected="true" editor-type-id="ipnb-editor">
         <state>
@@ -798,19 +805,12 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/experiment_1/__init__.py" />
-    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py" />
-    <entry file="file://$PROJECT_DIR$/experiment1/readme.txt" />
-    <entry file="file://$PROJECT_DIR$/experiment1/readme.txt">
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py" />
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/readme.txt" />
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/readme.txt">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="30">
           <caret line="2" column="0" lean-forward="true" selection-start-line="2" selection-start-column="0" selection-end-line="2" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/BP_check_with_buildin_masks_and_3_losses.ipynb">
-      <provider selected="true" editor-type-id="ipnb-editor">
-        <state>
-          <selected id="5" />
         </state>
       </provider>
     </entry>
@@ -842,7 +842,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/experiment1/experiment1_main.py">
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="210">
           <caret line="28" column="0" lean-forward="false" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
@@ -899,37 +899,53 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/notes.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="105">
+          <caret line="7" column="47" lean-forward="false" selection-start-line="7" selection-start-column="47" selection-end-line="7" selection-end-column="47" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/BP_check_with_buildin_masks_and_3_losses.ipynb">
+      <provider selected="true" editor-type-id="ipnb-editor">
+        <state>
+          <selected id="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/utilities.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="98">
+          <caret line="80" column="23" lean-forward="false" selection-start-line="80" selection-start-column="12" selection-end-line="80" selection-end-column="23" />
+          <folding>
+            <element signature="e#191#518#0" expanded="false" />
+            <element signature="e#570#915#0" expanded="false" />
+            <element signature="e#975#1984#0" expanded="false" />
+            <element signature="e#3852#4972#0" expanded="false" />
+            <element signature="e#5043#5732#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/tests.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="240">
-          <caret line="65" column="0" lean-forward="true" selection-start-line="65" selection-start-column="0" selection-end-line="65" selection-end-column="0" />
+        <state relative-caret-position="270">
+          <caret line="43" column="0" lean-forward="true" selection-start-line="43" selection-start-column="0" selection-end-line="43" selection-end-column="0" />
           <folding>
             <element signature="e#147#179#0" expanded="false" />
             <element signature="e#213#225#0" expanded="false" />
             <element signature="e#282#719#0" expanded="false" />
             <element signature="e#363#719#0" expanded="false" />
             <element signature="e#527#639#0" expanded="false" />
-            <element signature="e#776#1515#0" expanded="false" />
-            <element signature="e#857#1515#0" expanded="false" />
-            <element signature="e#1141#1215#0" expanded="false" />
-            <element signature="e#1418#1515#0" expanded="false" />
-            <element signature="e#1572#2490#0" expanded="false" />
-            <element signature="e#1628#2490#0" expanded="false" />
-            <element signature="e#1905#2224#0" expanded="false" />
-            <element signature="e#2284#2490#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/DCM_RNN/utilities.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="135">
-          <caret line="20" column="0" lean-forward="false" selection-start-line="20" selection-start-column="0" selection-end-line="20" selection-end-column="0" />
-          <folding>
-            <element signature="e#180#507#0" expanded="false" />
-            <element signature="e#964#1973#0" expanded="false" />
-            <element signature="e#2044#3164#0" expanded="false" />
-            <element signature="e#3235#3924#0" expanded="false" />
+            <element signature="e#1588#2327#0" expanded="false" />
+            <element signature="e#1669#2327#0" expanded="false" />
+            <element signature="e#1953#2027#0" expanded="false" />
+            <element signature="e#2230#2327#0" expanded="false" />
+            <element signature="e#2384#3302#0" expanded="false" />
+            <element signature="e#2440#3302#0" expanded="false" />
+            <element signature="e#2717#3036#0" expanded="false" />
+            <element signature="e#3096#3302#0" expanded="false" />
           </folding>
         </state>
       </provider>
