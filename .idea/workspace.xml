@@ -2,10 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/DCM_RNN/parameter_unit.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/DCM_RNN/utilities.py" afterPath="$PROJECT_DIR$/DCM_RNN/toolboxes.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/dictionaries/yuanwang.xml" afterPath="$PROJECT_DIR$/.idea/dictionaries/yuanwang.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/tests.py" afterPath="$PROJECT_DIR$/DCM_RNN/tests.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/CBI.py" afterPath="$PROJECT_DIR$/DCM_RNN/CBI.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/notes.py" afterPath="$PROJECT_DIR$/DCM_RNN/notes.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/parameter_unit.py" afterPath="$PROJECT_DIR$/DCM_RNN/parameter_unit.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -135,11 +136,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="parameter_unit.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="parameter_unit.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/parameter_unit.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="90">
-              <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
+            <state relative-caret-position="180">
+              <caret line="12" column="38" lean-forward="false" selection-start-line="12" selection-start-column="38" selection-end-line="12" selection-end-column="38" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
               </folding>
@@ -150,9 +151,46 @@
       <file leaf-file-name="notes.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/notes.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="105">
-              <caret line="7" column="0" lean-forward="true" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
+            <state relative-caret-position="275">
+              <caret line="56" column="58" lean-forward="true" selection-start-line="45" selection-start-column="2" selection-end-line="56" selection-end-column="58" />
               <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="CBI.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/DCM_RNN/CBI.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="135">
+              <caret line="65" column="0" lean-forward="true" selection-start-line="65" selection-start-column="0" selection-end-line="65" selection-end-column="0" />
+              <folding>
+                <element signature="e#176#247#1" expanded="false" />
+                <element signature="e#329#1372#0" expanded="false" />
+                <element signature="e#329#360#0" expanded="false" />
+                <element signature="e#594#615#0" expanded="false" />
+                <element signature="e#1376#1407#0" expanded="false" />
+                <element signature="e#1556#2095#0" expanded="false" />
+                <element signature="e#1875#2042#0" expanded="false" />
+                <element signature="e#1943#2042#0" expanded="false" />
+                <element signature="e#2136#2270#0" expanded="false" />
+                <element signature="e#2330#2976#0" expanded="false" />
+                <element signature="e#2543#2940#0" expanded="false" />
+                <element signature="e#2795#2940#1" expanded="false" />
+                <element signature="e#3042#3608#0" expanded="false" />
+                <element signature="e#3260#3572#0" expanded="false" />
+                <element signature="e#3297#3572#0" expanded="false" />
+                <element signature="e#3655#3813#0" expanded="false" />
+                <element signature="e#3852#4746#0" expanded="false" />
+                <element signature="e#4208#4520#0" expanded="false" />
+                <element signature="e#4245#4520#0" expanded="false" />
+                <element signature="e#4612#4728#0" expanded="false" />
+                <element signature="e#4790#5133#0" expanded="false" />
+                <element signature="e#4980#5096#0" expanded="false" />
+                <element signature="e#5197#5558#0" expanded="false" />
+                <element signature="e#5602#5741#0" expanded="false" />
+                <element signature="e#5614#5714#0" expanded="false" />
+                <element signature="e#5753#5928#1" expanded="false" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -160,10 +198,9 @@
       <file leaf-file-name="tests.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/tests.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="120">
-              <caret line="8" column="0" lean-forward="true" selection-start-line="8" selection-start-column="0" selection-end-line="8" selection-end-column="0" />
+            <state relative-caret-position="30">
+              <caret line="2" column="29" lean-forward="true" selection-start-line="2" selection-start-column="0" selection-end-line="2" selection-end-column="29" />
               <folding>
-                <element signature="e#0#15#0" expanded="true" />
                 <element signature="e#190#5149#0" expanded="false" />
                 <element signature="e#286#298#0" expanded="false" />
                 <element signature="e#355#792#0" expanded="false" />
@@ -216,6 +253,8 @@
       <find>ordered_keys</find>
       <find>get_hemodynamic_parameter_prior_distributions_as_dataframe</find>
       <find>True</find>
+      <find>self.</find>
+      <find>state_size</find>
     </findStrings>
     <replaceStrings>
       <replace>randomly_initialize_connection_matrices</replace>
@@ -223,8 +262,8 @@
       <replace>h_state_initial</replace>
       <replace>low=</replace>
       <replace>high=</replace>
-      <replace>get_expanded_hemodynamic_parameter_prior_distributions</replace>
       <replace>n_node</replace>
+      <replace>get_expanded_hemodynamic_parameter_prior_distributions</replace>
     </replaceStrings>
     <dirStrings>
       <dir>$PROJECT_DIR$</dir>
@@ -256,11 +295,12 @@
         <option value="$PROJECT_DIR$/experiment0/readme.txt" />
         <option value="$PROJECT_DIR$/DCM_RNN/population.py" />
         <option value="$PROJECT_DIR$/../gym/main.py" />
-        <option value="$PROJECT_DIR$/DCM_RNN/notes.py" />
         <option value="$PROJECT_DIR$/DCM_RNN/utilities.py" />
-        <option value="$PROJECT_DIR$/DCM_RNN/parameter_unit.py" />
         <option value="$PROJECT_DIR$/DCM_RNN/toolbox_initialization.py" />
         <option value="$PROJECT_DIR$/DCM_RNN/tests.py" />
+        <option value="$PROJECT_DIR$/DCM_RNN/parameter_unit.py" />
+        <option value="$PROJECT_DIR$/DCM_RNN/notes.py" />
+        <option value="$PROJECT_DIR$/DCM_RNN/CBI.py" />
       </list>
     </option>
   </component>
@@ -351,24 +391,7 @@
       <recent name="$PROJECT_DIR$/DCM_RNN" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.tests">
-    <configuration default="false" name="test" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="DCM-RNN" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <method />
-    </configuration>
+  <component name="RunManager" selected="Python.parameter_unit">
     <configuration default="false" name="experiment_main" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -433,6 +456,23 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <module name="DCM-RNN" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/DCM_RNN/tests.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <method />
+    </configuration>
+    <configuration default="false" name="parameter_unit" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/DCM_RNN" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="DCM-RNN" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/DCM_RNN/parameter_unit.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <method />
@@ -572,19 +612,19 @@
       <method />
     </configuration>
     <list size="5">
-      <item index="0" class="java.lang.String" itemvalue="Python.test" />
-      <item index="1" class="java.lang.String" itemvalue="Python.experiment_main" />
-      <item index="2" class="java.lang.String" itemvalue="Python.experiment_main (1)" />
-      <item index="3" class="java.lang.String" itemvalue="Python.experiment1_main" />
-      <item index="4" class="java.lang.String" itemvalue="Python.tests" />
+      <item index="0" class="java.lang.String" itemvalue="Python.experiment_main" />
+      <item index="1" class="java.lang.String" itemvalue="Python.experiment_main (1)" />
+      <item index="2" class="java.lang.String" itemvalue="Python.experiment1_main" />
+      <item index="3" class="java.lang.String" itemvalue="Python.tests" />
+      <item index="4" class="java.lang.String" itemvalue="Python.parameter_unit" />
     </list>
     <recent_temporary>
       <list size="5">
-        <item index="0" class="java.lang.String" itemvalue="Python.tests" />
-        <item index="1" class="java.lang.String" itemvalue="Python.experiment1_main" />
-        <item index="2" class="java.lang.String" itemvalue="Python.experiment_main (1)" />
-        <item index="3" class="java.lang.String" itemvalue="Python.experiment_main" />
-        <item index="4" class="java.lang.String" itemvalue="Python.test" />
+        <item index="0" class="java.lang.String" itemvalue="Python.parameter_unit" />
+        <item index="1" class="java.lang.String" itemvalue="Python.tests" />
+        <item index="2" class="java.lang.String" itemvalue="Python.experiment1_main" />
+        <item index="3" class="java.lang.String" itemvalue="Python.experiment_main (1)" />
+        <item index="4" class="java.lang.String" itemvalue="Python.experiment_main" />
       </list>
     </recent_temporary>
   </component>
@@ -690,7 +730,14 @@
       <option name="project" value="LOCAL" />
       <updated>1484157615885</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="Rename and restructure&#10;Rename utilities.py to toolboxes.py. All toolboxes used by DCM_RNN package will be put in it.&#10;Rename utilities.Utilities to toolboxes.Initialization. Functions in this toolbox are used to do parameter initialization.&#10;Add parameter_unit.py and parameter_unit.ParameterUnit. ParameterUnit will work as an unit containing all needed parameters and related operations. It calls toolboxes.Initialization.&#10;">
+      <created>1484158965903</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1484158965903</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TodoView">
@@ -741,7 +788,8 @@
     <MESSAGE value="Add functions for neural state initialization&#10;Add Utilities.set_initial_neural_state_as_zeros&#10;Add Utilities.sample_initial_neural_state" />
     <MESSAGE value="Add functions for hemodynamic state initialization&#10;Add Utilities.set_initial_hemodynamic_state_as_inactivated&#10;Add Utilities.sample_initial_hemodynamic_state" />
     <MESSAGE value="Update&#10;Rename utilities.Utilities to utilities.InitializationToolbox.&#10;Modify utilities.InitializationToolbox.get_hemodynamic_parameter_prior_distributions. It now return a pd.dataframe.&#10;Rename InitializationToolbox.get_hemodynamic_parameter_prior_distributions_as_dataframe to InitializationToolbox.get_expanded_hemodynamic_parameter_prior_distributions and modify it according the above modification." />
-    <option name="LAST_COMMIT_MESSAGE" value="Update&#10;Rename utilities.Utilities to utilities.InitializationToolbox.&#10;Modify utilities.InitializationToolbox.get_hemodynamic_parameter_prior_distributions. It now return a pd.dataframe.&#10;Rename InitializationToolbox.get_hemodynamic_parameter_prior_distributions_as_dataframe to InitializationToolbox.get_expanded_hemodynamic_parameter_prior_distributions and modify it according the above modification." />
+    <MESSAGE value="Rename and restructure&#10;Rename utilities.py to toolboxes.py. All toolboxes used by DCM_RNN package will be put in it.&#10;Rename utilities.Utilities to toolboxes.Initialization. Functions in this toolbox are used to do parameter initialization.&#10;Add parameter_unit.py and parameter_unit.ParameterUnit. ParameterUnit will work as an unit containing all needed parameters and related operations. It calls toolboxes.Initialization.&#10;" />
+    <option name="LAST_COMMIT_MESSAGE" value="Rename and restructure&#10;Rename utilities.py to toolboxes.py. All toolboxes used by DCM_RNN package will be put in it.&#10;Rename utilities.Utilities to toolboxes.Initialization. Functions in this toolbox are used to do parameter initialization.&#10;Add parameter_unit.py and parameter_unit.ParameterUnit. ParameterUnit will work as an unit containing all needed parameters and related operations. It calls toolboxes.Initialization.&#10;" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -755,7 +803,6 @@
         <state relative-caret-position="345">
           <caret line="26" column="39" lean-forward="false" selection-start-line="26" selection-start-column="8" selection-end-line="26" selection-end-column="39" />
           <folding>
-            <element signature="e#0#15#0" expanded="true" />
             <element signature="e#190#5149#0" expanded="false" />
             <element signature="e#286#298#0" expanded="false" />
             <element signature="e#355#792#0" expanded="false" />
@@ -1068,14 +1115,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/DCM_RNN/CBI.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$USER_HOME$/anaconda/envs/tensorFlow/lib/python3.5/site-packages/numpy/core/_methods.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="136">
@@ -1155,14 +1194,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/DCM_RNN/notes.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="7" column="0" lean-forward="true" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/toolboxes.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="120">
@@ -1226,10 +1257,9 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/tests.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="120">
-          <caret line="8" column="0" lean-forward="true" selection-start-line="8" selection-start-column="0" selection-end-line="8" selection-end-column="0" />
+        <state relative-caret-position="30">
+          <caret line="2" column="29" lean-forward="true" selection-start-line="2" selection-start-column="0" selection-end-line="2" selection-end-column="29" />
           <folding>
-            <element signature="e#0#15#0" expanded="true" />
             <element signature="e#190#5149#0" expanded="false" />
             <element signature="e#286#298#0" expanded="false" />
             <element signature="e#355#792#0" expanded="false" />
@@ -1258,10 +1288,53 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/parameter_unit.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="90">
-          <caret line="6" column="0" lean-forward="false" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
+        <state relative-caret-position="180">
+          <caret line="12" column="38" lean-forward="false" selection-start-line="12" selection-start-column="38" selection-end-line="12" selection-end-column="38" />
           <folding>
             <element signature="e#0#13#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/notes.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="275">
+          <caret line="56" column="58" lean-forward="true" selection-start-line="45" selection-start-column="2" selection-end-line="56" selection-end-column="58" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/CBI.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="135">
+          <caret line="65" column="0" lean-forward="true" selection-start-line="65" selection-start-column="0" selection-end-line="65" selection-end-column="0" />
+          <folding>
+            <element signature="e#176#247#1" expanded="false" />
+            <element signature="e#329#1372#0" expanded="false" />
+            <element signature="e#329#360#0" expanded="false" />
+            <element signature="e#594#615#0" expanded="false" />
+            <element signature="e#1376#1407#0" expanded="false" />
+            <element signature="e#1556#2095#0" expanded="false" />
+            <element signature="e#1875#2042#0" expanded="false" />
+            <element signature="e#1943#2042#0" expanded="false" />
+            <element signature="e#2136#2270#0" expanded="false" />
+            <element signature="e#2330#2976#0" expanded="false" />
+            <element signature="e#2543#2940#0" expanded="false" />
+            <element signature="e#2795#2940#1" expanded="false" />
+            <element signature="e#3042#3608#0" expanded="false" />
+            <element signature="e#3260#3572#0" expanded="false" />
+            <element signature="e#3297#3572#0" expanded="false" />
+            <element signature="e#3655#3813#0" expanded="false" />
+            <element signature="e#3852#4746#0" expanded="false" />
+            <element signature="e#4208#4520#0" expanded="false" />
+            <element signature="e#4245#4520#0" expanded="false" />
+            <element signature="e#4612#4728#0" expanded="false" />
+            <element signature="e#4790#5133#0" expanded="false" />
+            <element signature="e#4980#5096#0" expanded="false" />
+            <element signature="e#5197#5558#0" expanded="false" />
+            <element signature="e#5602#5741#0" expanded="false" />
+            <element signature="e#5614#5714#0" expanded="false" />
+            <element signature="e#5753#5928#1" expanded="false" />
           </folding>
         </state>
       </provider>

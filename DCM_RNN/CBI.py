@@ -20,8 +20,8 @@ class configure_a_scanner:
 		self.n_region=3  # number of brain regions in consideration
 		self.n_steps = 10 # number of truncated backprop steps ('n' in the discussion above)
 		self.n_stimuli = n_stimuli or 1
-		self.state_size = 4
-		#self.learning_rate = 0.1
+		# self.state_size = 4
+		# self.learning_rate = 0.1
 		self.t_delta = t_delta or 0.25
 		self.n_time_point=int(6*60/self.t_delta)
 		self.n_time_point=int(mth.ceil(self.n_time_point/48.)*48)	# make sure length can be cut into different length
@@ -64,7 +64,6 @@ class configure_a_scanner:
 		sub.__init__(t_delta=self.t_delta,n_region=self.n_region,\
 			n_time_point=self.n_time_point,n_stimuli=self.n_stimuli,flags=sub.flags)
 
-	
 	def x_evolve(self, sub, u=None, x_state_initial=None):
 		# neural response under the stimuli
 		u = u or self.u
@@ -85,8 +84,7 @@ class configure_a_scanner:
 		    '''
 		output=x_state[:]
 		return output
-	
-	
+
 	def h_evolve(self, sub, h_state_initial=None, x_state=None):
 		# hemodynamic response 
 		h_state_initial = h_state_initial or sub.h_state_initial
