@@ -9,7 +9,7 @@ import scipy.stats
 
 class Utilities_tests(unittest.TestCase):
     def setUp(self):
-        self.utl = utilities.Utilities()
+        self.utl = utilities.InitializationToolbox()
 
     def tearDown(self):
         del self.utl
@@ -88,10 +88,10 @@ class Utilities_tests(unittest.TestCase):
         if if_print:
             print(temp)
 
-    def test_get_hemodynamic_parameter_prior_distributions_as_dataframe(self):
-        if_print = False
+    def test_get_expanded_hemodynamic_parameter_prior_distributions(self):
+        if_print = True
         n_node = random.randint(3, 10)
-        temp = self.utl.get_hemodynamic_parameter_prior_distributions_as_dataframe(n_node)
+        temp = self.utl.get_expanded_hemodynamic_parameter_prior_distributions(n_node)
         if if_print:
             print(temp)
 

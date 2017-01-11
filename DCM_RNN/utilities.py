@@ -6,7 +6,7 @@ import scipy as sp
 import scipy.stats
 
 
-class Utilities:
+class InitializationToolbox():
     def randomly_initialize_connection_matrices(self, n_node, n_stimuli, sparse_level=0.5):
         """
         Generate a set of matrices for neural level equation x'=Ax+\sigma(xBu)+Cu.
@@ -161,41 +161,32 @@ class Utilities:
     def get_hemodynamic_parameter_prior_distributions(self):
         """
         Get prior distribution for hemodynamic parameters (Gaussian)
-        :return: a dictionary containing mean, variance, and standard deviation of each parameter
+        :return: a pandas.dataframe containing mean, variance, and standard deviation of each parameter
         """
-        hemo_parameter_key_list = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']
-        hemo_parameter_mean_list = [0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3]
-        hemo_parameter_variance_list = [0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0.]
-        prior_distribution = {}
-        for n in range(len(hemo_parameter_key_list)):
-            temp = {}
-            temp['mean'] = hemo_parameter_mean_list[n]
-            temp['variance'] = hemo_parameter_variance_list[n]
-            temp['std'] = np.sqrt(hemo_parameter_variance_list[n])
-            prior_distribution[hemo_parameter_key_list[n]] = temp
-        prior_distribution['ordered_keys'] = hemo_parameter_key_list
-        return prior_distribution
+        hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']
+        hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3], hemo_parameter_keys)
+        hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0.],
+                                            hemo_parameter_keys)
+        prior_distribution = pd.DataFrame()
+        prior_distribution['mean'] = hemo_parameter_mean
+        prior_distribution['variance'] = hemo_parameter_variance
+        prior_distribution['std'] = np.sqrt(hemo_parameter_variance)
+        return prior_distribution.transpose()
 
-    def get_hemodynamic_parameter_prior_distributions_as_dataframe(self, n_node):
+    def get_expanded_hemodynamic_parameter_prior_distributions(self, n_node):
         """
         Repeat hemodynamic parameter prior distributions for each node and structure the results into pandas.dataframe
         :param n_node: number of nodes (brain areas)
-        :return: a list of  pandas dataframes, containing hemodynamic parameter distributions for all the nodes,
+        :return: a dict of  pandas.dataframe, containing hemodynamic parameter distributions for all the nodes,
                  distribution parameters include mean and standard deviation.
         """
         distributions = self.get_hemodynamic_parameter_prior_distributions()
         hemodynamic_parameters_mean = pd.DataFrame()
         hemodynamic_parameters_std = pd.DataFrame()
-        for idx, key in enumerate(distributions['ordered_keys']):
-            # add mean
-            tmp = [distributions[key]['mean'] for _ in range(n_node)]
-            tmp = pd.Series(tmp, index=['region_' + str(i) for i in range(n_node)])
-            hemodynamic_parameters_mean[key] = tmp
-            # add variance
-            tmp = [distributions[key]['std'] for _ in range(n_node)]
-            tmp = pd.Series(tmp, index=['region_' + str(i) for i in range(n_node)])
-            hemodynamic_parameters_std[key] = tmp
-        return {'mean': hemodynamic_parameters_mean, 'std': hemodynamic_parameters_std}
+        for idx in range(n_node):
+            hemodynamic_parameters_mean['region_'+str(idx)] = distributions.loc['mean']
+            hemodynamic_parameters_std['region_'+str(idx)] = distributions.loc['std']
+        return {'mean': hemodynamic_parameters_mean.transpose(), 'std': hemodynamic_parameters_std.transpose()}
 
     def get_standard_hemodynamic_parameters(self, n_node):
         """
@@ -203,7 +194,7 @@ class Utilities:
         :param n_node: number of nodes (brain areas)
         :return: a pandas data frame, containing hemodynamic parameters for all the nodes
         """
-        return self.get_hemodynamic_parameter_prior_distributions_as_dataframe(n_node)['mean']
+        return self.get_expanded_hemodynamic_parameter_prior_distributions(n_node)['mean']
 
     def randomly_generate_hemodynamic_parameters(self, n_node, deviation_constraint=1):
         """
@@ -235,7 +226,7 @@ class Utilities:
                     else:
                         pass
             return h_para
-        temp = self.get_hemodynamic_parameter_prior_distributions_as_dataframe(n_node)
+        temp = self.get_expanded_hemodynamic_parameter_prior_distributions(n_node)
         hemodynamic_parameters_mean = temp['mean']
         hemodynamic_parameters_variance = temp['std']
         h_para = sample_hemodynamic_parameters(hemodynamic_parameters_mean,
@@ -252,7 +243,7 @@ class Utilities:
         :return: a pandas.dataframe, containing checking statistics
         """
         n_node = hemodynamic_parameters.shape[0]
-        temp = self.get_hemodynamic_parameter_prior_distributions_as_dataframe(n_node)
+        temp = self.get_expanded_hemodynamic_parameter_prior_distributions(n_node)
         h_mean = temp['mean']
         h_std = temp['std']
 
@@ -336,6 +327,14 @@ class Utilities:
         h_state_initial[:, 2] = np.random.uniform(low=0.8, high=1.4, size=n_node)
         h_state_initial[:, 3] = np.random.uniform(low=0.6, high=1.2, size=n_node)
         return h_state_initial
+
+class ParameterUnit(dict):
+    def __init__(self, parameters):
+        super().__init__()
+        self.it = InitializationToolbox()
+
+
+
 
 
 
