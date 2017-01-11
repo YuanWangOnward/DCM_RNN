@@ -12,8 +12,19 @@ category = {
 
 'A': 'neural',
 'B': 'neural',
-'C': 'neural'
+'C': 'neural',
 
+# for eack region
+'alpha': 'hemodynamic',
+'E0': 'hemodynamic',
+'k': 'hemodynamic',
+'gamma': 'hemodynamic',
+'tao': 'hemodynamic',
+'epsilon': 'hemodynamic',
+'V0': 'hemodynamic',
+'TE': 'hemodynamic',
+'r0': 'hemodynamic',
+'theta0': 'hemodynamic'
 }
 
 parameters['if_random_neural_parameter'] = 'boolean'

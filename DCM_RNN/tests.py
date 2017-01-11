@@ -2,9 +2,12 @@ import unittest
 import numpy as np
 from DCM_RNN import utilities
 import random
+import pandas as pd
+import scipy as sp
+import scipy.stats
 
 
-class MyTestCase(unittest.TestCase):
+class Utilities_tests(unittest.TestCase):
     def setUp(self):
         self.utl = utilities.Utilities()
 
@@ -78,6 +81,51 @@ class MyTestCase(unittest.TestCase):
                 self.assertTrue(len(nonzero_indexes) == len(set(nonzero_indexes)))
                 self.assertTrue(np.max(np.abs(nonzero_values))<=0.5)
                 self.assertTrue(np.min(np.abs(nonzero_values)) >= 0.2)
+
+    def test_get_hemodynamic_parameter_prior_distributions(self):
+        if_print = False
+        temp = self.utl.get_hemodynamic_parameter_prior_distributions()
+        if if_print:
+            print(temp)
+
+    def test_get_hemodynamic_parameter_prior_distributions_as_dataframe(self):
+        if_print = False
+        n_node = random.randint(3, 10)
+        temp = self.utl.get_hemodynamic_parameter_prior_distributions_as_dataframe(n_node)
+        if if_print:
+            print(temp)
+
+    def test_get_standard_hemodynamic_parameters(self):
+        if_print = False
+        n_node = random.randint(3, 10)
+        temp = self.utl.get_standard_hemodynamic_parameters(n_node)
+        if if_print:
+            print(temp)
+
+    def test_randomly_generate_hemodynamic_parameters(self):
+        if_print = False
+        n_node = random.randint(3, 10)
+        output = self.utl.randomly_generate_hemodynamic_parameters(n_node)
+        if if_print:
+            print(output)
+
+    def test_check_hemodynamic_parameters(self):
+        if_print = False
+        n_node = random.randint(3, 10)
+        h_para = self.utl.randomly_generate_hemodynamic_parameters(n_node)
+        output = self.utl.check_hemodynamic_parameters(h_para)
+        if if_print:
+            print(output)
+
+    def test_if_proper_hemodynamic_parameters(self):
+        n_test = 10
+        for n in range(n_test):
+            n_node = random.randint(3, 10)
+            deviation_constrain = random.uniform(1, 3)
+            h_para = self.utl.randomly_generate_hemodynamic_parameters(n_node, deviation_constrain)
+            temp = self.utl.if_proper_hemodynamic_parameters(h_para, deviation_constrain)
+            self.assertTrue(temp, 'The given hemodynamic parameters are not qualified by given deviation_constraint')
+
 
 if __name__ == '__main__':
     unittest.main()

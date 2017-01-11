@@ -1,6 +1,10 @@
 import random
 import numpy as np
 import pandas as pd
+import math as mth
+import scipy as sp
+import scipy.stats
+
 
 class Utilities:
     def randomly_initialize_connection_matrices(self, n_node, n_stimuli, sparse_level=0.5):
@@ -154,14 +158,143 @@ class Utilities:
     def randomly_initialize_hemodynamic_parameters(self):
         pass
 
-    def get_stardard_hemodynamic_parameters(self, n_region):
-        hemodynamic_parameters_mean = pd.DataFrame()
+    def get_hemodynamic_parameter_prior_distributions(self):
+        """
+        Get prior distribution for hemodynamic parameters (Gaussian)
+        :return: a dictionary containing mean, variance, and standard deviation of each parameter
+        """
         hemo_parameter_key_list = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']
         hemo_parameter_mean_list = [0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3]
-        for idx, key in enumerate(hemo_parameter_key_list):
-            tmp = [hemo_parameter_mean_list[idx] for _ in range(n_region)]
-            tmp = pd.Series(tmp, index=['region_' + str(i) for i in range(n_region)])
+        hemo_parameter_variance_list = [0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0.]
+        prior_distribution = {}
+        for n in range(len(hemo_parameter_key_list)):
+            temp = {}
+            temp['mean'] = hemo_parameter_mean_list[n]
+            temp['variance'] = hemo_parameter_variance_list[n]
+            temp['std'] = np.sqrt(hemo_parameter_variance_list[n])
+            prior_distribution[hemo_parameter_key_list[n]] = temp
+        prior_distribution['ordered_keys'] = hemo_parameter_key_list
+        return prior_distribution
+
+    def get_hemodynamic_parameter_prior_distributions_as_dataframe(self, n_node):
+        """
+        Repeat hemodynamic parameter prior distributions for each node and structure the results into pandas.dataframe
+        :param n_node: number of nodes (brain areas)
+        :return: a list of  pandas dataframes, containing hemodynamic parameter distributions for all the nodes,
+                 distribution parameters include mean and standard deviation.
+        """
+        distributions = self.get_hemodynamic_parameter_prior_distributions()
+        hemodynamic_parameters_mean = pd.DataFrame()
+        hemodynamic_parameters_std = pd.DataFrame()
+        for idx, key in enumerate(distributions['ordered_keys']):
+            # add mean
+            tmp = [distributions[key]['mean'] for _ in range(n_node)]
+            tmp = pd.Series(tmp, index=['region_' + str(i) for i in range(n_node)])
             hemodynamic_parameters_mean[key] = tmp
-        return hemodynamic_parameters_mean
+            # add variance
+            tmp = [distributions[key]['std'] for _ in range(n_node)]
+            tmp = pd.Series(tmp, index=['region_' + str(i) for i in range(n_node)])
+            hemodynamic_parameters_std[key] = tmp
+        return {'mean': hemodynamic_parameters_mean, 'std': hemodynamic_parameters_std}
+
+    def get_standard_hemodynamic_parameters(self, n_node):
+        """
+        Get standard hemodynamic parameters, namely, the means of prior distribution of hemodynamic parameters
+        :param n_node: number of nodes (brain areas)
+        :return: a pandas data frame, containing hemodynamic parameters for all the nodes
+        """
+        return self.get_hemodynamic_parameter_prior_distributions_as_dataframe(n_node)['mean']
+
+    def randomly_generate_hemodynamic_parameters(self, n_node, deviation_constraint=1):
+        """
+        Get random hemodynamic parameters, sampled from prior distribution.
+        The sample range is constrained to mean +/- deviation_constraint * standard_deviation
+        :param n_node: number of nodes (brain areas)
+        :param deviation_constraint: float, used to constrain the sample range
+        :return: a pandas data frame, containing hemodynamic parameters for all the nodes,
+                 and optionally, normalized standard deviation.
+        """
+        def sample_hemodynamic_parameters(hemodynamic_parameters_mean, hemodynamic_parameters_std,
+                                          deviation_constraint):
+            # sample a subject from hemodynamic parameter distribution
+            h_mean = hemodynamic_parameters_mean
+            h_std = hemodynamic_parameters_std
+
+            h_para = h_mean.copy()
+            h_devi = h_std.copy()
+
+            p_shape = h_mean.shape
+            for r in range(p_shape[0]):
+                for c in range(p_shape[1]):
+                    if h_std.iloc[r, c] > 0:
+                        h_para.iloc[r, c] = np.random.normal(loc=h_mean.iloc[r, c], scale=h_std.iloc[r, c])
+                        normalized_deviation = (h_para.iloc[r, c] - h_mean.iloc[r, c]) / h_std.iloc[r, c]
+                        while abs(normalized_deviation) > deviation_constraint:
+                            h_para.iloc[r, c] = np.random.normal(loc=h_mean.iloc[r, c], scale=h_std.iloc[r, c])
+                            normalized_deviation = (h_para.iloc[r, c] - h_mean.iloc[r, c]) / h_std.iloc[r, c]
+                    else:
+                        pass
+            return h_para
+        temp = self.get_hemodynamic_parameter_prior_distributions_as_dataframe(n_node)
+        hemodynamic_parameters_mean = temp['mean']
+        hemodynamic_parameters_variance = temp['std']
+        h_para = sample_hemodynamic_parameters(hemodynamic_parameters_mean,
+                                                       hemodynamic_parameters_variance,
+                                                       deviation_constraint)
+        return h_para
+
+    def check_hemodynamic_parameters(self, hemodynamic_parameters, check_statistics='deviation'):
+        """
+        For each hemodynamic parameter, check whether it is sampled properly.
+        :param hemodynamic_parameters: a pandas.dataframe, containing sampled hemodynamic parameters
+        :param check_statistics: specify which kind of statistic to check,
+               it takes value in {'deviation', 'pdf'}
+        :return: a pandas.dataframe, containing checking statistics
+        """
+        n_node = hemodynamic_parameters.shape[0]
+        temp = self.get_hemodynamic_parameter_prior_distributions_as_dataframe(n_node)
+        h_mean = temp['mean']
+        h_std = temp['std']
+
+        h_devi = h_mean.copy()
+        h_pdf = h_mean.copy()
+        h_para = hemodynamic_parameters
+
+        p_shape = h_mean.shape
+        for r in range(p_shape[0]):
+            for c in range(p_shape[1]):
+                if h_std.iloc[r, c] > 0:
+                    h_devi.iloc[r, c] = (h_para.iloc[r, c] - h_mean.iloc[r, c]) / h_std.iloc[r, c]
+                    h_pdf.iloc[r, c] = sp.stats.norm(0, 1).pdf(h_devi.iloc[r, c])
+                else:
+                    if h_para.iloc[r, c] == h_mean.iloc[r, c]:
+                        h_devi.iloc[r, c] = 0.
+                        h_pdf.iloc[r, c] = 1.
+                    else:
+                        raise ValueError('Hemodynamic parameter sampling goes wrong!')
+
+        if check_statistics == 'deviation':
+            return h_devi
+        elif check_statistics == 'pdf':
+            return h_pdf
+        else:
+            raise ValueError('Improper check_statistics value!')
+
+    def if_proper_hemodynamic_parameters(self, hemodynamic_parameters, deviation_constraint=1):
+        """
+        Check if given hemodynamic parameters are within deviation constraint.
+        If yes, return True; otherwise, throw error
+        :param hemodynamic_parameters: a pandas.dataframe to be checked
+        :param deviation_constraint: target deviation constraint, in normalized deviation,
+        say if deviation_constraint=1, parameter with +/- one normalized deviation is acceptable
+        :return: True or Error
+        """
+        h_stat = self.check_hemodynamic_parameters(hemodynamic_parameters, check_statistics='deviation')
+        max_deviation = abs(h_stat).values.max()
+        if max_deviation <= deviation_constraint:
+            return True
+        else:
+            raise ValueError('The given hemodynamic parameters are not qualified by given deviation_constraint')
+
 
 
