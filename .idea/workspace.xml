@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="Add functions for neural state initialization&#10;Add Utilities.set_initial_neural_state_as_zeros">
-      <change type="MOVED" beforePath="$PROJECT_DIR$/DCM_RNN/readme.txt" afterPath="$PROJECT_DIR$/DCM_RNN/readme.md" />
+    <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/notes.py" afterPath="$PROJECT_DIR$/DCM_RNN/notes.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/utilities.py" afterPath="$PROJECT_DIR$/DCM_RNN/utilities.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -34,8 +34,8 @@
       <file leaf-file-name="population.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/population.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="242">
-              <caret line="80" column="0" lean-forward="true" selection-start-line="75" selection-start-column="8" selection-end-line="80" selection-end-column="0" />
+            <state relative-caret-position="201">
+              <caret line="86" column="96" lean-forward="true" selection-start-line="82" selection-start-column="12" selection-end-line="86" selection-end-column="96" />
               <folding>
                 <element signature="e#828#930#0" expanded="false" />
                 <element signature="e#1113#1277#0" expanded="false" />
@@ -43,8 +43,6 @@
                 <element signature="e#1367#1416#0" expanded="false" />
                 <element signature="e#2232#2721#0" expanded="false" />
                 <element signature="e#2930#3346#0" expanded="false" />
-                <element signature="e#3771#4198#0" expanded="false" />
-                <element signature="e#4225#4313#0" expanded="false" />
                 <element signature="e#4601#5430#0" expanded="false" />
                 <element signature="e#4754#4984#0" expanded="false" />
                 <element signature="e#5011#5409#0" expanded="false" />
@@ -76,8 +74,8 @@
       <file leaf-file-name="utilities.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/utilities.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="231">
-              <caret line="306" column="35" lean-forward="false" selection-start-line="306" selection-start-column="8" selection-end-line="306" selection-end-column="35" />
+            <state relative-caret-position="253">
+              <caret line="326" column="55" lean-forward="true" selection-start-line="316" selection-start-column="4" selection-end-line="326" selection-end-column="55" />
               <folding>
                 <element signature="e#229#1050#0" expanded="false" />
                 <element signature="e#229#738#1" expanded="false" />
@@ -109,6 +107,7 @@
                 <element signature="e#8453#8898#0" expanded="false" />
                 <element signature="e#9055#9419#0" expanded="false" />
                 <element signature="e#9055#9324#1" expanded="false" />
+                <element signature="e#9517#11607#0" expanded="false" />
                 <element signature="e#10166#11152#0" expanded="false" />
                 <element signature="e#10483#11126#0" expanded="false" />
                 <element signature="e#10531#11126#0" expanded="false" />
@@ -124,7 +123,6 @@
                 <element signature="e#13344#14136#0" expanded="false" />
                 <element signature="e#13344#13781#1" expanded="false" />
                 <element signature="e#14203#14369#0" expanded="false" />
-                <element signature="e#14447#14808#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -133,8 +131,8 @@
       <file leaf-file-name="notes.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/notes.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="381">
-              <caret line="26" column="23" lean-forward="false" selection-start-line="26" selection-start-column="23" selection-end-line="26" selection-end-column="23" />
+            <state relative-caret-position="-135">
+              <caret line="7" column="0" lean-forward="true" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -187,10 +185,15 @@
       <find>hemo_parameter_mean_list</find>
       <find>self.hemo_parameter_key_list</find>
       <find>n_region</find>
+      <find>scale=</find>
+      <find>(n_node)</find>
     </findStrings>
     <replaceStrings>
       <replace>randomly_initialize_connection_matrices</replace>
       <replace>hemo_parameter_key_list</replace>
+      <replace>h_state_initial</replace>
+      <replace>low=</replace>
+      <replace>high=</replace>
       <replace>n_node</replace>
     </replaceStrings>
     <dirStrings>
@@ -223,8 +226,8 @@
         <option value="$PROJECT_DIR$/experiment0/readme.txt" />
         <option value="$PROJECT_DIR$/DCM_RNN/population.py" />
         <option value="$PROJECT_DIR$/../gym/main.py" />
-        <option value="$PROJECT_DIR$/DCM_RNN/notes.py" />
         <option value="$PROJECT_DIR$/DCM_RNN/tests.py" />
+        <option value="$PROJECT_DIR$/DCM_RNN/notes.py" />
         <option value="$PROJECT_DIR$/DCM_RNN/utilities.py" />
       </list>
     </option>
@@ -634,7 +637,14 @@
       <option name="project" value="LOCAL" />
       <updated>1484096324929</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Add functions for neural state initialization&#10;Add Utilities.set_initial_neural_state_as_zeros&#10;Add Utilities.sample_initial_neural_state">
+      <created>1484148166934</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1484148166934</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TodoView">
@@ -682,7 +692,8 @@
     <MESSAGE value="Add Utilities.randomly_generate_sparse_A_matrix&#10;Add DCM_RNN.notes.py for summary necessary parameters" />
     <MESSAGE value="Add Utilities.get_stardard_hemodynamic_parameters" />
     <MESSAGE value="Add functions for generating hemodynamic parameters&#10;Add Utilities.get_stardard_hemodynamic_parameters&#10;Add Utilities.get_hemodynamic_parameter_prior_distributions&#10;Add Utilities.get_hemodynamic_parameter_prior_distributions_as_dataframe&#10;Add Utilities.get_standard_hemodynamic_parameters&#10;Add Utilities.randomly_generate_hemodynamic_parameters&#10;Add Utilities.check_hemodynamic_parameters&#10;Add Utilities.if_proper_hemodynamic_parameters" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add functions for generating hemodynamic parameters&#10;Add Utilities.get_stardard_hemodynamic_parameters&#10;Add Utilities.get_hemodynamic_parameter_prior_distributions&#10;Add Utilities.get_hemodynamic_parameter_prior_distributions_as_dataframe&#10;Add Utilities.get_standard_hemodynamic_parameters&#10;Add Utilities.randomly_generate_hemodynamic_parameters&#10;Add Utilities.check_hemodynamic_parameters&#10;Add Utilities.if_proper_hemodynamic_parameters" />
+    <MESSAGE value="Add functions for neural state initialization&#10;Add Utilities.set_initial_neural_state_as_zeros&#10;Add Utilities.sample_initial_neural_state" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add functions for neural state initialization&#10;Add Utilities.set_initial_neural_state_as_zeros&#10;Add Utilities.sample_initial_neural_state" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -726,6 +737,7 @@
             <element signature="e#8453#8898#0" expanded="false" />
             <element signature="e#9055#9419#0" expanded="false" />
             <element signature="e#9055#9324#1" expanded="false" />
+            <element signature="e#9517#11607#0" expanded="false" />
             <element signature="e#10166#11152#0" expanded="false" />
             <element signature="e#10483#11126#0" expanded="false" />
             <element signature="e#10531#11126#0" expanded="false" />
@@ -741,7 +753,6 @@
             <element signature="e#13344#14136#0" expanded="false" />
             <element signature="e#13344#13781#1" expanded="false" />
             <element signature="e#14203#14369#0" expanded="false" />
-            <element signature="e#14447#14808#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -789,8 +800,6 @@
             <element signature="e#1367#1416#0" expanded="false" />
             <element signature="e#2232#2721#0" expanded="false" />
             <element signature="e#2930#3346#0" expanded="false" />
-            <element signature="e#3771#4198#0" expanded="false" />
-            <element signature="e#4225#4313#0" expanded="false" />
             <element signature="e#4601#5430#0" expanded="false" />
             <element signature="e#4754#4984#0" expanded="false" />
             <element signature="e#5011#5409#0" expanded="false" />
@@ -846,8 +855,6 @@
             <element signature="e#1367#1416#0" expanded="false" />
             <element signature="e#2232#2721#0" expanded="false" />
             <element signature="e#2930#3346#0" expanded="false" />
-            <element signature="e#3771#4198#0" expanded="false" />
-            <element signature="e#4225#4313#0" expanded="false" />
             <element signature="e#4601#5430#0" expanded="false" />
             <element signature="e#4754#4984#0" expanded="false" />
             <element signature="e#5011#5409#0" expanded="false" />
@@ -902,8 +909,6 @@
             <element signature="e#1367#1416#0" expanded="false" />
             <element signature="e#2232#2721#0" expanded="false" />
             <element signature="e#2930#3346#0" expanded="false" />
-            <element signature="e#3771#4198#0" expanded="false" />
-            <element signature="e#4225#4313#0" expanded="false" />
             <element signature="e#4601#5430#0" expanded="false" />
             <element signature="e#4754#4984#0" expanded="false" />
             <element signature="e#5011#5409#0" expanded="false" />
@@ -951,8 +956,6 @@
             <element signature="e#1367#1416#0" expanded="false" />
             <element signature="e#2232#2721#0" expanded="false" />
             <element signature="e#2930#3346#0" expanded="false" />
-            <element signature="e#3771#4198#0" expanded="false" />
-            <element signature="e#4225#4313#0" expanded="false" />
             <element signature="e#4601#5430#0" expanded="false" />
             <element signature="e#4754#4984#0" expanded="false" />
             <element signature="e#5011#5409#0" expanded="false" />
@@ -1106,14 +1109,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/DCM_RNN/notes.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="381">
-          <caret line="26" column="23" lean-forward="false" selection-start-line="26" selection-start-column="23" selection-end-line="26" selection-end-column="23" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/tests.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="695">
@@ -1147,10 +1142,18 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/notes.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-135">
+          <caret line="7" column="0" lean-forward="true" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/population.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="242">
-          <caret line="80" column="0" lean-forward="true" selection-start-line="75" selection-start-column="8" selection-end-line="80" selection-end-column="0" />
+        <state relative-caret-position="201">
+          <caret line="86" column="96" lean-forward="true" selection-start-line="82" selection-start-column="12" selection-end-line="86" selection-end-column="96" />
           <folding>
             <element signature="e#828#930#0" expanded="false" />
             <element signature="e#1113#1277#0" expanded="false" />
@@ -1158,8 +1161,6 @@
             <element signature="e#1367#1416#0" expanded="false" />
             <element signature="e#2232#2721#0" expanded="false" />
             <element signature="e#2930#3346#0" expanded="false" />
-            <element signature="e#3771#4198#0" expanded="false" />
-            <element signature="e#4225#4313#0" expanded="false" />
             <element signature="e#4601#5430#0" expanded="false" />
             <element signature="e#4754#4984#0" expanded="false" />
             <element signature="e#5011#5409#0" expanded="false" />
@@ -1189,8 +1190,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/utilities.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="231">
-          <caret line="306" column="35" lean-forward="false" selection-start-line="306" selection-start-column="8" selection-end-line="306" selection-end-column="35" />
+        <state relative-caret-position="253">
+          <caret line="326" column="55" lean-forward="true" selection-start-line="316" selection-start-column="4" selection-end-line="326" selection-end-column="55" />
           <folding>
             <element signature="e#229#1050#0" expanded="false" />
             <element signature="e#229#738#1" expanded="false" />
@@ -1222,6 +1223,7 @@
             <element signature="e#8453#8898#0" expanded="false" />
             <element signature="e#9055#9419#0" expanded="false" />
             <element signature="e#9055#9324#1" expanded="false" />
+            <element signature="e#9517#11607#0" expanded="false" />
             <element signature="e#10166#11152#0" expanded="false" />
             <element signature="e#10483#11126#0" expanded="false" />
             <element signature="e#10531#11126#0" expanded="false" />
@@ -1237,7 +1239,6 @@
             <element signature="e#13344#14136#0" expanded="false" />
             <element signature="e#13344#13781#1" expanded="false" />
             <element signature="e#14203#14369#0" expanded="false" />
-            <element signature="e#14447#14808#0" expanded="false" />
           </folding>
         </state>
       </provider>

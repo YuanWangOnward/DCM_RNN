@@ -5,6 +5,7 @@ category = {
 'if_random_hemodynamic_parameter': 'flag',
 'if_random_x_state_initial': 'flag',
 'if_random_h_state_initial': 'flag',
+
 't_delta': 'hyper',
 'n_node': 'hyper',
 'n_stimuli': 'hyper',
@@ -14,7 +15,7 @@ category = {
 'B': 'neural',
 'C': 'neural',
 
-# for eack region
+# for eack region, all in a pandas.dataframe
 'alpha': 'hemodynamic',
 'E0': 'hemodynamic',
 'k': 'hemodynamic',

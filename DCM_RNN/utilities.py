@@ -314,6 +314,29 @@ class Utilities:
         """
         return np.random.uniform(low, high, size=n_node)
 
+    def set_initial_hemodynamic_state_as_inactivated(self, n_node):
+        """
+        Set initial hemodynamic state as inactivated, namely, s=0, f=1, v=1, q=1.
+        :param n_node: number of nodes (brain areas)
+        :return: array of initial hemodynamic state
+        """
+        h_state_initial = np.ones((n_node, 4))
+        h_state_initial[:, 0] = 0
+        return h_state_initial
+
+    def sample_initial_hemodynamic_state(self, n_node):
+        """
+        Sample initial hemodynamic state. The distribution is set by experience.
+        :param n_node: number of nodes (brain areas)
+        :return: array of initial hemodynamic state
+        """
+        h_state_initial = np.ones((n_node, 4))
+        h_state_initial[:, 0] = np.random.uniform(low=-0.3, high=0.3, size=n_node)
+        h_state_initial[:, 1] = np.random.uniform(low=0.8, high=1.4, size=n_node)
+        h_state_initial[:, 2] = np.random.uniform(low=0.8, high=1.4, size=n_node)
+        h_state_initial[:, 3] = np.random.uniform(low=0.6, high=1.2, size=n_node)
+        return h_state_initial
+
 
 
 
