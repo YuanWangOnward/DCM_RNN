@@ -296,5 +296,25 @@ class Utilities:
         else:
             raise ValueError('The given hemodynamic parameters are not qualified by given deviation_constraint')
 
+    def set_initial_neural_state_as_zeros(self, n_node):
+        """
+        Set initial neural state as zeros.
+        :param n_node: number of nodes (brain areas)
+        :return: zeros
+        """
+        return np.zeros(n_node)
+
+    def sample_initial_neural_state(self, n_node, low=0, high=0.4):
+        """
+        Sample initial neural state. The distribution is set by experience.
+        :param n_node: number of nodes (brain areas)
+        :param low: lower bound of uniform distribution
+        :param high: higher bound of uniform distribution
+        :return: sampled initial neural state
+        """
+        return np.random.uniform(low, high, size=n_node)
+
+
+
 
 
