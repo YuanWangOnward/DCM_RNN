@@ -6,7 +6,7 @@ import scipy as sp
 import scipy.stats
 
 
-class InitializationToolbox():
+class Initialization():
     def randomly_initialize_connection_matrices(self, n_node, n_stimuli, sparse_level=0.5):
         """
         Generate a set of matrices for neural level equation x'=Ax+\sigma(xBu)+Cu.
@@ -328,10 +328,6 @@ class InitializationToolbox():
         h_state_initial[:, 3] = np.random.uniform(low=0.6, high=1.2, size=n_node)
         return h_state_initial
 
-class ParameterUnit(dict):
-    def __init__(self, parameters):
-        super().__init__()
-        self.it = InitializationToolbox()
 
 
 

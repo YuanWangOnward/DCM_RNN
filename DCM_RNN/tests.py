@@ -1,15 +1,15 @@
 import unittest
 import numpy as np
-from DCM_RNN import utilities
+from DCM_RNN import toolboxes
 import random
 import pandas as pd
 import scipy as sp
 import scipy.stats
 
 
-class Utilities_tests(unittest.TestCase):
+class Initialization_tests(unittest.TestCase):
     def setUp(self):
-        self.utl = utilities.InitializationToolbox()
+        self.utl = toolboxes.Initialization()
 
     def tearDown(self):
         del self.utl
@@ -89,7 +89,7 @@ class Utilities_tests(unittest.TestCase):
             print(temp)
 
     def test_get_expanded_hemodynamic_parameter_prior_distributions(self):
-        if_print = True
+        if_print = False
         n_node = random.randint(3, 10)
         temp = self.utl.get_expanded_hemodynamic_parameter_prior_distributions(n_node)
         if if_print:
