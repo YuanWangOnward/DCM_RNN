@@ -12,7 +12,14 @@ state[i_region][i_state][i_time]
 '''
 
 
-class Project():
+class Project(dict):
+    def __init__(self, parameters):
+        para = parameters
+        if 'key1' in dict.keys():
+            pass
+
+
+
     def plan_an_experiment(self):
         pass
 

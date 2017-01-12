@@ -2,22 +2,30 @@
 parameters = {}
 category = {
 # set by plan_an_experiment
+# necessary
 'if_random_neural_parameter': 'flag',
 'if_random_hemodynamic_parameter': 'flag',
 'if_random_x_state_initial': 'flag',
 'if_random_h_state_initial': 'flag',
 'if_random_stimuli': 'flag',
+'initializer': 'hyper',  # a toolbox.Initialization object, recording all initialization parameters
+    # 'sparse_level': 'hyper',  # 'A' matrix sparsity, used to generate sparse A
+
 
 'n_node': 'hyper',
 'n_stimuli': 'hyper',
 't_delta': 'hyper',  # used for approximate differential equations, in second
 't_scan': 'hyper',  # total scan time in second
+
+
+# can be derived
 'n_time_point': 'hyper',  # total number of time points of a scan
-'n_step': 'hyper',  # number of truncated back propagation steps
+'u_XXX': 'hyper',  # TBA, parameters needed to generate stimuli
+'u': 'input',  # can be generated, if 'if_random_stimuli' is true, and generating parameters are specified
+
+# not necessary before estimation
+'n_backpro': 'hyper',  # number of truncated back propagation steps
 'learning_rate': 'hyper',  # used by tensorflow optimization operation
-'sparse_level': 'hyper',  # 'A' matrix sparsity, used to generate sparse A
-'u_XXX': 'hyper',  # TBA, parameters needed to generate sitimuli
-'u': 'input',  # input stimuli
 
 # set by recruiting a subject
 'A': 'neural',

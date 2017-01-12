@@ -7,7 +7,53 @@ import scipy.stats
 
 
 class Initialization:
-    def randomly_initialize_connection_matrices(self, n_node, n_stimuli, sparse_level=0.5):
+    def __init__(self, sparse_level=None, deviation_constraint=None, h_parameter_check_statistics=None,
+                 x_init_low=None, x_init_high=None,
+                 s_init_low=None, s_init_high=None,
+                 f_init_low=None, f_init_high=None,
+                 v_init_low=None, v_init_high=None,
+                 q_init_low=None, q_init_high=None,
+                 A_off_diagonal_low=None, A_off_diagonal_high=None,
+                 A_diagonal_low=None, A_diagonal_high=None,
+                 A_generation_max_trial_number=None,
+                 B_init_low=None, B_init_high=None,
+                 B_non_zero_probability=None,
+                 B_sign_probability=None,
+                 C_init_low=None, C_init_high=None
+                 ):
+        self.sparse_level = sparse_level or 0.5
+        self.deviation_constraint = deviation_constraint or 1
+        self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
+        self.x_init_low = x_init_low or 0
+        self.x_init_high = x_init_high or 0.4
+        self.s_init_low = s_init_low or -0.3
+        self.s_init_high = s_init_high or 0.3
+        self.f_init_low = f_init_low or 0.8
+        self.f_init_high = f_init_high or 1.4
+        self.v_init_low = v_init_low or 0.8
+        self.v_init_high = v_init_high or 1.4
+        self.q_init_low = q_init_low or 0.6
+        self.q_init_high = q_init_high or 1.
+
+        self.A_off_diagonal_low = A_off_diagonal_low or -0.45
+        self.A_off_diagonal_high = A_off_diagonal_high or 0.45
+        self.A_diagonal_low = A_diagonal_low or -0.5
+        self.A_diagonal_high = A_diagonal_high or 0
+        self.A_generation_max_trial_number = A_generation_max_trial_number or 5000
+        self.B_init_low = B_init_low or 0.2
+        self.B_init_high = B_init_high or 0.5
+        self.B_non_zero_probability = B_non_zero_probability or 0.5
+        self.B_sign_probability = B_sign_probability or 0.5
+        self.C_init_low = C_init_low or 0.5
+        self.C_init_high = C_init_high or 1
+
+        self.hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']
+        self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3],
+                                             self.hemo_parameter_keys)
+        self.hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0.],
+                                                 self.hemo_parameter_keys)
+
+    def randomly_initialize_connection_matrices(self, n_node, n_stimuli, sparse_level=None):
         """
         Generate a set of matrices for neural level equation x'=Ax+\sigma(xBu)+Cu.
         For assumptions about each matrix, please refer to each individual generating function.
@@ -17,6 +63,7 @@ class Initialization:
         actual non-zeros elements equal int(sparse_level * (n_node-1) * n_node)
         :return: a dictionary with elements 'A', 'B', and 'C'
         """
+        sparse_level = sparse_level or self.sparse_level
         connection_matrices = {'A': self.randomly_generate_sparse_A_matrix(n_node, sparse_level),
                                'B': self.randomly_generate_B_matrix(n_node, n_stimuli),
                                'C': self.randomly_generate_C_matrix(n_stimuli, n_stimuli)}
@@ -24,7 +71,7 @@ class Initialization:
 
     def roll(self, probability):
         """
-        sample a random number from [0,1), if it's larger than or equal to given probability, return True,
+        sample a random number from [0,1), if it's smaller than or equal to given probability, return True,
         otherwise, False
         :param probability: a number from [0 ,1]
         :return: boolean
@@ -47,34 +94,7 @@ class Initialization:
         else:
             return False
 
-    def randomly_generate_A_matrix(self, n_node):
-        """
-        Generate the A matrix for neural level equation x'=Ax+\sigma(xBu)+Cu.
-        Eigenvalues of A must to negative to ensure the system is stable.
-        Assumption:
-        Diagonal elements are negative meaning self-feedback is negative.
-        Strength range of diagonal elements is (-0.5, 0].
-        Strength range of off-diagonal elements is [-0.45, 0.45)
-        :param n_node: number of nodes (brain areas)
-        :return: an A matrix
-        """
-
-        def get_a_matrix(n_node):
-            A = (np.random.random((n_node, n_node)) - 0.5) * 0.9
-            A = A * (1 - np.identity(n_node)) - np.diag(np.random.random(n_node) * 0.5)
-            return A
-
-        A = get_a_matrix(n_node)
-        count = 0
-        max_count = 5000
-        while not self.check_transition_matrix(A):
-            A = get_a_matrix(n_node)
-            count += 1
-            if count > max_count:
-                raise ValueError('Can not generate qualified A matrix with max trail number!')
-        return A
-
-    def randomly_generate_sparse_A_matrix(self, n_node, sparse_level):
+    def randomly_generate_A_matrix(self, n_node, sparse_level=None):
         """
         Generate the A matrix for neural level equation x'=Ax+\sigma(xBu)+Cu.
         Eigenvalues of A must to negative to ensure the system is stable.
@@ -88,26 +108,27 @@ class Initialization:
         actual non-zeros elements equal int(sparse_level * (n_node-1) * n_node)
         :return: a sparse A matrix
         """
+        sparse_level = sparse_level or self.sparse_level
 
         def get_a_sparse_matrix(n_node, sparse_level):
-            A = (np.random.random((n_node, n_node)) - 0.5) * 0.9
+            A = np.random.uniform(self.A_off_diagonal_low, self.A_off_diagonal_high, size=(n_node, n_node))
             A = (A * (1 - np.identity(n_node))).flatten()
             sorted_indexes = np.argsort(np.abs(A), None)  # ascending order
             kept_number = int(sparse_level * (n_node - 1) * n_node)
-            A[sorted_indexes[list(range(0, len(A)-kept_number))]] = 0
+            A[sorted_indexes[list(range(0, len(A) - kept_number))]] = 0
             A = A.reshape([n_node, n_node])
-            A = A * (1 - np.identity(n_node)) - np.diag(np.random.random(n_node) * 0.5)
+            A = A * (1 - np.identity(n_node)) + \
+                np.diag(np.random.uniform(self.A_diagonal_low, self.A_diagonal_high, size=n_node))
             return A
 
         if sparse_level > 1 or sparse_level < 0:
             raise ValueError('Imporper sparse_level, it should be [0,1]')
         A = get_a_sparse_matrix(n_node, sparse_level)
         count = 0
-        max_count = 5000
         while not self.check_transition_matrix(A):
             A = get_a_sparse_matrix(n_node, sparse_level)
             count += 1
-            if count > max_count:
+            if count > self.A_generation_max_trial_number:
                 raise ValueError('Can not generate qualified A matrix with max trail number!')
         return A
 
@@ -128,12 +149,12 @@ class Initialization:
         indexes = random.sample(range(0, n_node ** 2), n_node ** 2)
         for matrix_index in range(n_stimuli):
             B_current = np.zeros((n_node, n_node))
-            if self.roll(0.5):
+            if self.roll(self.B_non_zero_probability):
                 index_temp = indexes.pop()
                 row_index = int(index_temp / n_node)
                 column_index = index_temp % n_node
-                sign = -1 if self.roll(0.5) else 1
-                B_current[row_index, column_index] = sign * random.uniform(0.2, 0.5)
+                sign = -1 if self.roll(self.B_sign_probability) else 1
+                B_current[row_index, column_index] = sign * random.uniform(self.B_init_low, self.B_init_high)
             B.append(B_current)
         return B
 
@@ -152,25 +173,18 @@ class Initialization:
         node_indexes = random.sample(range(0, n_node), n_stimuli)
         C = np.zeros((n_node, n_stimuli))
         for culumn_index, row_index in enumerate(node_indexes):
-            C[row_index, culumn_index] = np.random.random(1) * 0.5 + 0.5
+            C[row_index, culumn_index] = np.random.uniform(self.C_init_low, self.C_init_high)
         return C
-
-    def randomly_initialize_hemodynamic_parameters(self):
-        pass
 
     def get_hemodynamic_parameter_prior_distributions(self):
         """
         Get prior distribution for hemodynamic parameters (Gaussian)
         :return: a pandas.dataframe containing mean, variance, and standard deviation of each parameter
         """
-        hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']
-        hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3], hemo_parameter_keys)
-        hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0.],
-                                            hemo_parameter_keys)
         prior_distribution = pd.DataFrame()
-        prior_distribution['mean'] = hemo_parameter_mean
-        prior_distribution['variance'] = hemo_parameter_variance
-        prior_distribution['std'] = np.sqrt(hemo_parameter_variance)
+        prior_distribution['mean'] = self.hemo_parameter_mean
+        prior_distribution['variance'] = self.hemo_parameter_variance
+        prior_distribution['std'] = np.sqrt(self.hemo_parameter_variance)
         return prior_distribution.transpose()
 
     def get_expanded_hemodynamic_parameter_prior_distributions(self, n_node):
@@ -184,8 +198,8 @@ class Initialization:
         hemodynamic_parameters_mean = pd.DataFrame()
         hemodynamic_parameters_std = pd.DataFrame()
         for idx in range(n_node):
-            hemodynamic_parameters_mean['region_'+str(idx)] = distributions.loc['mean']
-            hemodynamic_parameters_std['region_'+str(idx)] = distributions.loc['std']
+            hemodynamic_parameters_mean['region_' + str(idx)] = distributions.loc['mean']
+            hemodynamic_parameters_std['region_' + str(idx)] = distributions.loc['std']
         return {'mean': hemodynamic_parameters_mean.transpose(), 'std': hemodynamic_parameters_std.transpose()}
 
     def get_standard_hemodynamic_parameters(self, n_node):
@@ -196,7 +210,7 @@ class Initialization:
         """
         return self.get_expanded_hemodynamic_parameter_prior_distributions(n_node)['mean']
 
-    def randomly_generate_hemodynamic_parameters(self, n_node, deviation_constraint=1):
+    def randomly_generate_hemodynamic_parameters(self, n_node, deviation_constraint=None):
         """
         Get random hemodynamic parameters, sampled from prior distribution.
         The sample range is constrained to mean +/- deviation_constraint * standard_deviation
@@ -205,6 +219,8 @@ class Initialization:
         :return: a pandas data frame, containing hemodynamic parameters for all the nodes,
                  and optionally, normalized standard deviation.
         """
+        deviation_constraint = deviation_constraint or self.deviation_constraint
+
         def sample_hemodynamic_parameters(hemodynamic_parameters_mean, hemodynamic_parameters_std,
                                           deviation_constraint):
             # sample a subject from hemodynamic parameter distribution
@@ -226,22 +242,24 @@ class Initialization:
                     else:
                         pass
             return h_para
+
         temp = self.get_expanded_hemodynamic_parameter_prior_distributions(n_node)
         hemodynamic_parameters_mean = temp['mean']
         hemodynamic_parameters_variance = temp['std']
         h_para = sample_hemodynamic_parameters(hemodynamic_parameters_mean,
-                                                       hemodynamic_parameters_variance,
-                                                       deviation_constraint)
+                                               hemodynamic_parameters_variance,
+                                               deviation_constraint)
         return h_para
 
-    def check_hemodynamic_parameters(self, hemodynamic_parameters, check_statistics='deviation'):
+    def check_hemodynamic_parameters(self, hemodynamic_parameters, h_parameter_check_statistics=None):
         """
         For each hemodynamic parameter, check whether it is sampled properly.
         :param hemodynamic_parameters: a pandas.dataframe, containing sampled hemodynamic parameters
-        :param check_statistics: specify which kind of statistic to check,
+        :param h_parameter_check_statistics: specify which kind of statistic to check,
                it takes value in {'deviation', 'pdf'}
         :return: a pandas.dataframe, containing checking statistics
         """
+        h_parameter_check_statistics = h_parameter_check_statistics or self.h_parameter_check_statistics
         n_node = hemodynamic_parameters.shape[0]
         temp = self.get_expanded_hemodynamic_parameter_prior_distributions(n_node)
         h_mean = temp['mean']
@@ -264,14 +282,14 @@ class Initialization:
                     else:
                         raise ValueError('Hemodynamic parameter sampling goes wrong!')
 
-        if check_statistics == 'deviation':
+        if h_parameter_check_statistics == 'deviation':
             return h_devi
-        elif check_statistics == 'pdf':
+        elif h_parameter_check_statistics == 'pdf':
             return h_pdf
         else:
-            raise ValueError('Improper check_statistics value!')
+            raise ValueError('Improper h_parameter_check_statistics value!')
 
-    def if_proper_hemodynamic_parameters(self, hemodynamic_parameters, deviation_constraint=1):
+    def if_proper_hemodynamic_parameters(self, hemodynamic_parameters, deviation_constraint=None):
         """
         Check if given hemodynamic parameters are within deviation constraint.
         If yes, return True; otherwise, throw error
@@ -280,7 +298,8 @@ class Initialization:
         say if deviation_constraint=1, parameter with +/- one normalized deviation is acceptable
         :return: True or Error
         """
-        h_stat = self.check_hemodynamic_parameters(hemodynamic_parameters, check_statistics='deviation')
+        deviation_constraint = deviation_constraint or self.deviation_constraint
+        h_stat = self.check_hemodynamic_parameters(hemodynamic_parameters, h_parameter_check_statistics='deviation')
         max_deviation = abs(h_stat).values.max()
         if max_deviation <= deviation_constraint:
             return True
@@ -295,15 +314,13 @@ class Initialization:
         """
         return np.zeros(n_node)
 
-    def sample_initial_neural_state(self, n_node, low=0, high=0.4):
+    def sample_initial_neural_state(self, n_node):
         """
         Sample initial neural state. The distribution is set by experience.
         :param n_node: number of nodes (brain areas)
-        :param low: lower bound of uniform distribution
-        :param high: higher bound of uniform distribution
         :return: sampled initial neural state
         """
-        return np.random.uniform(low, high, size=n_node)
+        return np.random.uniform(self.x_init_low, self.x_init_high, size=n_node)
 
     def set_initial_hemodynamic_state_as_inactivated(self, n_node):
         """
@@ -322,17 +339,8 @@ class Initialization:
         :return: array of initial hemodynamic state
         """
         h_state_initial = np.ones((n_node, 4))
-        h_state_initial[:, 0] = np.random.uniform(low=-0.3, high=0.3, size=n_node)
-        h_state_initial[:, 1] = np.random.uniform(low=0.8, high=1.4, size=n_node)
-        h_state_initial[:, 2] = np.random.uniform(low=0.8, high=1.4, size=n_node)
-        h_state_initial[:, 3] = np.random.uniform(low=0.6, high=1.2, size=n_node)
+        h_state_initial[:, 0] = np.random.uniform(low=self.s_init_low, high=self.s_init_high, size=n_node)
+        h_state_initial[:, 1] = np.random.uniform(low=self.f_init_low, high=self.f_init_high, size=n_node)
+        h_state_initial[:, 2] = np.random.uniform(low=self.v_init_low, high=self.v_init_high, size=n_node)
+        h_state_initial[:, 3] = np.random.uniform(low=self.q_init_low, high=self.q_init_high, size=n_node)
         return h_state_initial
-
-
-
-
-
-
-
-
-

@@ -18,22 +18,9 @@ class Initialization_tests(unittest.TestCase):
         if_print = False
         n_test = 10
         for n in range(n_test):
-            size = random.randint(3, 10)
-            A = self.utl.randomly_generate_A_matrix(size)
-            w, v = np.linalg.eig(A)
-            if if_print:
-                print('created A matrix:')
-                print(A)
-                print('max real part = ' + str(max(w.real)))
-            self.assertTrue(max(w) < 0, 'eigenvalues of A are not all negtive')
-
-    def test_randomly_generate_sparse_A_matrix(self):
-        if_print = False
-        n_test = 10
-        for n in range(n_test):
             n_node = random.randint(3, 10)
             sparse_level = random.random()
-            A = self.utl.randomly_generate_sparse_A_matrix(n_node, sparse_level)
+            A = self.utl.randomly_generate_A_matrix(n_node, sparse_level)
             w, v = np.linalg.eig(A)
             if if_print:
                 print('created A matrix:')
