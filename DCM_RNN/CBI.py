@@ -11,6 +11,14 @@ unified states representation:
 state[i_region][i_state][i_time]
 '''
 
+
+class Project():
+    def plan_an_experiment(self):
+        pass
+
+
+
+
 class configure_a_scanner:
 
 	def __init__(self, t_delta=None,n_stimuli=None):
@@ -43,7 +51,7 @@ class configure_a_scanner:
 	
 	###############################
 	# function definition
-	def create_stimulus(self,n_stimuli=None,n_time_point=None,u_probability=None,\
+	def create_stimulus(self,n_stimuli=None,n_time_point=None,u_probability=None,
 		n_exitation=None,n_blank_interval=None):
 		# create a random input u
 		n_stimuli = n_stimuli or self.n_stimuli

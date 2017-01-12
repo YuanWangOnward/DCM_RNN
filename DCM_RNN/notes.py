@@ -1,21 +1,25 @@
 # parameters/settings need to initiate a subject and an experiment
 parameters = {}
 category = {
+# set by plan_an_experiment
 'if_random_neural_parameter': 'flag',
 'if_random_hemodynamic_parameter': 'flag',
 'if_random_x_state_initial': 'flag',
 'if_random_h_state_initial': 'flag',
+'if_random_stimuli': 'flag',
 
 'n_node': 'hyper',
 'n_stimuli': 'hyper',
 't_delta': 'hyper',  # used for approximate differential equations, in second
 't_scan': 'hyper',  # total scan time in second
 'n_time_point': 'hyper',  # total number of time points of a scan
-
 'n_step': 'hyper',  # number of truncated back propagation steps
 'learning_rate': 'hyper',  # used by tensorflow optimization operation
-
 'sparse_level': 'hyper',  # 'A' matrix sparsity, used to generate sparse A
+'u_XXX': 'hyper',  # TBA, parameters needed to generate sitimuli
+'u': 'input',  # input stimuli
+
+# set by recruiting a subject
 'A': 'neural',
 'B': 'neural',
 'C': 'neural',
@@ -35,25 +39,43 @@ category = {
 'r0': 'hemodynamic',
 'theta0': 'hemodynamic',
 
+'Whh': 'hemodynamic',
+'Whx': 'hemodynamic',
+'Wo': 'hemodynamic',
+'bh': 'hemodynamic',
+'bo': 'hemodynamic',
+
 'initial_x_state': 'neural',
 'initial_h_state': 'hemodynamic',
 
-'u': 'input'  # input stimuli
 }
 
 
 '''
 # package structure rearrangement
-Remove parameter_unit.py
-Move the functionalities of population.py into CBI.py.
-Remove population.py
-Use CBI.Project to maintain a study.
-CBI.Project.plan_a_experiment() to set up all experimental parameters, like n_node, n_stimuli, t_delta, and u
-CBI.Project.recruit_a_subject() to set up all parameters related to subjects, like ABC and hemodynamic parameters,
-    following experimental settings. It returns a Scan_ready_sheet object, containing all information needed for a scan.
-CBI.Scanner contains functionalities of a scanner.
-CBI.Scanner.make_a_scan() takes in a Scan_ready_sheet object and make a scan accordingly. It returns a Scan_result,
-    which contains the Scan_ready_sheet and u, x, h, and y readings.
-Scan_result is the object feeding into following analysis.
+Project -> Study -> Study.plan_a_experiment ->  Study.generate_stimuli ->
+-> Study.recruit_a_subject -> Study.make_scan_ready_sheets - scan_ready_sheet ->
+-> Scanner.make_a_scan() - scan_result -> Study.make_reports - reports -> further analysis
+
+Project: inherits from dict, containing the information common to all its studies.
+         Its dictionary items are studies; its attributes are used to store common information
+Project.create_a_study()  # create a study with project info, if not enough, more info is needed
+
+Study: inherits from Object
+Study.experiment_plan, dictionary
+Study.subjects, dictionary with subID
+Study.scan_ready_sheets, dictionary with all info needed for scanning
+Study.scan_results, dictionary, each key is subID, each value is a dictionary containing x, h, and y
+Srudy.reports, dictionary,  each key is subID, each value is a dictionary containing all above info
+
+Study.plan_a_experiment()
+Study.generate_stimuli()
+Study.recruit_a_subject()
+Study.make_scan_ready_sheets()  # used to join information of plan_a_experiment and recruit_a_subject
+Study.make_reports()  # used to join information of scan_ready_sheets and scan_results
+Study.show_experiment_plan()
+
+Scanner: inherits from Object
+Scanner.make_a_scan(), takes in scan_ready_sheets
 '''
 
