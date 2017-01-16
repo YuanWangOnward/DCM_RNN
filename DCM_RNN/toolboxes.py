@@ -589,7 +589,7 @@ class ParameterGraph:
         os.system('dot -Tpng documents/parameter_graph.gv -o documents/parameter_graph.png')
 
 
-class DataUnit(dict):
+class DataUnit(Initialization):
     """
     This class is used to ensure consistence and integrity of all data, but that takes a lot of efforts, so currently,
     it's used in a unsecured manner. Namely, DataUnit inherits dict and it key/value pair can be changed without other
@@ -620,8 +620,9 @@ class DataUnit(dict):
         self._secured_data['if_random_stimuli_number'] = if_random_stimuli_number
         self._secured_data['if_random_delta_t'] = if_random_delta_t
         self._secured_data['if_random_scan_time'] = if_random_scan_time
-        if True in self._secured_data.values():
-            self._secured_data['initializer'] = Initialization()
+        pg = ParameterGraph()
+        self.para_prerequisites = pg.para_forerunner
+
 
     def set(self, key, value):
         if key == 't_scan':
@@ -641,3 +642,65 @@ class DataUnit(dict):
                 raise ValueError('n_node cannot be set because if_random_node_number=True')
         else:
             raise ValueError(key + ' cannot be set.')
+
+    def abstract_flag(self, prerequisites):
+        """
+        Find if_random_ flag from the prerequisites of a parameter
+        :param prerequisites: a list of parameters
+        :return: 'no_prerequisite' if prerequisites is empty,
+                 'no_flag' if there is no flag in prerequisites,
+                 a flag name if there is a flag in prerequisites
+        """
+        if not prerequisites:
+            return 'no_prerequisite'
+        else:
+            temp = [s for s in prerequisites if 'if_random_' in s]
+            if len(temp) == 0:
+                return 'no_flag'
+            elif len(temp) == 1:
+                return temp[0]
+            else:
+                raise ValueError('Multiple flags found.')
+
+    def call_uniformed_assignment_api(self, parameter, value=None):
+        """
+        If a parameter has no prerequisites,
+            it should be assigned a value.
+        If a parameter has prerequisites and there is a if_random_ flag in its prerequisites:
+            If the flag is True, it should be randomly generated.
+            If the flag is False, a value should be given.
+        If a parameter has prerequisites and there isn't a if_random_ flag in its prerequisites:
+            it should be derived from its prerequisites.
+        :param parameter: the target variable to be assigned
+        :param value: if a value is needed for the assignment, use it
+        :return: null, it adds element into DataUnit._secured_data
+        """
+
+
+
+    def sample_stimuli_number(self, n_node, stimuli_node_ratio=None):
+        if self._secured_data['if_random_stimuli_number'] == True:
+            if 'n_node' in self._secured_data.keys():
+                n_stimuli = super().sample_stimuli_number(self._secured_data['n_node'])
+                self._secured_data['n_stimuli'] = n_stimuli
+            else:
+                raise ValueError('n_node has not be specified.')
+        else:
+            raise ValueError('if_random_stimuli_number is False, please call set() to specify connection matrices')
+
+
+    def randomly_initialize_connection_matrices(self):
+        if self._secured_data['if_random_neural_parameter'] == True:
+            if 'n_node' in self._secured_data.keys() and 'n_stimuli' in self._secured_data.keys():
+                connection_matrices = super().randomly_initialize_connection_matrices(
+                                                                                self._secured_data['n_node'],
+                                                                                self._secured_data['n_stimuli'])
+                self._secured_data.update(connection_matrices)
+            else:
+                raise ValueError('n_node or n_stimuli has not be specified.')
+        else:
+            raise ValueError('if_random_neural_parameter is False, please call set() to specify connection matrices')
+
+
+
+

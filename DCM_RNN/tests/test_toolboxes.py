@@ -60,13 +60,13 @@ class Initialization_tests(unittest.TestCase):
             nonzero_indexes = []
             nonzero_values = []
             for B_current in B:
-                nonzero_indexes_current = [index for index,value in enumerate(B_current.flatten()) if value != 0]
+                nonzero_indexes_current = [index for index, value in enumerate(B_current.flatten()) if value != 0]
                 nonzero_values_current = [value for value in B_current.flatten() if value != 0]
                 nonzero_indexes.extend(nonzero_indexes_current)
                 nonzero_values.extend(nonzero_values_current)
             if (len(nonzero_indexes) > 0):
                 self.assertTrue(len(nonzero_indexes) == len(set(nonzero_indexes)))
-                self.assertTrue(np.max(np.abs(nonzero_values))<=0.5)
+                self.assertTrue(np.max(np.abs(nonzero_values)) <= 0.5)
                 self.assertTrue(np.min(np.abs(nonzero_values)) >= 0.2)
 
     def test_get_hemodynamic_parameter_prior_distributions(self):
@@ -159,6 +159,7 @@ class ParameterGraph_tests(unittest.TestCase):
     def test_check_parameter_relation(self):
         self.assertTrue(self.pg.check_parameter_relation())
 
+
 class DataUnit_tests(unittest.TestCase):
     def setUp(self):
         self.du = toolboxes.DataUnit()
@@ -187,9 +188,29 @@ class DataUnit_tests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.du.set('t_scan', 400)
 
+    def test_randomly_initialize_connection_matrices(self):
+        with self.assertRaises(ValueError):
+            self.du.randomly_initialize_connection_matrices()
 
+        self.du._secured_data['if_random_neural_parameter'] = False
+        with self.assertRaises(ValueError):
+            self.du.randomly_initialize_connection_matrices()
 
-
+    def test_abstract_flag(self):
+        self.assertEqual(self.du.abstract_flag(['if_random_stimuli_number', 'n_node', 'initializer']),
+                         'if_random_stimuli_number',
+                         'fail to find the correct flag')
+        self.assertEqual(self.du.abstract_flag([]),
+                         'no_prerequisite',
+                         'fail to handle empty list')
+        self.assertEqual(self.du.abstract_flag(['n_node', 'initializer']),
+                         'no_flag',
+                         'fail to handle empty list')
+        with self.assertRaises(ValueError):
+            self.assertEqual(self.du.abstract_flag(['if_random_stimuli_number', 'n_node',
+                                                    'initializer', 'if_random_delta_t']),
+                             'no_flag',
+                             'fail to multiple flags')
 
 
 if __name__ == '__main__':
