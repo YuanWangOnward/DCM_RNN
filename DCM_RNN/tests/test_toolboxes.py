@@ -137,6 +137,12 @@ class Initialization_tests(unittest.TestCase):
             self.assertTrue(t_delta < self.utl.t_delta_high)
 
 
+    def test_sample_scan_time(self):
+        n_test = 10
+        for n in range(n_test):
+            scan_time = self.utl.sample_scan_time()
+            self.assertTrue(scan_time >= self.utl.scan_time_low)
+            self.assertTrue(scan_time < self.utl.scan_time_high)
 
 
 class ParameterGraph_tests(unittest.TestCase):
