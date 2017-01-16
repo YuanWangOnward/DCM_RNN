@@ -8,7 +8,8 @@ import os
 
 
 class Initialization:
-    def __init__(self, sparse_level=None, deviation_constraint=None, h_parameter_check_statistics=None,
+    def __init__(self,
+                 n_node_low=None, n_node_high=None,
                  x_init_low=None, x_init_high=None,
                  s_init_low=None, s_init_high=None,
                  f_init_low=None, f_init_high=None,
@@ -17,14 +18,19 @@ class Initialization:
                  A_off_diagonal_low=None, A_off_diagonal_high=None,
                  A_diagonal_low=None, A_diagonal_high=None,
                  A_generation_max_trial_number=None,
+                 sparse_level=None,
                  B_init_low=None, B_init_high=None,
                  B_non_zero_probability=None,
                  B_sign_probability=None,
-                 C_init_low=None, C_init_high=None
+                 C_init_low=None, C_init_high=None,
+                 deviation_constraint=None,
+                 h_parameter_check_statistics=None
                  ):
-        self.sparse_level = sparse_level or 0.5
-        self.deviation_constraint = deviation_constraint or 1
-        self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
+
+        self.n_node_low = n_node_low or 3
+        self.n_node_high = n_node_high or 11
+
+
         self.x_init_low = x_init_low or 0
         self.x_init_high = x_init_high or 0.4
         self.s_init_low = s_init_low or -0.3
@@ -41,6 +47,7 @@ class Initialization:
         self.A_diagonal_low = A_diagonal_low or -0.5
         self.A_diagonal_high = A_diagonal_high or 0
         self.A_generation_max_trial_number = A_generation_max_trial_number or 5000
+        self.sparse_level = sparse_level or 0.5
         self.B_init_low = B_init_low or 0.2
         self.B_init_high = B_init_high or 0.5
         self.B_non_zero_probability = B_non_zero_probability or 0.5
@@ -48,11 +55,22 @@ class Initialization:
         self.C_init_low = C_init_low or 0.5
         self.C_init_high = C_init_high or 1
 
+        self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
+        self.deviation_constraint = deviation_constraint or 1
         self.hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']
         self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3],
                                              self.hemo_parameter_keys)
         self.hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0.],
                                                  self.hemo_parameter_keys)
+
+    def sample_node_number(self):
+        """
+        :return: n_node: number of nodes (brain areas)
+        """
+        return np.random.randint(self.n_node_low, self.n_node_high)
+
+
+
 
     def randomly_initialize_connection_matrices(self, n_node, n_stimuli, sparse_level=None):
         """

@@ -113,6 +113,15 @@ class Initialization_tests(unittest.TestCase):
             temp = self.utl.if_proper_hemodynamic_parameters(h_para, deviation_constrain)
             self.assertTrue(temp, 'The given hemodynamic parameters are not qualified by given deviation_constraint')
 
+    def test_sample_node_number(self):
+        n_test = 10
+        for n in range(n_test):
+            n_node = self.utl.sample_node_number()
+            self.assertTrue((n_node >= self.utl.n_node_low))
+            self.assertTrue((n_node < self.utl.n_node_high))
+
+
+
 class ParameterGraph_tests(unittest.TestCase):
     def setUp(self):
         self.pg = toolboxes.ParameterGraph()
@@ -121,7 +130,9 @@ class ParameterGraph_tests(unittest.TestCase):
         del self.pg
 
     def test_generate_gv_file(self):
-        self.pg.generate_gv_file()
+        if_update_graph = False
+        if if_update_graph:
+            self.pg.generate_gv_file()
 
 if __name__ == '__main__':
     unittest.main()
