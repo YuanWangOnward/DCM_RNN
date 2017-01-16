@@ -6,6 +6,7 @@ import scipy as sp
 import scipy.stats
 import os
 
+
 class Initialization:
     def __init__(self, sparse_level=None, deviation_constraint=None, h_parameter_check_statistics=None,
                  x_init_low=None, x_init_high=None,
@@ -345,7 +346,7 @@ class Initialization:
         h_state_initial[:, 3] = np.random.uniform(low=self.q_init_low, high=self.q_init_high, size=n_node)
         return h_state_initial
 
-class ParameterGraph():
+class ParameterGraph:
     def __init__(self):
         self.para_forerunner = {
             # level zero
@@ -472,3 +473,40 @@ class ParameterGraph():
                 f.write(string)
             f.write("}")
         os.system('dot -Tpng documents/parameter_graph.gv -o documents/parameter_graph.png')
+
+class DataUnit(dict):
+    """
+    This class is used to ensure consistence and integrity of all data, but that takes a lot of efforts, so currently,
+    it's used in a unsecured manner. Namely, DataUnit inherits dict and it key/value pair can be changed without other
+    constraints, which means they might not be consistent.
+    A internal dictionary, _secured_data is a dictionary should only manipulated by internal methods. It's not
+    implemented currently but DataUnit should keep it structure so that this functionality can be added easily.
+    """
+    def __init__(self,
+                 if_random_neural_parameter=True,
+                 if_random_hemodynamic_parameter=True,
+                 if_random_x_state_initial=True,
+                 if_random_h_state_initial=True,
+                 if_random_stimuli=True,
+                 if_random_node_number=False,
+                 if_random_stimuli_number=True,
+                 if_random_delta_t=False,
+                 if_random_scan_time=False,
+                 ):
+        self._secured_data = []
+        self['if_random_neural_parameter'] = if_random_neural_parameter
+        self['if_random_hemodynamic_parameter'] = if_random_hemodynamic_parameter
+        self['if_random_x_state_initial'] = if_random_x_state_initial
+        self['if_random_h_state_initial'] = if_random_h_state_initial
+        self['if_random_stimuli'] = if_random_stimuli
+        self['if_random_node_number'] = if_random_node_number
+        self['if_random_stimuli_number'] = if_random_stimuli_number
+        self['if_random_delta_t'] = if_random_delta_t
+        self['if_random_scan_time'] = if_random_scan_time
+        if True in self.values():
+            self['initializer'] = Initialization()
+
+
+
+
+

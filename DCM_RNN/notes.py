@@ -55,7 +55,6 @@ category = {
 'initial_h_state': 'hemodynamic',
 
 }
-
 para_forerunner = {
 # level zero
 'if_random_neural_parameter': [],

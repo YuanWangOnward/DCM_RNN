@@ -2,7 +2,6 @@ import unittest
 import numpy as np
 from DCM_RNN import toolboxes
 import random
-import os
 import pandas as pd
 import scipy as sp
 import scipy.stats
