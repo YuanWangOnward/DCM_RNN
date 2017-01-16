@@ -10,6 +10,7 @@ import os
 class Initialization:
     def __init__(self,
                  n_node_low=None, n_node_high=None,
+                 stimuli_node_ratio=None,
                  x_init_low=None, x_init_high=None,
                  s_init_low=None, s_init_high=None,
                  f_init_low=None, f_init_high=None,
@@ -29,6 +30,7 @@ class Initialization:
 
         self.n_node_low = n_node_low or 3
         self.n_node_high = n_node_high or 11
+        self.stimuli_node_ratio = 1/3
 
 
         self.x_init_low = x_init_low or 0
@@ -68,6 +70,16 @@ class Initialization:
         :return: n_node: number of nodes (brain areas)
         """
         return np.random.randint(self.n_node_low, self.n_node_high)
+
+    def sample_stimuli_number(self, n_node, stimuli_node_ratio=None):
+        """
+        Return number of stimuli, n_stimuli is sampled from np.random.randint(1, 1 + int(n_node * stimuli_node_ratio))
+        :param n_node: number of nodes (brain areas)
+        :param stimuli_node_ratio: the max n_stimuli n_node ratio
+        :return: number of stimuli
+        """
+        stimuli_node_ratio = stimuli_node_ratio or self.stimuli_node_ratio
+        return np.random.randint(1, 1 + int(n_node * stimuli_node_ratio))
 
 
 

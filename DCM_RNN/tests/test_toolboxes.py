@@ -120,6 +120,15 @@ class Initialization_tests(unittest.TestCase):
             self.assertTrue((n_node >= self.utl.n_node_low))
             self.assertTrue((n_node < self.utl.n_node_high))
 
+    def test_sample_stimuli_number(self):
+        n_test = 10
+        for n in range(n_test):
+            n_node = self.utl.sample_node_number()
+            stimuli_node_ratio = self.utl.stimuli_node_ratio
+            n_stimuli = self.utl.sample_stimuli_number(n_node, stimuli_node_ratio)
+            self.assertTrue(n_stimuli >= 1)
+            self.assertTrue(n_stimuli <= int(stimuli_node_ratio * n_node))
+
 
 
 class ParameterGraph_tests(unittest.TestCase):
