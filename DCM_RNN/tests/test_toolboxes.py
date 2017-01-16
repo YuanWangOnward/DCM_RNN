@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from DCM_RNN import toolboxes
 import random
+import os
 import pandas as pd
 import scipy as sp
 import scipy.stats
@@ -113,6 +114,15 @@ class Initialization_tests(unittest.TestCase):
             temp = self.utl.if_proper_hemodynamic_parameters(h_para, deviation_constrain)
             self.assertTrue(temp, 'The given hemodynamic parameters are not qualified by given deviation_constraint')
 
+class ParameterGraph_tests(unittest.TestCase):
+    def setUp(self):
+        self.pg = toolboxes.ParameterGraph()
+
+    def tearDown(self):
+        del self.pg
+
+    def test_generate_gv_file(self):
+        self.pg.generate_gv_file()
 
 if __name__ == '__main__':
     unittest.main()

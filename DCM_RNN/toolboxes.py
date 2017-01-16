@@ -4,7 +4,7 @@ import pandas as pd
 import math as mth
 import scipy as sp
 import scipy.stats
-
+import os
 
 class Initialization:
     def __init__(self, sparse_level=None, deviation_constraint=None, h_parameter_check_statistics=None,
@@ -344,3 +344,131 @@ class Initialization:
         h_state_initial[:, 2] = np.random.uniform(low=self.v_init_low, high=self.v_init_high, size=n_node)
         h_state_initial[:, 3] = np.random.uniform(low=self.q_init_low, high=self.q_init_high, size=n_node)
         return h_state_initial
+
+class ParameterGraph():
+    def __init__(self):
+        self.para_forerunner = {
+            # level zero
+            'if_random_neural_parameter': [],
+            'if_random_hemodynamic_parameter': [],
+            'if_random_x_state_initial': [],
+            'if_random_h_state_initial': [],
+            'if_random_stimuli': [],
+            'if_random_node_number': [],
+            'if_random_stimuli_number': [],
+            'if_random_delta_t': [],
+            'if_random_scan_time': [],
+
+            # level one
+            'initializer': ['if_random_neural_parameter',
+                            'if_random_hemodynamic_parameter',
+                            'if_random_x_state_initial',
+                            'if_random_h_state_initial',
+                            'if_random_stimuli',
+                            'if_random_node_number',
+                            'if_random_stimuli_number',
+                            'if_random_delta_t',
+                            'if_random_scan_time'],
+
+            # level two
+            'n_node': ['if_random_node_number', 'initializer'],
+            't_delta': ['if_random_delta_t', 'initializer'],
+            't_scan': ['if_random_scan_time', 'initializer'],
+
+            # level three
+            'n_time_point': ['t_scan', 't_delta'],
+            'n_stimuli': ['if_random_stimuli_number', 'n_node', 'initializer'],
+
+            'u': ['if_random_stimuli',
+                  'n_stimuli',
+                  'n_time_point',
+                  'initializer'],
+
+            'A': ['t_delta',
+                  'if_random_neural_parameter',
+                  'n_node',
+                  'initializer'],
+            'B': ['if_random_neural_parameter',
+                  'n_node',
+                  'n_stimuli',
+                  'initializer'],
+            'C': ['if_random_neural_parameter',
+                  'n_node',
+                  'n_stimuli',
+                  'initializer'],
+
+            'alpha': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'E0':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'k':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'gamma':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'tao':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'epsilon':['n_node','if_random_hemodynamic_parameter', 'initializer'],
+            'V0':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'TE':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'r0':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'theta0':['n_node' ,'if_random_hemodynamic_parameter', 'initializer'],
+            # they are all put in
+            'hemodynamic_parameter': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+
+            'initial_x_state': ['n_node', 'if_random_x_state_initial', 'initializer'],
+            'initial_h_state': ['n_node', 'if_random_h_state_initial', 'initializer'],
+
+            # level four, these matrices should never be assigned a value directly,
+            # Use up level variables to generate them
+            'Wxx': ['if_random_neural_parameter',
+                    'n_node',
+                    'A'],
+            'Wxxu': ['if_random_neural_parameter',
+                     'n_node',
+                     'n_stimuli',
+                     'B'],  # 'B' matrices equivalence in DCM_RNN model
+            'Wx': ['if_random_neural_parameter',
+                    'n_node',
+                    'n_stimuli',
+                    'C'],  # 'C' matrix equivalence in DCM_RNN model
+
+            'Whh': ['hemodynamic_parameter', 't_delta'],
+            'Whx': ['hemodynamic_parameter', 't_delta'],
+            'bh': ['hemodynamic_parameter', 't_delta'],
+            'Wo': ['hemodynamic_parameter'],
+            'bo': ['hemodynamic_parameter'],
+
+
+            # not necessary before estimation
+            'n_backpro': [],  # number of truncated back propagation steps
+            'learning_rate': [],  # used by tensorflow optimization operation
+        }
+        self.substitute_dictionary = {
+            'alpha': 'hemodynamic_parameter',
+            'E0': 'hemodynamic_parameter',
+            'k': 'hemodynamic_parameter',
+            'gamma': 'hemodynamic_parameter',
+            'tao': 'hemodynamic_parameter',
+            'epsilon': 'hemodynamic_parameter',
+            'V0': 'hemodynamic_parameter',
+            'TE': 'hemodynamic_parameter',
+            'r0': 'hemodynamic_parameter',
+            'theta0': 'hemodynamic_parameter'
+        }
+
+    def generate_gv_file(self):
+        with open('documents/parameter_graph.gv', 'w') as f:
+            f.write("digraph G {\n")
+            f.write("          splines=ortho;\n")
+            f.write("          rankdir = \"LR\";\n")
+            f.write("          node[fontsize=24];\n")
+            for key, value in self.para_forerunner.items():
+                if not value:
+                    # value is empty
+                    string = "          " + key + ";\n"
+                else:
+                    # value is not empty
+                    string = ""
+                    for val in value:
+                        if key not in self.substitute_dictionary.keys():
+                            string = string + "          " + val + " -> " + key + ";\n"
+                        else:
+                            string = string + "          " + val + " -> " + self.substitute_dictionary[key] + ";\n"
+                f.write(string)
+            f.write("}")
+        os.system('dot -Tpng documents/parameter_graph.gv -o documents/parameter_graph.png')
