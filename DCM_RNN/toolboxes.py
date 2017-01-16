@@ -98,9 +98,6 @@ class Initialization:
         """
         return np.random.uniform(self.scan_time_low, self.scan_time_high)
 
-
-
-
     def randomly_initialize_connection_matrices(self, n_node, n_stimuli, sparse_level=None):
         """
         Generate a set of matrices for neural level equation x'=Ax+\sigma(xBu)+Cu.
@@ -540,18 +537,40 @@ class DataUnit(dict):
                  if_random_delta_t=False,
                  if_random_scan_time=False,
                  ):
-        self._secured_data = []
-        self['if_random_neural_parameter'] = if_random_neural_parameter
-        self['if_random_hemodynamic_parameter'] = if_random_hemodynamic_parameter
-        self['if_random_x_state_initial'] = if_random_x_state_initial
-        self['if_random_h_state_initial'] = if_random_h_state_initial
-        self['if_random_stimuli'] = if_random_stimuli
-        self['if_random_node_number'] = if_random_node_number
-        self['if_random_stimuli_number'] = if_random_stimuli_number
-        self['if_random_delta_t'] = if_random_delta_t
-        self['if_random_scan_time'] = if_random_scan_time
-        if True in self.values():
+        self._secured_data = {}
+        self._secured_data['if_random_neural_parameter'] = if_random_neural_parameter
+        self._secured_data['if_random_hemodynamic_parameter'] = if_random_hemodynamic_parameter
+        self._secured_data['if_random_x_state_initial'] = if_random_x_state_initial
+        self._secured_data['if_random_h_state_initial'] = if_random_h_state_initial
+        self._secured_data['if_random_stimuli'] = if_random_stimuli
+        self._secured_data['if_random_node_number'] = if_random_node_number
+        self._secured_data['if_random_stimuli_number'] = if_random_stimuli_number
+        self._secured_data['if_random_delta_t'] = if_random_delta_t
+        self._secured_data['if_random_scan_time'] = if_random_scan_time
+        if True in self._secured_data.values():
             self['initializer'] = Initialization()
+
+    def set(self, key, value):
+        if key == 't_scan':
+            if self._secured_data['if_random_scan_time'] == False:
+                self._secured_data['t_scan'] = value
+            else:
+                raise ValueError('t_scan cannot be set because if_random_scan_time=True')
+        elif key == 't_delta':
+            if self._secured_data['if_random_delta_t'] == False:
+                self._secured_data['t_delta'] = value
+            else:
+                raise ValueError('t_delta cannot be set because if_random_delta_t=True')
+        elif key == 'n_node':
+            if self._secured_data['if_random_node_number'] == False:
+                self._secured_data['n_node'] = value
+            else:
+                raise ValueError('n_node cannot be set because if_random_node_number=True')
+        else:
+            raise ValueError(key + ' cannot be set.')
+
+
+
 
 
 

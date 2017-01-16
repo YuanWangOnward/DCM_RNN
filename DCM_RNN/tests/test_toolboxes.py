@@ -136,7 +136,6 @@ class Initialization_tests(unittest.TestCase):
             self.assertTrue(t_delta >= self.utl.t_delta_low)
             self.assertTrue(t_delta < self.utl.t_delta_high)
 
-
     def test_sample_scan_time(self):
         n_test = 10
         for n in range(n_test):
@@ -156,6 +155,39 @@ class ParameterGraph_tests(unittest.TestCase):
         if_update_graph = False
         if if_update_graph:
             self.pg.generate_gv_file()
+
+class DataUnit_tests(unittest.TestCase):
+    def setUp(self):
+        self.du = toolboxes.DataUnit()
+
+    def tearDown(self):
+        del self.du
+
+    def test_set(self):
+        self.du.set('t_delta', 0.2)
+        self.assertTrue((self.du._secured_data['t_delta']) == 0.2)
+        self.du.set('n_node', 3)
+        self.assertTrue((self.du._secured_data['n_node']) == 3)
+        self.du.set('t_scan', 400)
+        self.assertTrue((self.du._secured_data['t_scan']) == 400)
+        with self.assertRaises(ValueError):
+            self.du.set('u', 400)
+        with self.assertRaises(ValueError):
+            self.du.set('A', 400)
+        self.du._secured_data['if_random_delta_t'] = True
+        with self.assertRaises(ValueError):
+            self.du.set('t_delta', 0.2)
+        self.du._secured_data['if_random_node_number'] = True
+        with self.assertRaises(ValueError):
+            self.du.set('n_node', 3)
+        self.du._secured_data['if_random_scan_time'] = True
+        with self.assertRaises(ValueError):
+            self.du.set('t_scan', 400)
+
+
+
+
+
 
 if __name__ == '__main__':
     unittest.main()
