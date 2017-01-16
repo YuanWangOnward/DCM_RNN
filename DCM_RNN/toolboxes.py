@@ -621,7 +621,16 @@ class DataUnit(Initialization):
         self._secured_data['if_random_delta_t'] = if_random_delta_t
         self._secured_data['if_random_scan_time'] = if_random_scan_time
         pg = ParameterGraph()
-        self.para_prerequisites = pg.para_forerunner
+        self.para_prerequisites
+        # since DataUnit inherits from Initialization now, there is no need to add a instant of
+        # Initialization as an attribute of DataUnit. Remove 'initializer' from prerequisites list
+        for key, value in pg.para_forerunner.items():
+            if not value:
+                self.para_prerequisites[key] = value
+            else:
+                if 'initializer' in value:
+                    value.remove('initializer')
+                self.para_prerequisites[key] = value
 
 
     def set(self, key, value):
@@ -647,16 +656,15 @@ class DataUnit(Initialization):
         """
         Find if_random_ flag from the prerequisites of a parameter
         :param prerequisites: a list of parameters
-        :return: 'no_prerequisite' if prerequisites is empty,
-                 'no_flag' if there is no flag in prerequisites,
+        :return: None, if prerequisites is empty, or there is no flag in prerequisites
                  a flag name if there is a flag in prerequisites
         """
         if not prerequisites:
-            return 'no_prerequisite'
+            return None
         else:
             temp = [s for s in prerequisites if 'if_random_' in s]
             if len(temp) == 0:
-                return 'no_flag'
+                return None
             elif len(temp) == 1:
                 return temp[0]
             else:
@@ -675,6 +683,7 @@ class DataUnit(Initialization):
         :param value: if a value is needed for the assignment, use it
         :return: null, it adds element into DataUnit._secured_data
         """
+
 
 
 

@@ -201,10 +201,10 @@ class DataUnit_tests(unittest.TestCase):
                          'if_random_stimuli_number',
                          'fail to find the correct flag')
         self.assertEqual(self.du.abstract_flag([]),
-                         'no_prerequisite',
+                         None,
                          'fail to handle empty list')
         self.assertEqual(self.du.abstract_flag(['n_node', 'initializer']),
-                         'no_flag',
+                         None,
                          'fail to handle empty list')
         with self.assertRaises(ValueError):
             self.assertEqual(self.du.abstract_flag(['if_random_stimuli_number', 'n_node',
