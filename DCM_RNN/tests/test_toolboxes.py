@@ -152,7 +152,7 @@ class ParameterGraph_tests(unittest.TestCase):
         del self.pg
 
     def test_generate_gv_file(self):
-        if_update_graph = False
+        if_update_graph = True
         if if_update_graph:
             self.pg.generate_gv_file()
 

@@ -546,15 +546,32 @@ class ParameterGraph:
                     raise ValueError(key + ' parameter graph error')
         return True
 
-
-
-
     def generate_gv_file(self):
         with open('documents/parameter_graph.gv', 'w') as f:
             f.write("digraph G {\n")
             f.write("          splines=ortho;\n")
             f.write("          rankdir = \"LR\";\n")
             f.write("          node[fontsize=24];\n")
+
+            # level hierarchy
+            f.write("          {\n")
+            f.write("          node [shape=plaintext fontsize=36];\n")
+            sorted_level_keys = sorted(self.para_level.keys())
+            for key in sorted_level_keys:
+                if key != sorted_level_keys[-1]:
+                    f.write("          " + key + " -> \n")
+                else:
+                    f.write("          " + key + "\n")
+            f.write("          }\n")
+
+            # same rank
+            for key, value in self.para_level.items():
+                f.write("          {rank = same;\n")
+                for val in value:
+                    f.write("          " + val + ";\n")
+                f.write("          }\n")
+
+            # relation edges
             for key, value in self.para_forerunner.items():
                 if not value:
                     # value is empty
