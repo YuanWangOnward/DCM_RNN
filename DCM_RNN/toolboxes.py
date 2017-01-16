@@ -11,6 +11,7 @@ class Initialization:
     def __init__(self,
                  n_node_low=None, n_node_high=None,
                  stimuli_node_ratio=None,
+                 t_delta_low=None, t_delta_high=None,
                  x_init_low=None, x_init_high=None,
                  s_init_low=None, s_init_high=None,
                  f_init_low=None, f_init_high=None,
@@ -30,8 +31,9 @@ class Initialization:
 
         self.n_node_low = n_node_low or 3
         self.n_node_high = n_node_high or 11
-        self.stimuli_node_ratio = 1/3
-
+        self.stimuli_node_ratio = stimuli_node_ratio or 1/3
+        self.t_delta_low = t_delta_low or 0.05
+        self.t_delta_high = t_delta_high or 0.5
 
         self.x_init_low = x_init_low or 0
         self.x_init_high = x_init_high or 0.4
@@ -80,6 +82,12 @@ class Initialization:
         """
         stimuli_node_ratio = stimuli_node_ratio or self.stimuli_node_ratio
         return np.random.randint(1, 1 + int(n_node * stimuli_node_ratio))
+
+    def sample_t_delta(self):
+        """
+        :return: t_delta: time interval for approximate differential equations
+        """
+        return np.random.uniform(self.t_delta_low, self.t_delta_high)
 
 
 
