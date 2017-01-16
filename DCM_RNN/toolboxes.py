@@ -5,6 +5,7 @@ import math as mth
 import scipy as sp
 import scipy.stats
 import os
+import warnings
 
 
 class Initialization:
@@ -621,7 +622,7 @@ class DataUnit(Initialization):
         self._secured_data['if_random_delta_t'] = if_random_delta_t
         self._secured_data['if_random_scan_time'] = if_random_scan_time
         pg = ParameterGraph()
-        self.para_prerequisites
+        self.para_prerequisites = {}
         # since DataUnit inherits from Initialization now, there is no need to add a instant of
         # Initialization as an attribute of DataUnit. Remove 'initializer' from prerequisites list
         for key, value in pg.para_forerunner.items():
@@ -631,7 +632,6 @@ class DataUnit(Initialization):
                 if 'initializer' in value:
                     value.remove('initializer')
                 self.para_prerequisites[key] = value
-
 
     def set(self, key, value):
         if key == 't_scan':
@@ -683,6 +683,45 @@ class DataUnit(Initialization):
         :param value: if a value is needed for the assignment, use it
         :return: null, it adds element into DataUnit._secured_data
         """
+        prerequisites = self.para_prerequisites[parameter]
+        if not prerequisites:
+            if value != None:
+                self._secured_data[parameter] = value
+            else:
+                raise ValueError("Please specify a value for " + parameter)
+        else:
+            # have prerequisites
+            flag = self.abstract_flag(prerequisites)
+            if flag == None:
+                # without flag
+                if value != None:
+                    warnings.warn(parameter + "should not be spesified manually, value is ignored.")
+                prerequisites_check = [para in self._secured_data.keys() for para in prerequisites]
+                if False in prerequisites_check:
+                    not_satisfied_prerequistes = [prerequisites for val in prerequisites_check if not val]
+                    raise ValueError(parameter + " cannot be assigned because the following prerequisites have not be "
+                                     + "assigned: " + not_satisfied_prerequistes)
+                else:
+                    # if all prerequisites have been assigned, generate values
+                    #
+                    pass
+            else:
+                # with flag
+                if self._secured_data[flag] == True:
+                    # generate randomly
+                    # check prerequisites
+                    if 'n_node' in self._secured_data.keys():
+                        n_stimuli = super().sample_stimuli_number(self._secured_data['n_node'])
+                        self._secured_data['n_stimuli'] = n_stimuli
+                    else:
+                        raise ValueError('n_node has not be specified.')
+                else:
+                    # assign a value
+                    if value == None:
+                        raise ValueError(parameter + " needs a value.")
+                    else:
+                        self._secured_data[parameter] = value
+
 
 
 
@@ -697,19 +736,14 @@ class DataUnit(Initialization):
         else:
             raise ValueError('if_random_stimuli_number is False, please call set() to specify connection matrices')
 
-
     def randomly_initialize_connection_matrices(self):
         if self._secured_data['if_random_neural_parameter'] == True:
             if 'n_node' in self._secured_data.keys() and 'n_stimuli' in self._secured_data.keys():
                 connection_matrices = super().randomly_initialize_connection_matrices(
-                                                                                self._secured_data['n_node'],
-                                                                                self._secured_data['n_stimuli'])
+                    self._secured_data['n_node'],
+                    self._secured_data['n_stimuli'])
                 self._secured_data.update(connection_matrices)
             else:
                 raise ValueError('n_node or n_stimuli has not be specified.')
         else:
             raise ValueError('if_random_neural_parameter is False, please call set() to specify connection matrices')
-
-
-
-
