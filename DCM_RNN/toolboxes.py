@@ -32,10 +32,10 @@ class Initialization:
 
         self.n_node_low = n_node_low or 3
         self.n_node_high = n_node_high or 11
-        self.stimuli_node_ratio = stimuli_node_ratio or 1/3
+        self.stimuli_node_ratio = stimuli_node_ratio or 1 / 3
         self.t_delta_low = t_delta_low or 0.05
         self.t_delta_high = t_delta_high or 0.5
-        self.scan_time_low = scan_time_low or 3*60  # in second
+        self.scan_time_low = scan_time_low or 3 * 60  # in second
         self.scan_time_high = scan_time_high or 10 * 60  # in second
 
         self.x_init_low = x_init_low or 0
@@ -390,6 +390,7 @@ class Initialization:
         h_state_initial[:, 3] = np.random.uniform(low=self.q_init_low, high=self.q_init_high, size=n_node)
         return h_state_initial
 
+
 class ParameterGraph:
     def __init__(self):
         self.para_forerunner = {
@@ -443,15 +444,15 @@ class ParameterGraph:
                   'initializer'],
 
             'alpha': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'E0':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'k':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'gamma':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'tao':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'epsilon':['n_node','if_random_hemodynamic_parameter', 'initializer'],
-            'V0':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'TE':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'r0':['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'theta0':['n_node' ,'if_random_hemodynamic_parameter', 'initializer'],
+            'E0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'k': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'gamma': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'tao': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'epsilon': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'V0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'TE': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'r0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            'theta0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
             # they are all put in
             'hemodynamic_parameter': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
 
@@ -468,9 +469,9 @@ class ParameterGraph:
                      'n_stimuli',
                      'B'],  # 'B' matrices equivalence in DCM_RNN model
             'Wx': ['if_random_neural_parameter',
-                    'n_node',
-                    'n_stimuli',
-                    'C'],  # 'C' matrix equivalence in DCM_RNN model
+                   'n_node',
+                   'n_stimuli',
+                   'C'],  # 'C' matrix equivalence in DCM_RNN model
 
             'Whh': ['hemodynamic_parameter', 't_delta'],
             'Whx': ['hemodynamic_parameter', 't_delta'],
@@ -478,10 +479,34 @@ class ParameterGraph:
             'Wo': ['hemodynamic_parameter'],
             'bo': ['hemodynamic_parameter'],
 
-
             # not necessary before estimation
             'n_backpro': [],  # number of truncated back propagation steps
             'learning_rate': [],  # used by tensorflow optimization operation
+        }
+        self.para_level = {
+            'level_0': ['if_random_neural_parameter',
+                        'if_random_hemodynamic_parameter',
+                        'if_random_x_state_initial',
+                        'if_random_h_state_initial',
+                        'if_random_stimuli',
+                        'if_random_node_number',
+                        'if_random_stimuli_number',
+                        'if_random_delta_t',
+                        'if_random_scan_time',
+                        'n_backpro',
+                        'learning_rate'],
+            'level_1': ['initializer'],
+            'level_2': ['n_node', 't_delta', 't_scan'],
+            'level_3': ['n_time_point',
+                        'n_stimuli',
+                        'A',
+                        'hemodynamic_parameter',
+                        'initial_x_state',
+                        'initial_h_state'],
+            'level_4': ['u',
+                        'B', 'C',
+                        'Wxx', 'Whx', 'Whh', 'bh', 'Wo', 'bo'],
+            'level_5': ['Wxxu', 'Wx']
         }
         self.substitute_dictionary = {
             'alpha': 'hemodynamic_parameter',
@@ -495,6 +520,34 @@ class ParameterGraph:
             'r0': 'hemodynamic_parameter',
             'theta0': 'hemodynamic_parameter'
         }
+        self.check_parameter_relation()
+
+    def check_parameter_relation(self):
+        """
+        Check if para_forerunner and para_level are in consistence with each other, since they are hand-coded
+        which is prone to error
+        :return: True or raiseError
+        """
+
+        variable_level_map = {}
+        for key, value in self.para_level.items():
+            for val in value:
+                variable_level_map[val] = int(key[-1])
+        for key, value in self.para_forerunner.items():
+            if not value:
+                if variable_level_map[key] != 0:
+                    raise ValueError(key + ' parameter graph error')
+            else:
+                temp = [variable_level_map[val] for val in value]
+                max_temp = max(temp)
+                if key in ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']:
+                    key = 'hemodynamic_parameter'
+                if variable_level_map[key] <= max_temp:
+                    raise ValueError(key + ' parameter graph error')
+        return True
+
+
+
 
     def generate_gv_file(self):
         with open('documents/parameter_graph.gv', 'w') as f:
@@ -518,6 +571,7 @@ class ParameterGraph:
             f.write("}")
         os.system('dot -Tpng documents/parameter_graph.gv -o documents/parameter_graph.png')
 
+
 class DataUnit(dict):
     """
     This class is used to ensure consistence and integrity of all data, but that takes a lot of efforts, so currently,
@@ -526,6 +580,8 @@ class DataUnit(dict):
     A internal dictionary, _secured_data is a dictionary should only manipulated by internal methods. It's not
     implemented currently but DataUnit should keep it structure so that this functionality can be added easily.
     """
+    init = Initialization()
+
     def __init__(self,
                  if_random_neural_parameter=True,
                  if_random_hemodynamic_parameter=True,
@@ -548,7 +604,7 @@ class DataUnit(dict):
         self._secured_data['if_random_delta_t'] = if_random_delta_t
         self._secured_data['if_random_scan_time'] = if_random_scan_time
         if True in self._secured_data.values():
-            self['initializer'] = Initialization()
+            self._secured_data['initializer'] = Initialization()
 
     def set(self, key, value):
         if key == 't_scan':
@@ -568,11 +624,3 @@ class DataUnit(dict):
                 raise ValueError('n_node cannot be set because if_random_node_number=True')
         else:
             raise ValueError(key + ' cannot be set.')
-
-
-
-
-
-
-
-

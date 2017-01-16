@@ -156,6 +156,9 @@ class ParameterGraph_tests(unittest.TestCase):
         if if_update_graph:
             self.pg.generate_gv_file()
 
+    def test_check_parameter_relation(self):
+        self.assertTrue(self.pg.check_parameter_relation())
+
 class DataUnit_tests(unittest.TestCase):
     def setUp(self):
         self.du = toolboxes.DataUnit()
