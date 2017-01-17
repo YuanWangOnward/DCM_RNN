@@ -444,17 +444,18 @@ class ParameterGraph:
                   'n_stimuli',
                   'initializer'],
 
-            'alpha': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'E0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'k': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'gamma': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'tao': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'epsilon': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'V0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'TE': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'r0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
-            'theta0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            # 'alpha': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            # 'E0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            # 'k': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            # 'gamma': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            # 'tao': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            # 'epsilon': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            # 'V0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            # 'TE': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            # 'r0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
+            # 'theta0': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
             # they are all put in
+
             'hemodynamic_parameter': ['n_node', 'if_random_hemodynamic_parameter', 'initializer'],
 
             'initial_x_state': ['n_node', 'if_random_x_state_initial', 'initializer'],
@@ -462,17 +463,9 @@ class ParameterGraph:
 
             # level four, these matrices should never be assigned a value directly,
             # Use up level variables to generate them
-            'Wxx': ['if_random_neural_parameter',
-                    'n_node',
-                    'A'],
-            'Wxxu': ['if_random_neural_parameter',
-                     'n_node',
-                     'n_stimuli',
-                     'B'],  # 'B' matrices equivalence in DCM_RNN model
-            'Wx': ['if_random_neural_parameter',
-                   'n_node',
-                   'n_stimuli',
-                   'C'],  # 'C' matrix equivalence in DCM_RNN model
+            'Wxx': ['A', 't_delta'],
+            'Wxxu': ['B', 't_delta'],
+            'Wx': ['C', 't_delta'],  # 'C' matrix equivalence in DCM_RNN model
 
             'Whh': ['hemodynamic_parameter', 't_delta'],
             'Whx': ['hemodynamic_parameter', 't_delta'],
@@ -589,7 +582,6 @@ class ParameterGraph:
             f.write("}")
         os.system('dot -Tpng documents/parameter_graph.gv -o documents/parameter_graph.png')
 
-
 class DataUnit(Initialization):
     """
     This class is used to ensure consistence and integrity of all data, but that takes a lot of efforts, so currently,
@@ -611,6 +603,7 @@ class DataUnit(Initialization):
                  if_random_delta_t=False,
                  if_random_scan_time=False,
                  ):
+        super().__init__()
         self._secured_data = {}
         self._secured_data['if_random_neural_parameter'] = if_random_neural_parameter
         self._secured_data['if_random_hemodynamic_parameter'] = if_random_hemodynamic_parameter
@@ -626,31 +619,14 @@ class DataUnit(Initialization):
         # since DataUnit inherits from Initialization now, there is no need to add a instant of
         # Initialization as an attribute of DataUnit. Remove 'initializer' from prerequisites list
         for key, value in pg.para_forerunner.items():
-            if not value:
-                self.para_prerequisites[key] = value
-            else:
-                if 'initializer' in value:
-                    value.remove('initializer')
-                self.para_prerequisites[key] = value
-
-    def set(self, key, value):
-        if key == 't_scan':
-            if self._secured_data['if_random_scan_time'] == False:
-                self._secured_data['t_scan'] = value
-            else:
-                raise ValueError('t_scan cannot be set because if_random_scan_time=True')
-        elif key == 't_delta':
-            if self._secured_data['if_random_delta_t'] == False:
-                self._secured_data['t_delta'] = value
-            else:
-                raise ValueError('t_delta cannot be set because if_random_delta_t=True')
-        elif key == 'n_node':
-            if self._secured_data['if_random_node_number'] == False:
-                self._secured_data['n_node'] = value
-            else:
-                raise ValueError('n_node cannot be set because if_random_node_number=True')
-        else:
-            raise ValueError(key + ' cannot be set.')
+            if key != 'initializer':
+                if not value:
+                    self.para_prerequisites[key] = value
+                else:
+                    if 'initializer' in value:
+                        value.remove('initializer')
+                    self.para_prerequisites[key] = value
+        self.para_categories = self.categorize_parameters(self.para_prerequisites)
 
     def abstract_flag(self, prerequisites):
         """
@@ -668,21 +644,52 @@ class DataUnit(Initialization):
             elif len(temp) == 1:
                 return temp[0]
             else:
+                print(prerequisites)
                 raise ValueError('Multiple flags found.')
+
+    def categorize_parameters(self, para_prerequisites=None):
+        """
+        Base on prerequisites, put parameters in to 3 categories.
+        Category one: no prerequisites, should be assigned value directly
+        Category two: with prerequisite and has if_random_ flag in prerequisites, one needs to check flag before assign
+        Category three: with prerequisite and has no flag, should not be assigned directly, its value should be derived
+            by its prerequisites.
+        :param para_prerequisite: a dictionary recording prerequisite of each parameter
+        :return: a dictionary recording category of each parameter
+        """
+        para_categories = {}
+        para_prerequisites = para_prerequisites or self.para_prerequisites
+        for key, value in para_prerequisites.items():
+            if not value:
+                para_categories[key] = 1
+            else:
+                flag = self.abstract_flag(value)
+                if flag != None:
+                    para_categories[key] = 2
+                else:
+                    para_categories[key] = 3
+        return para_categories
 
     def call_uniformed_assignment_api(self, parameter, value=None):
         """
-        If a parameter has no prerequisites,
-            it should be assigned a value.
-        If a parameter has prerequisites and there is a if_random_ flag in its prerequisites:
-            If the flag is True, it should be randomly generated.
-            If the flag is False, a value should be given.
-        If a parameter has prerequisites and there isn't a if_random_ flag in its prerequisites:
-            it should be derived from its prerequisites.
+        Using different method to assign value to parameter according to the parameter category.
+        See details in categorize_parameters()
         :param parameter: the target variable to be assigned
         :param value: if a value is needed for the assignment, use it
         :return: null, it adds element into DataUnit._secured_data
         """
+        if parameter not in self.para_categories.keys():
+            raise ValueError(parameter + " is not a valid parameter name")
+        else:
+            category = self.para_categories[parameter]
+            if category == 1:
+                pass
+                # no prerequisites, should be assigned value directly
+
+
+
+
+
         prerequisites = self.para_prerequisites[parameter]
         if not prerequisites:
             if value != None:
@@ -724,7 +731,87 @@ class DataUnit(Initialization):
 
 
 
+    def check_prerequisites(self, parameter):
+        """
+        Check if all prerequisites of a parameter have been specified
+        :param parameter: target parameter
+        :return: True or raise error
+        """
+        prerequisites_check = [para in self._secured_data.keys() for para in self.para_prerequisites[parameter]]
+        if False in prerequisites_check:
+            not_satisfied_prerequisites = [self.para_prerequisites[parameter] for val in prerequisites_check if not val]
+            string = ''
+            for value in not_satisfied_prerequisites:
+                string = value + ' ' + string
+            raise ValueError(parameter + " cannot be assigned because the following prerequisites have not be "
+                             + "assigned: " + string)
+        else:
+            return True
 
+
+    def set_category_one_parameter(self, parameter, value):
+        """
+        Set value of category one parameter. Directly set.
+        :param parameter: name of parameter
+        :param value: value of parameter
+        :return: None
+        """
+        self._secured_data[parameter] = value
+
+    def set_category_two_parameter(self, parameter, value):
+        """
+        Set value of category two parameter.
+        All it prerequisites should be checked. For simplicity, only existance of prerequisites are checked here.
+        :param parameter: name of parameter
+        :param value: value of parameter
+        :return:
+        """
+        # check if all prerequisites exist
+        prerequisites_check = [para in self._secured_data.keys() for para in self.para_prerequisites[parameter]]
+        if False in prerequisites_check:
+            not_satisfied_prerequisites = [self.para_prerequisites[parameter] for val in prerequisites_check if not val]
+            string = ''
+            for value in not_satisfied_prerequisites:
+                string = value + ' ' + string
+            raise ValueError(parameter + " cannot be assigned because the following prerequisites have not be "
+                             + "assigned: " + string)
+        else:
+            flag = self.abstract_flag(self.para_prerequisites[parameter])
+            if self._secured_data[flag] == False:
+                if value != None:
+                    self._secured_data[parameter] = value
+                else:
+                    raise ValueError("A proper value is needed for  " + parameter)
+            else:
+                if value != None:
+                    warnings.warn(parameter + "should not be specified manually since " + flag + " is True. "
+                                                                                                 "Value is ignored.")
+                # here list all category two parameters and call according functions
+                pass
+
+    def set_category_three_parameter(self, parameter, value):
+        pass
+
+
+
+    def set(self, key, value):
+        if key == 't_scan':
+            if self._secured_data['if_random_scan_time'] == False:
+                self._secured_data['t_scan'] = value
+            else:
+                raise ValueError('t_scan cannot be set because if_random_scan_time=True')
+        elif key == 't_delta':
+            if self._secured_data['if_random_delta_t'] == False:
+                self._secured_data['t_delta'] = value
+            else:
+                raise ValueError('t_delta cannot be set because if_random_delta_t=True')
+        elif key == 'n_node':
+            if self._secured_data['if_random_node_number'] == False:
+                self._secured_data['n_node'] = value
+            else:
+                raise ValueError('n_node cannot be set because if_random_node_number=True')
+        else:
+            raise ValueError(key + ' cannot be set.')
 
     def sample_stimuli_number(self, n_node, stimuli_node_ratio=None):
         if self._secured_data['if_random_stimuli_number'] == True:
