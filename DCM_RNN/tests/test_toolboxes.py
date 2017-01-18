@@ -151,13 +151,49 @@ class ParameterGraph_tests(unittest.TestCase):
     def tearDown(self):
         del self.pg
 
-    def test_generate_gv_file(self):
+    def test_make_graph(self):
         if_update_graph = True
         if if_update_graph:
-            self.pg.generate_gv_file()
+            self.pg.make_graph()
 
     def test_check_parameter_relation(self):
         self.assertTrue(self.pg.check_parameter_relation())
+
+    def test_get_para_level_mapping(self):
+        if_print = False
+        temp = self.pg.get_para_level_mapping()
+        if if_print:
+            print(temp)
+
+    def test_abstract_flag(self):
+        self.assertEqual(self.pg.abstract_flag(['if_random_stimuli_number', 'n_node', 'initializer']),
+                         'if_random_stimuli_number',
+                         'fail to find the correct flag')
+        self.assertEqual(self.pg.abstract_flag([]),
+                         None,
+                         'fail to handle empty list')
+        self.assertEqual(self.pg.abstract_flag(['n_node', 'initializer']),
+                         None,
+                         'fail to handle empty list')
+        with self.assertRaises(ValueError):
+            self.assertEqual(self.pg.abstract_flag(['if_random_stimuli_number', 'n_node',
+                                                    'initializer', 'if_random_delta_t']),
+                             'no_flag',
+                             'fail to multiple flags')
+
+    def test_categorize_parameters(self):
+        if_print = False
+        category_para = self.pg.get_para_category_mapping()
+        self.pg.make_graph(self.pg.forerunner2descendant(self.pg.para_forerunner),
+                           "parameter_category_graph", rank_dict=category_para, rank_order=category_para.key_order)
+        if if_print:
+            print(category_para)
+
+    def test_get_para_category_mapping(self):
+        if_print = False
+        category_para = self.pg.get_para_category_mapping()
+        if if_print:
+            print(category_para)
 
 
 class DataUnit_tests(unittest.TestCase):
@@ -195,22 +231,6 @@ class DataUnit_tests(unittest.TestCase):
         self.du._secured_data['if_random_neural_parameter'] = False
         with self.assertRaises(ValueError):
             self.du.randomly_initialize_connection_matrices()
-
-    def test_abstract_flag(self):
-        self.assertEqual(self.du.abstract_flag(['if_random_stimuli_number', 'n_node', 'initializer']),
-                         'if_random_stimuli_number',
-                         'fail to find the correct flag')
-        self.assertEqual(self.du.abstract_flag([]),
-                         None,
-                         'fail to handle empty list')
-        self.assertEqual(self.du.abstract_flag(['n_node', 'initializer']),
-                         None,
-                         'fail to handle empty list')
-        with self.assertRaises(ValueError):
-            self.assertEqual(self.du.abstract_flag(['if_random_stimuli_number', 'n_node',
-                                                    'initializer', 'if_random_delta_t']),
-                             'no_flag',
-                             'fail to multiple flags')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,106 @@
+digraph G {
+          splines=ortho;
+          fontsize = 48;
+          rankdir = "LR";
+          node[fontsize=24];
+          edge[penwidth=2];
+          {
+          node [shape=plaintext fontsize=36];
+          1 -> 
+          2 -> 
+          3
+          }
+          {rank = same;
+          1;
+          if_random_hemodynamic_parameter;
+          if_random_node_number;
+          if_random_delta_t;
+          if_random_x_state_initial;
+          if_random_neural_parameter;
+          n_backpro;
+          if_random_scan_time;
+          if_random_stimuli_number;
+          initializer;
+          learning_rate;
+          if_random_h_state_initial;
+          if_random_stimuli;
+          }
+          {rank = same;
+          2;
+          initial_x_state;
+          initial_h_state;
+          n_stimuli;
+          B;
+          C;
+          u;
+          t_delta;
+          t_scan;
+          A;
+          n_node;
+          hemodynamic_parameter;
+          }
+          {rank = same;
+          3;
+          Wxxu;
+          Whh;
+          Wxx;
+          bh;
+          bo;
+          Whx;
+          n_time_point;
+          Wo;
+          Wx;
+          }
+          if_random_stimuli_number -> n_stimuli [color="#AE0538"];
+          if_random_node_number -> n_node [color="#5BE288"];
+          initializer -> t_scan [color="#5AEC28"];
+          initializer -> n_stimuli [color="#5AEC28"];
+          initializer -> B [color="#5AEC28"];
+          initializer -> C [color="#5AEC28"];
+          initializer -> u [color="#5AEC28"];
+          initializer -> t_delta [color="#5AEC28"];
+          initializer -> initial_h_state [color="#5AEC28"];
+          initializer -> A [color="#5AEC28"];
+          initializer -> n_node [color="#5AEC28"];
+          initializer -> hemodynamic_parameter [color="#5AEC28"];
+          initializer -> initial_x_state [color="#5AEC28"];
+          if_random_hemodynamic_parameter -> hemodynamic_parameter [color="#2E697E"];
+          A -> Wxx [color="#1A11A0"];
+          if_random_neural_parameter -> B [color="#ACCE1C"];
+          if_random_neural_parameter -> C [color="#ACCE1C"];
+          if_random_neural_parameter -> A [color="#ACCE1C"];
+          if_random_delta_t -> t_delta [color="#E3E14B"];
+          t_scan -> n_time_point [color="#5C7461"];
+          if_random_h_state_initial -> initial_h_state [color="#B5305E"];
+          if_random_x_state_initial -> initial_x_state [color="#7BB554"];
+          n_stimuli -> B [color="#30277E"];
+          n_stimuli -> C [color="#30277E"];
+          n_stimuli -> u [color="#30277E"];
+          B -> Wxxu [color="#B04A26"];
+          n_node -> n_stimuli [color="#8812EB"];
+          n_node -> B [color="#8812EB"];
+          n_node -> C [color="#8812EB"];
+          n_node -> initial_h_state [color="#8812EB"];
+          n_node -> A [color="#8812EB"];
+          n_node -> hemodynamic_parameter [color="#8812EB"];
+          n_node -> initial_x_state [color="#8812EB"];
+          C -> Wx [color="#AEE40B"];
+          if_random_scan_time -> t_scan [color="#27B512"];
+          if_random_stimuli -> u [color="#45C379"];
+          t_delta -> Wxxu [color="#183378"];
+          t_delta -> Whx [color="#183378"];
+          t_delta -> Whh [color="#183378"];
+          t_delta -> Wxx [color="#183378"];
+          t_delta -> A [color="#183378"];
+          t_delta -> bh [color="#183378"];
+          t_delta -> Wx [color="#183378"];
+          t_delta -> n_time_point [color="#183378"];
+          hemodynamic_parameter -> Whx [color="#E979A7"];
+          hemodynamic_parameter -> Wo [color="#E979A7"];
+          hemodynamic_parameter -> Whh [color="#E979A7"];
+          hemodynamic_parameter -> bh [color="#E979A7"];
+          hemodynamic_parameter -> bo [color="#E979A7"];
+          n_time_point -> u [color="#A824E6"];
+          labelloc = "t";
+          label = "parameter_category_graph";
+}

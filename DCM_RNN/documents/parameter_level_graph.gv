@@ -1,0 +1,118 @@
+digraph G {
+          splines=ortho;
+          fontsize = 48;
+          rankdir = "LR";
+          node[fontsize=24];
+          edge[penwidth=2];
+          {
+          node [shape=plaintext fontsize=36];
+          inherited -> 
+          level_0 -> 
+          level_1 -> 
+          level_2 -> 
+          level_3 -> 
+          level_4
+          }
+          {rank = same;
+          inherited;
+          initializer;
+          }
+          {rank = same;
+          level_0;
+          if_random_neural_parameter;
+          if_random_hemodynamic_parameter;
+          if_random_x_state_initial;
+          if_random_h_state_initial;
+          if_random_stimuli;
+          if_random_node_number;
+          if_random_stimuli_number;
+          if_random_delta_t;
+          if_random_scan_time;
+          n_backpro;
+          learning_rate;
+          }
+          {rank = same;
+          level_1;
+          n_node;
+          t_delta;
+          t_scan;
+          }
+          {rank = same;
+          level_2;
+          n_time_point;
+          n_stimuli;
+          A;
+          hemodynamic_parameter;
+          initial_x_state;
+          initial_h_state;
+          }
+          {rank = same;
+          level_3;
+          u;
+          B;
+          C;
+          Wxx;
+          Whx;
+          Whh;
+          bh;
+          Wo;
+          bo;
+          }
+          {rank = same;
+          level_4;
+          Wxxu;
+          Wx;
+          }
+          if_random_stimuli_number -> n_stimuli [color="#0A71B0"];
+          if_random_node_number -> n_node [color="#372A33"];
+          initializer -> t_scan [color="#C16281"];
+          initializer -> n_stimuli [color="#C16281"];
+          initializer -> B [color="#C16281"];
+          initializer -> C [color="#C16281"];
+          initializer -> u [color="#C16281"];
+          initializer -> t_delta [color="#C16281"];
+          initializer -> initial_h_state [color="#C16281"];
+          initializer -> A [color="#C16281"];
+          initializer -> n_node [color="#C16281"];
+          initializer -> hemodynamic_parameter [color="#C16281"];
+          initializer -> initial_x_state [color="#C16281"];
+          if_random_hemodynamic_parameter -> hemodynamic_parameter [color="#4837B7"];
+          A -> Wxx [color="#492BEB"];
+          if_random_neural_parameter -> B [color="#91B307"];
+          if_random_neural_parameter -> C [color="#91B307"];
+          if_random_neural_parameter -> A [color="#91B307"];
+          if_random_delta_t -> t_delta [color="#007312"];
+          t_scan -> n_time_point [color="#409E04"];
+          if_random_h_state_initial -> initial_h_state [color="#945275"];
+          if_random_x_state_initial -> initial_x_state [color="#99E523"];
+          n_stimuli -> B [color="#5E757B"];
+          n_stimuli -> C [color="#5E757B"];
+          n_stimuli -> u [color="#5E757B"];
+          B -> Wxxu [color="#138945"];
+          n_node -> n_stimuli [color="#93E44B"];
+          n_node -> B [color="#93E44B"];
+          n_node -> C [color="#93E44B"];
+          n_node -> initial_h_state [color="#93E44B"];
+          n_node -> A [color="#93E44B"];
+          n_node -> hemodynamic_parameter [color="#93E44B"];
+          n_node -> initial_x_state [color="#93E44B"];
+          C -> Wx [color="#701489"];
+          if_random_scan_time -> t_scan [color="#B35AA3"];
+          if_random_stimuli -> u [color="#A929B3"];
+          t_delta -> Wxxu [color="#B4C1BB"];
+          t_delta -> Whx [color="#B4C1BB"];
+          t_delta -> Whh [color="#B4C1BB"];
+          t_delta -> Wxx [color="#B4C1BB"];
+          t_delta -> A [color="#B4C1BB"];
+          t_delta -> bh [color="#B4C1BB"];
+          t_delta -> Wx [color="#B4C1BB"];
+          t_delta -> n_time_point [color="#B4C1BB"];
+          hemodynamic_parameter -> Whx [color="#CE3978"];
+          hemodynamic_parameter -> Wo [color="#CE3978"];
+          hemodynamic_parameter -> Whh [color="#CE3978"];
+          hemodynamic_parameter -> bh [color="#CE3978"];
+          hemodynamic_parameter -> bo [color="#CE3978"];
+          n_time_point -> u [color="#BC0619"];
+          labelloc = "t";
+          label = "parameter_level_graph";
+}

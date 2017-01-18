@@ -6,6 +6,54 @@ import scipy as sp
 import scipy.stats
 import os
 import warnings
+import collections
+import subprocess
+
+class OrderedDict(collections.OrderedDict):
+    def __init__(self, dictionary=None, key_order=None):
+        if dictionary==None and key_order==None:
+            super().__init__()
+        else:
+            super().__init__()
+            if isinstance(key_order, dict):
+                if set(dictionary.keys()) != set(key_order.keys()):
+                    raise ValueError('Dictionary and order do not match')
+                else:
+                    self.key_order = self.form_list_order(key_order)
+                    sorted_key_order = sorted(key_order.items(), key=lambda item: item[1])
+                    sorted_key_order = [item[0] for item in sorted_key_order]
+                    for key in sorted_key_order:
+                        self[key] = dictionary[key]
+            elif isinstance(key_order, list):
+                if set(dictionary.keys()) != set(key_order):
+                    raise ValueError('Dictionary and order do not match')
+                else:
+                    self.key_order = key_order
+                    for key in key_order:
+                        self[key] = dictionary[key]
+            else:
+                raise ValueError('Key order should be a list or dictionary')
+
+    def form_list_order(self, dict_order):
+        """
+        OrderDict accepts dictionary type order. Internally, it uses list order.
+        :param dict_order: {key:order} dictionary
+        :return: [keys] list
+        """
+        sorted_key_order = sorted(dict_order.items(), key=lambda item: item[1])
+        sorted_key_order = [item[0] for item in sorted_key_order]
+        return sorted_key_order
+
+    def get_order_index(self, key):
+        """
+        Find index in the order for given key.
+        :param key: key
+        :return: index
+        """
+        if key not in self.key_order:
+            raise ValueError(key + ' is not a valid element in key order')
+        else:
+            return self.key_order.index(key)
 
 
 class Initialization:
@@ -391,10 +439,12 @@ class Initialization:
         h_state_initial[:, 3] = np.random.uniform(low=self.q_init_low, high=self.q_init_high, size=n_node)
         return h_state_initial
 
-
 class ParameterGraph:
     def __init__(self):
         self.para_forerunner = {
+            # inherited
+            'initializer': [],
+
             # level zero
             'if_random_neural_parameter': [],
             'if_random_hemodynamic_parameter': [],
@@ -406,23 +456,12 @@ class ParameterGraph:
             'if_random_delta_t': [],
             'if_random_scan_time': [],
 
-            # level one
-            'initializer': ['if_random_neural_parameter',
-                            'if_random_hemodynamic_parameter',
-                            'if_random_x_state_initial',
-                            'if_random_h_state_initial',
-                            'if_random_stimuli',
-                            'if_random_node_number',
-                            'if_random_stimuli_number',
-                            'if_random_delta_t',
-                            'if_random_scan_time'],
-
-            # level two
+            #
             'n_node': ['if_random_node_number', 'initializer'],
             't_delta': ['if_random_delta_t', 'initializer'],
             't_scan': ['if_random_scan_time', 'initializer'],
 
-            # level three
+            #
             'n_time_point': ['t_scan', 't_delta'],
             'n_stimuli': ['if_random_stimuli_number', 'n_node', 'initializer'],
 
@@ -461,8 +500,6 @@ class ParameterGraph:
             'initial_x_state': ['n_node', 'if_random_x_state_initial', 'initializer'],
             'initial_h_state': ['n_node', 'if_random_h_state_initial', 'initializer'],
 
-            # level four, these matrices should never be assigned a value directly,
-            # Use up level variables to generate them
             'Wxx': ['A', 't_delta'],
             'Wxxu': ['B', 't_delta'],
             'Wx': ['C', 't_delta'],  # 'C' matrix equivalence in DCM_RNN model
@@ -477,7 +514,23 @@ class ParameterGraph:
             'n_backpro': [],  # number of truncated back propagation steps
             'learning_rate': [],  # used by tensorflow optimization operation
         }
-        self.para_level = {
+        # self.para_descendant = self.forerunner2descendant(self.para_forerunner)
+
+        self.para_substitute = {
+            'alpha': 'hemodynamic_parameter',
+            'E0': 'hemodynamic_parameter',
+            'k': 'hemodynamic_parameter',
+            'gamma': 'hemodynamic_parameter',
+            'tao': 'hemodynamic_parameter',
+            'epsilon': 'hemodynamic_parameter',
+            'V0': 'hemodynamic_parameter',
+            'TE': 'hemodynamic_parameter',
+            'r0': 'hemodynamic_parameter',
+            'theta0': 'hemodynamic_parameter'
+        }  # not in use now
+
+        level_para = {
+            'inherited': ['initializer'],
             'level_0': ['if_random_neural_parameter',
                         'if_random_hemodynamic_parameter',
                         'if_random_x_state_initial',
@@ -489,32 +542,82 @@ class ParameterGraph:
                         'if_random_scan_time',
                         'n_backpro',
                         'learning_rate'],
-            'level_1': ['initializer'],
-            'level_2': ['n_node', 't_delta', 't_scan'],
-            'level_3': ['n_time_point',
+            'level_1': ['n_node', 't_delta', 't_scan'],
+            'level_2': ['n_time_point',
                         'n_stimuli',
                         'A',
                         'hemodynamic_parameter',
                         'initial_x_state',
                         'initial_h_state'],
-            'level_4': ['u',
+            'level_3': ['u',
                         'B', 'C',
                         'Wxx', 'Whx', 'Whh', 'bh', 'Wo', 'bo'],
-            'level_5': ['Wxxu', 'Wx']
+            'level_4': ['Wxxu', 'Wx']
         }
-        self.substitute_dictionary = {
-            'alpha': 'hemodynamic_parameter',
-            'E0': 'hemodynamic_parameter',
-            'k': 'hemodynamic_parameter',
-            'gamma': 'hemodynamic_parameter',
-            'tao': 'hemodynamic_parameter',
-            'epsilon': 'hemodynamic_parameter',
-            'V0': 'hemodynamic_parameter',
-            'TE': 'hemodynamic_parameter',
-            'r0': 'hemodynamic_parameter',
-            'theta0': 'hemodynamic_parameter'
-        }
+        level_para_order = ['inherited', 'level_0', 'level_1', 'level_2', 'level_3', 'level_4']
+        self.level_para = OrderedDict(level_para, level_para_order)
+
         self.check_parameter_relation()
+
+    def forerunner2descendant(self, forerunner_mapping=None, key_order=None):
+        """
+        Transfer {parameter:[forerunners]} mapping  dictionary to
+        {parameter:[descendants]} mapping dictionary
+        :param forerunner_mapping: parameter:forerunners mapping dictionary
+        :param key_order: if an {key:order} dictionary is given, return an OderderDict, otherwise, a dict
+        :return: parameter:descendants mapping
+        """
+        forerunner_mapping = forerunner_mapping or self.para_forerunner
+        descendant_mapping = {}
+        for key, value in forerunner_mapping.items():
+            for val in value:
+                if val in descendant_mapping.keys():
+                    descendant_mapping[val].append(key)
+                else:
+                    descendant_mapping[val] = [key]
+        if key_order != None:
+            if set(key_order.keys()) != set(descendant_mapping.keys()):
+                raise ValueError('Given order does not match reversed dictionary.')
+            else:
+                return OrderedDict(descendant_mapping, key_order)
+        else:
+            return descendant_mapping
+
+    def level_para2para_level(self, level_para=None):
+        """
+        Transfer {level:[parameters]} mapping dictionary to
+        {parameter:level} mapping dictionary
+        :param level_para: {level:[parameters]} mapping dictionary
+        :return: {parameter:level} mapping dictionary, if level_para is an OrderedDict, return an OrderedDict
+        """
+        level_para = level_para or self.level_para
+        para_level_temp = self.forerunner2descendant(level_para)
+        if isinstance(level_para, OrderedDict):
+            para_level = OrderedDict()
+            key_order = []
+            for level in level_para.key_order:
+                for para, value in para_level_temp.items():
+                    if value[0] == level:
+                        para_level[para] = level
+                        key_order.append(para)
+            para_level.key_order = key_order
+        else:
+            para_level = {}
+            for key, value in para_level_temp.items():
+                if len(value) > 1:
+                    raise ValueError('One parameters cannot belong to more than one level.')
+                else:
+                    para_level[key] = value[0]
+        return para_level
+
+    def get_para_level_mapping(self, level_para=None):
+        """
+        Get {parameter:level} dictionary from {level:[parameters]} dictionary
+        :param level_para:{level:[parameters]} dictionary
+        :return: {parameter:level} dictionary
+        """
+        level_para = level_para or self.level_para
+        return self.level_para2para_level(level_para)
 
     def check_parameter_relation(self):
         """
@@ -524,65 +627,159 @@ class ParameterGraph:
         """
 
         variable_level_map = {}
-        for key, value in self.para_level.items():
+        for key, value in self.level_para.items():
             for val in value:
-                variable_level_map[val] = int(key[-1])
+                variable_level_map[val] = self.level_para.get_order_index(key)
         for key, value in self.para_forerunner.items():
             if not value:
-                if variable_level_map[key] != 0:
+                if variable_level_map[key] not in [0, 1]:
                     raise ValueError(key + ' parameter graph error')
             else:
                 temp = [variable_level_map[val] for val in value]
                 max_temp = max(temp)
-                if key in ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']:
-                    key = 'hemodynamic_parameter'
+                if key in self.para_substitute.keys():
+                    key = self.para_substitute[key]
                 if variable_level_map[key] <= max_temp:
                     raise ValueError(key + ' parameter graph error')
         return True
 
-    def generate_gv_file(self):
-        with open('documents/parameter_graph.gv', 'w') as f:
+    def make_graph(self, relation_dict=None, file_name=None, rank_dict=None, rank_order=None):
+        """
+        Create .gv file and then use dot tool to create a diagram.
+        :param relation_dict: {form:[tos]} structure, recording edges
+        :param file_name: title, file name of .gv and .png file
+        :param rank_dict: {rank_name:[members]} dict recording rank information
+        :param rank_order: [rank_names] list recording rank order
+        :return: True if it runs to the end
+        """
+        if relation_dict == None and file_name == None and rank_dict == None and rank_order == None:
+            relation_dict = self.forerunner2descendant(self.para_forerunner)
+            file_name = "parameter_level_graph"
+            rank_dict = self.level_para
+            rank_order = self.level_para.key_order
+
+        with open("documents/" + file_name + ".gv", 'w') as f:
             f.write("digraph G {\n")
             f.write("          splines=ortho;\n")
+            f.write("          fontsize = 48;\n")
             f.write("          rankdir = \"LR\";\n")
             f.write("          node[fontsize=24];\n")
+            f.write("          edge[penwidth=2];\n")
 
-            # level hierarchy
-            f.write("          {\n")
-            f.write("          node [shape=plaintext fontsize=36];\n")
-            sorted_level_keys = sorted(self.para_level.keys())
-            for key in sorted_level_keys:
-                if key != sorted_level_keys[-1]:
-                    f.write("          " + key + " -> \n")
-                else:
-                    f.write("          " + key + "\n")
-            f.write("          }\n")
-
-            # same rank
-            for key, value in self.para_level.items():
-                f.write("          {rank = same;\n")
-                for val in value:
-                    f.write("          " + val + ";\n")
+            if rank_order != None:
+                f.write("          {\n")
+                f.write("          node [shape=plaintext fontsize=36];\n")
+                for key in rank_order:
+                    if key != rank_order[-1]:
+                        f.write("          " + str(key) + " -> \n")
+                    else:
+                        f.write("          " + str(key) + "\n")
                 f.write("          }\n")
 
+            if rank_dict != None:
+                for key, value in rank_dict.items():
+                    f.write("          {rank = same;\n")
+                    f.write("          " + str(key) + ";\n")
+                    for val in value:
+                        f.write("          " + val + ";\n")
+                    f.write("          }\n")
+
             # relation edges
-            for key, value in self.para_forerunner.items():
+            for key, value in relation_dict.items():
+                randome_coloar = ''.join([random.choice('0123456789ABCE') for x in range(6)])
                 if not value:
                     # value is empty
-                    string = "          " + key + ";\n"
+
+                    string = "          " + key + " ;\n"
                 else:
                     # value is not empty
                     string = ""
                     for val in value:
-                        if key not in self.substitute_dictionary.keys():
-                            string = string + "          " + val + " -> " + key + ";\n"
-                        else:
-                            string = string + "          " + val + " -> " + self.substitute_dictionary[key] + ";\n"
-                f.write(string)
-            f.write("}")
-        os.system('dot -Tpng documents/parameter_graph.gv -o documents/parameter_graph.png')
 
-class DataUnit(Initialization):
+                        string = string + "          " + key + " -> " + val + " [color=\"#" + randome_coloar + "\"];\n"
+                f.write(string)
+
+            # add title
+            f.write('          labelloc = "t";\n')
+            f.write('          label = "' + file_name + '";\n')
+            f.write("}")
+            # call dot tool to draw diagram
+            command = "dot -Tpng ./documents/" + file_name + ".gv -o ./documents/" + file_name + ".png"
+            source_file = "documents/" + file_name + ".gv"
+            target_file = "documents/" + file_name + ".png"
+            #subprocess.call('pwd')
+            #subprocess.call('if test -f "documents/parameter_level_graph.gv"; then echo "The File Exists"; fi')
+            #subprocess.call(command)
+            subprocess.run(["dot", "-Tpng", source_file, "-o", target_file], check=True)
+
+    def abstract_flag(self, prerequisites):
+        """
+        Find if_random_ flag from the prerequisites of a parameter
+        :param prerequisites: a list of parameters
+        :return: None, if prerequisites is empty, or there is no flag in prerequisites
+                 a flag name if there is a flag in prerequisites
+        """
+        if not prerequisites:
+            return None
+        else:
+            temp = [s for s in prerequisites if 'if_random_' in s]
+            if len(temp) == 0:
+                return None
+            elif len(temp) == 1:
+                return temp[0]
+            else:
+                print(prerequisites)
+                raise ValueError('Multiple flags found.')
+
+    def categorize_parameters(self, para_forerunner=None):
+        """
+        Base on prerequisites, put parameters in to 3 categories.
+        Category one: no prerequisites, should be assigned value directly
+        Category two: with prerequisite and has if_random_ flag in prerequisites, one needs to check flag before assign
+        Category three: with prerequisite and has no flag, should not be assigned directly, its value should be derived
+            by its prerequisites.
+        :param para_prerequisite: a dictionary recording prerequisite of each parameter
+        :return: a dictionary recording category of each parameter
+        """
+        para_categories = {}
+        para_forerunner = para_forerunner or self.para_forerunner
+        for key, value in para_forerunner.items():
+            if not value:
+                para_categories[key] = 1
+            else:
+                flag = self.abstract_flag(value)
+                if flag != None:
+                    para_categories[key] = 2
+                else:
+                    para_categories[key] = 3
+        return para_categories
+
+    def para_category2category_para(self, para_category, category_order=None):
+        """
+        Transform {para:category} mapping to {category:[paras]} mapping
+        :param para_category: {para:category} mapping
+        :param category_order: order of the category, if not specified, sorted() will be used
+        :return: {category:[paras]} mapping, OrderedDict
+        """
+        category_para_temp = {}
+        for key, value in para_category.items():
+            if value in category_para_temp.keys():
+                category_para_temp[value].append(key)
+            else:
+                category_para_temp[value]=[key]
+        if category_order is None:
+            category_order = sorted(category_para_temp.keys())
+        category_para = OrderedDict(category_para_temp, category_order)
+        return category_para
+
+    def get_para_category_mapping(self):
+        para_category = self.categorize_parameters()
+        category_para = self.para_category2category_para(para_category)
+        return category_para
+
+
+
+class DataUnit(Initialization, ParameterGraph):
     """
     This class is used to ensure consistence and integrity of all data, but that takes a lot of efforts, so currently,
     it's used in a unsecured manner. Namely, DataUnit inherits dict and it key/value pair can be changed without other
@@ -628,54 +825,15 @@ class DataUnit(Initialization):
                     self.para_prerequisites[key] = value
         self.para_categories = self.categorize_parameters(self.para_prerequisites)
 
-    def abstract_flag(self, prerequisites):
-        """
-        Find if_random_ flag from the prerequisites of a parameter
-        :param prerequisites: a list of parameters
-        :return: None, if prerequisites is empty, or there is no flag in prerequisites
-                 a flag name if there is a flag in prerequisites
-        """
-        if not prerequisites:
-            return None
-        else:
-            temp = [s for s in prerequisites if 'if_random_' in s]
-            if len(temp) == 0:
-                return None
-            elif len(temp) == 1:
-                return temp[0]
-            else:
-                print(prerequisites)
-                raise ValueError('Multiple flags found.')
 
-    def categorize_parameters(self, para_prerequisites=None):
-        """
-        Base on prerequisites, put parameters in to 3 categories.
-        Category one: no prerequisites, should be assigned value directly
-        Category two: with prerequisite and has if_random_ flag in prerequisites, one needs to check flag before assign
-        Category three: with prerequisite and has no flag, should not be assigned directly, its value should be derived
-            by its prerequisites.
-        :param para_prerequisite: a dictionary recording prerequisite of each parameter
-        :return: a dictionary recording category of each parameter
-        """
-        para_categories = {}
-        para_prerequisites = para_prerequisites or self.para_prerequisites
-        for key, value in para_prerequisites.items():
-            if not value:
-                para_categories[key] = 1
-            else:
-                flag = self.abstract_flag(value)
-                if flag != None:
-                    para_categories[key] = 2
-                else:
-                    para_categories[key] = 3
-        return para_categories
 
-    def call_uniformed_assignment_api(self, parameter, value=None):
+    def call_uniformed_assignment_api(self, parameter, value=None, tag='random'):
         """
         Using different method to assign value to parameter according to the parameter category.
         See details in categorize_parameters()
         :param parameter: the target variable to be assigned
         :param value: if a value is needed for the assignment, use it
+        :param tag: control value generating process rather than providing a detailed value, like 'random' or 'standard'
         :return: null, it adds element into DataUnit._secured_data
         """
         if parameter not in self.para_categories.keys():
@@ -685,10 +843,6 @@ class DataUnit(Initialization):
             if category == 1:
                 pass
                 # no prerequisites, should be assigned value directly
-
-
-
-
 
         prerequisites = self.para_prerequisites[parameter]
         if not prerequisites:
@@ -729,8 +883,6 @@ class DataUnit(Initialization):
                     else:
                         self._secured_data[parameter] = value
 
-
-
     def check_prerequisites(self, parameter):
         """
         Check if all prerequisites of a parameter have been specified
@@ -748,7 +900,6 @@ class DataUnit(Initialization):
         else:
             return True
 
-
     def set_category_one_parameter(self, parameter, value):
         """
         Set value of category one parameter. Directly set.
@@ -758,24 +909,18 @@ class DataUnit(Initialization):
         """
         self._secured_data[parameter] = value
 
-    def set_category_two_parameter(self, parameter, value):
+    def set_category_two_parameter(self, parameter, value, tag):
         """
         Set value of category two parameter.
-        All it prerequisites should be checked. For simplicity, only existance of prerequisites are checked here.
+        All its prerequisites should be checked.
+        For simplicity, only existence of prerequisites are checked here.
         :param parameter: name of parameter
         :param value: value of parameter
+        :param tag: control value generating process rather than providing a detailed value, like 'random' or 'standard'
         :return:
         """
-        # check if all prerequisites exist
-        prerequisites_check = [para in self._secured_data.keys() for para in self.para_prerequisites[parameter]]
-        if False in prerequisites_check:
-            not_satisfied_prerequisites = [self.para_prerequisites[parameter] for val in prerequisites_check if not val]
-            string = ''
-            for value in not_satisfied_prerequisites:
-                string = value + ' ' + string
-            raise ValueError(parameter + " cannot be assigned because the following prerequisites have not be "
-                             + "assigned: " + string)
-        else:
+        # check if all prerequisites exis
+        if self.check_prerequisites(parameter):
             flag = self.abstract_flag(self.para_prerequisites[parameter])
             if self._secured_data[flag] == False:
                 if value != None:
@@ -787,12 +932,67 @@ class DataUnit(Initialization):
                     warnings.warn(parameter + "should not be specified manually since " + flag + " is True. "
                                                                                                  "Value is ignored.")
                 # here list all category two parameters and call according functions
-                pass
+                if parameter == 'A':
+                    self._secured_data[parameter] = self.randomly_generate_A_matrix(self._secured_data['n_node'])
+                elif parameter == 'B':
+                    self._secured_data[parameter] = self.randomly_generate_B_matrix(self._secured_data['n_node'],
+                                                                                    self._secured_data['n_stimuli'])
+                elif parameter == 'C':
+                    self._secured_data[parameter] = self.randomly_generate_C_matrix(self._secured_data['n_node'],
+                                                                                    self._secured_data['n_stimuli'])
+                elif parameter == 'initial_x_state':
+                    if tag == 'random':
+                        self._secured_data[parameter] = self.sample_initial_neural_state(self._secured_data['n_node'])
+                    elif tag == 'standard':
+                        self._secured_data[parameter] = \
+                            self.set_initial_neural_state_as_zeros(self._secured_data['n_node'])
+                    else:
+                        raise ValueError('Improper tag')
+                elif parameter == 'initial_h_state':
+                    if tag == 'random':
+                        self._secured_data[parameter] = \
+                            self.sample_initial_hemodynamic_state(self._secured_data['n_node'])
+                    elif tag == 'standard':
+                        self._secured_data[parameter] = \
+                            self.set_initial_hemodynamic_state_as_inactivated(self._secured_data['n_node'])
+                    else:
+                        raise ValueError('Improper tag')
+                elif parameter == 'hemodynamic_parameter':
+                    if tag == 'random':
+                        self._secured_data[parameter] = \
+                            self.randomly_generate_hemodynamic_parameters(self._secured_data['n_node'])
+                    elif tag == 'standard':
+                        self._secured_data[parameter] = \
+                            self.get_standard_hemodynamic_parameters(self._secured_data['n_node'])
+                    else:
+                        raise ValueError('Improper tag')
+                elif parameter == 'n_stimuli':
+                    if tag == 'random':
+                        self._secured_data[parameter] = \
+                            self.sample_stimuli_number(self._secured_data['n_node'])
+                    else:
+                        raise ValueError('Improper tag')
+                elif parameter == 't_delta':
+                    if tag == 'random':
+                        self._secured_data[parameter] = \
+                            self.sample_t_delta()
+                    else:
+                        raise ValueError('Improper tag')
+                elif parameter == 't_scan':
+                    if tag == 'random':
+                        self._secured_data[parameter] = \
+                            self.sample_scan_time()
+                    else:
+                        raise ValueError('Improper tag')
+                elif parameter == 'n_node':
+                    if tag == 'random':
+                        self._secured_data[parameter] = \
+                            self.sample_node_number()
+                    else:
+                        raise ValueError('Improper tag')
 
     def set_category_three_parameter(self, parameter, value):
         pass
-
-
 
     def set(self, key, value):
         if key == 't_scan':
