@@ -280,6 +280,12 @@ class ParameterGraph_tests(unittest.TestCase):
             self.assertLessEqual(para_level_index[para_names[idx]],
                                  para_level_index[value])
 
+    def test_if_valid_para(self):
+        self.assertTrue(self.pg.if_valid_para('A'))
+        with self.assertRaises(ValueError):
+            self.pg.if_valid_para('AA')
+
+
 
 class DataUnit_tests(unittest.TestCase):
     def setUp(self):

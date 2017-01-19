@@ -667,7 +667,6 @@ class ParameterGraph:
         para_level = self.get_para_level_mapping(level_para)
         return {key: order.index(value) for key, value in para_level.items()}
 
-
     def get_para_category_mapping(self, para_forerunner=None):
         """
         Base on prerequisites (forerunners), put parameters in to 3 categories.
@@ -809,6 +808,18 @@ class ParameterGraph:
         para_level = self.get_para_level_mapping()
         return sorted(para_level.keys(), key=lambda key: para_level[key])
 
+    def if_valid_para(self, para):
+        """
+        Check if a given parameter name is a valid one
+        :param para: target name
+        :return: True or raise error
+        """
+        valid_names = self.get_all_para_names()
+        if para in valid_names:
+            return True
+        else:
+            raise ValueError('Improper name.')
+
 
 class DataUnit(Initialization, ParameterGraph):
     """
@@ -852,7 +863,7 @@ class DataUnit(Initialization, ParameterGraph):
                               't_delta',
                               'n_time_point',
                               'A', 'B', 'C', 'u'
-                              'hemodynamic_parameter',
+                                             'hemodynamic_parameter',
                               'initial_x_state',
                               'initial_h_state',
                               'Wxx', 'Wxxu', 'Wxu',
@@ -913,12 +924,11 @@ class DataUnit(Initialization, ParameterGraph):
         if not descendants:
             return True
         else:
-            flags = [True if value in self._secured_data.keys() else False for value in descendants ]
+            flags = [True if value in self._secured_data.keys() else False for value in descendants]
             if True in flags:
                 return False
             else:
                 return True
-
 
     def if_has_value(self, para):
         """
@@ -947,16 +957,8 @@ class DataUnit(Initialization, ParameterGraph):
             parameters = [para_cate_one[index] for index, value in enumerate(flags) if value is False]
             string = ', '.join(parameters)
             raise ValueError(string + " has (have) not been specified.")
-        # assign parameter one by one follow self._assign_order
-        # n_node
-
-
-
-
-
-
-
-
+            # assign parameter one by one follow self._assign_order
+            # n_node
 
     def call_uniformed_assignment_api(self, parameter, value=None, tag='random'):
         """
@@ -1165,4 +1167,3 @@ class DataUnit(Initialization, ParameterGraph):
                 raise ValueError('n_node or n_stimuli has not be specified.')
         else:
             raise ValueError('if_random_neural_parameter is False, please call set() to specify connection matrices')
-
