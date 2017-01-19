@@ -279,6 +279,8 @@ class ParameterGraph_tests(unittest.TestCase):
         for idx, value in enumerate(para_names[1:]):
             self.assertLessEqual(para_level_index[para_names[idx]],
                                  para_level_index[value])
+        para_descendant = self.pg.get_para_descendant_mapping()
+        self.assertEqual(set(para_names), set(para_descendant.keys()))
 
     def test_if_valid_para(self):
         self.assertTrue(self.pg.if_valid_para('A'))

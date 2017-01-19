@@ -587,13 +587,15 @@ class ParameterGraph:
     def get_para_forerunner_mapping(self):
         return self._para_forerunner.copy()
 
-    def forerunner2descendant(self, forerunner_mapping=None, key_order=None):
+    def forerunner2descendant(self, forerunner_mapping=None, key_order=None, if_complete=True):
         """
         Transfer {parameter:[forerunners]} mapping  dictionary to
         {parameter:[descendants]} mapping dictionary
         :param forerunner_mapping: parameter:forerunners mapping dictionary
         :param key_order: if an {key:order} dictionary is given, return an OderderDict, otherwise, a dict
-        :return: parameter:descendants mapping
+        :param if_complete: if True, treat keys in forerunner dictionary as valid parameters.
+            Parameter without a descendant will also be added to resulting dictionary
+        :return: parameter: {parameter:[descendants]} mapping dictionary
         """
         forerunner_mapping = forerunner_mapping or self._para_forerunner
         descendant_mapping = {}
@@ -603,6 +605,15 @@ class ParameterGraph:
                     descendant_mapping[val].append(key)
                 else:
                     descendant_mapping[val] = [key]
+        if if_complete is True:
+            all_name = []
+            for key, value in forerunner_mapping.items():
+                all_name = all_name + [key]
+                all_name = all_name + value
+            all_name = set(all_name)
+            for name in all_name:
+                if name not in descendant_mapping.keys():
+                    descendant_mapping[name] = []
         if key_order != None:
             if set(key_order.keys()) != set(descendant_mapping.keys()):
                 raise ValueError('Given order does not match reversed dictionary.')
@@ -624,7 +635,7 @@ class ParameterGraph:
         :return: {parameter:level} mapping dictionary, if _level_para is an OrderedDict, return an OrderedDict
         """
         level_para = level_para or self._level_para
-        para_level_temp = self.forerunner2descendant(level_para)
+        para_level_temp = self.forerunner2descendant(level_para, if_complete=False)
         if isinstance(level_para, OrderedDict):
             para_level = OrderedDict()
             key_order = []
@@ -885,9 +896,8 @@ class DataUnit(Initialization, ParameterGraph):
         :param value: value to be assigned
         :return: True if successful
         """
+        self.if_valid_para(para)
         para_category = self.get_para_category_mapping()
-        if para not in para_category.keys():
-            raise ValueError('Improper parameter name ' + para)
         category = para_category[para]
         if category is 3:
             raise ValueError('Category 3 parameter should not be assigned directly')
@@ -917,9 +927,8 @@ class DataUnit(Initialization, ParameterGraph):
         :param para: target parameter
         :return: If no descendant has had value, return False; otherwise, True.
         """
+        self.if_valid_para(para)
         para_descendant = self.get_para_descendant_mapping()
-        if para not in para_descendant.keys():
-            raise ValueError('Improper parameter name ' + para)
         descendants = para_descendant[para]
         if not descendants:
             return True
@@ -936,13 +945,11 @@ class DataUnit(Initialization, ParameterGraph):
         :param para: target para
         :return: True if para has a value; otherwise False
         """
-        if para not in self.get_all_para_names():
-            raise ValueError('Improper parameter name.')
+        self.if_valid_para(para)
+        if para in self._secured_data.keys():
+            return True
         else:
-            if para in self._secured_data.keys():
-                return True
-            else:
-                return False
+            return False
 
     def complete_data_unit(self):
         """
