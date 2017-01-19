@@ -24,11 +24,11 @@ digraph G {
           l2a;
           l2b;
           }
-          if_random_l0 -> l1b [color="#B0A310"];
-          if_random_l0 -> l1a [color="#B0A310"];
-          l1b -> l2b [color="#054C11"];
-          l1a -> l2a [color="#E38E3A"];
-          l1a -> l2b [color="#E38E3A"];
+          l1a -> l2a [color="#3B2172"];
+          l1a -> l2b [color="#3B2172"];
+          l1b -> l2b [color="#195600"];
+          if_random_l0 -> l1a [color="#AE1A32"];
+          if_random_l0 -> l1b [color="#AE1A32"];
           labelloc = "t";
           label = "../tests/test_output/ParameterGraph_make_graph_test";
 }

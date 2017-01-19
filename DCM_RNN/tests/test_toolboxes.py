@@ -286,6 +286,14 @@ class DataUnit_tests(unittest.TestCase):
         self.du._secured_data['if_random_scan_time'] = True
         with self.assertRaises(ValueError):
             self.du.set('t_scan', 400)
+        with self.assertRaises(ValueError):
+            self.du.set('Wxx', 400)
+        self.du._secured_data['Wxx'] = 100
+        self.du._secured_data['if_random_neural_parameter'] = False
+        with self.assertRaises(ValueError):
+            self.du.set('A', 400)
+
+
 
     def test_randomly_initialize_connection_matrices(self):
         with self.assertRaises(ValueError):

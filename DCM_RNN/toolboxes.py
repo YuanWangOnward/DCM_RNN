@@ -825,6 +825,66 @@ class DataUnit(Initialization, ParameterGraph):
 
         self.para_categories = self.get_para_category_mapping()
 
+    def set(self, para, value):
+        """
+        Set value to a parameter.
+        A parameter can only be directly assigned a number if it is of category one or two (see ParameterGraph)
+        When a parameter is assigned a number, its compatibility should be checked with existing parameters.
+        But it takes a lot of time to implement.
+        Now it only check if_random flag and descendant.
+        If if_random flag is True, or if its descendants have had value, it should not be assigned.
+        :param para: name of target parameter
+        :param value: value to be assigned
+        :return: True if successful
+        """
+        para_category = self.get_para_category_mapping()
+        if para not in para_category.keys():
+            raise ValueError('Improper parameter name ' + para)
+        category = para_category[para]
+        if category is 3:
+            raise ValueError('Category 3 parameter should not be assigned directly')
+        elif category is 1:
+            if self.has_no_assigned_descendant(para):
+                self._secured_data[para] = value
+            else:
+                raise ValueError(para + 'has descendant that has been assigned a value, as a result it cannot be set.')
+        elif category is 2:
+            if self.has_no_assigned_descendant(para):
+                forerunners = self.get_para_forerunner_mapping()[para]
+                flag = self.abstract_flag(forerunners)
+                if flag is None:
+                    self._secured_data[para] = value
+                elif self._secured_data[flag] is False:
+                    self._secured_data[para] = value
+                else:
+                    raise ValueError(flag + 'is True, ' + para + 'cannot be assigned directly')
+            else:
+                raise ValueError(para + 'has descendant that has been assigned a value, as a result it cannot be set.')
+        else:
+            raise ValueError('Category error.')
+
+
+    def has_no_assigned_descendant(self, para):
+        """
+        Check the descendants of a para.
+        :param para: target parameter
+        :return: If no descendant has had value, return True; otherwise, False.
+        """
+        para_descendant = self.get_para_descendant_mapping()
+        if para not in para_descendant.keys():
+            raise ValueError('Improper parameter name ' + para)
+        descendants = para_descendant[para]
+        if not descendants:
+            return True
+        else:
+            flags = [True if value in self._secured_data.keys() else False for value in descendants ]
+            if True in flags:
+                return False
+            else:
+                return True
+
+
+
     def call_uniformed_assignment_api(self, parameter, value=None, tag='random'):
         """
         Using different method to assign value to parameter according to the parameter category.
@@ -992,7 +1052,7 @@ class DataUnit(Initialization, ParameterGraph):
     def set_category_three_parameter(self, parameter, value):
         pass
 
-    def set(self, key, value):
+    def set_backup(self, key, value):
         if key == 't_scan':
             if self._secured_data['if_random_scan_time'] == False:
                 self._secured_data['t_scan'] = value
@@ -1033,25 +1093,3 @@ class DataUnit(Initialization, ParameterGraph):
         else:
             raise ValueError('if_random_neural_parameter is False, please call set() to specify connection matrices')
 
-        def categorize_parameters(self, para_forerunner=None):
-            """
-            Base on prerequisites (forerunners), put parameters in to 3 categories.
-            Category one: no prerequisites, should be assigned value directly
-            Category two: with prerequisite and has if_random_ flag in prerequisites, one needs to check flag before assign
-            Category three: with prerequisite and has no flag, should not be assigned directly, its value should be derived
-                by its prerequisites.
-            :param para_prerequisite: a dictionary recording prerequisite of each parameter
-            :return: a dictionary recording category of each parameter
-            """
-            para_category = {}
-            para_forerunner = para_forerunner or self.para_forerunner
-            for key, value in para_forerunner.items():
-                if not value:
-                    para_category[key] = 1
-                else:
-                    flag = self.abstract_flag(value)
-                    if flag != None:
-                        para_category[key] = 2
-                    else:
-                        para_category[key] = 3
-            return para_category
