@@ -346,9 +346,9 @@ class Initialization:
                                                deviation_constraint)
         return h_para
 
-    def check_hemodynamic_parameters(self, hemodynamic_parameters, h_parameter_check_statistics=None):
+    def evaluate_hemodynamic_parameters(self, hemodynamic_parameters, h_parameter_check_statistics=None):
         """
-        For each hemodynamic parameter, check whether it is sampled properly.
+        For each hemodynamic parameter, evaluate how it derives from the means.
         :param hemodynamic_parameters: a pandas.dataframe, containing sampled hemodynamic parameters
         :param h_parameter_check_statistics: specify which kind of statistic to check,
                it takes value in {'deviation', 'pdf'}
@@ -384,7 +384,7 @@ class Initialization:
         else:
             raise ValueError('Improper h_parameter_check_statistics value!')
 
-    def if_proper_hemodynamic_parameters(self, hemodynamic_parameters, deviation_constraint=None):
+    def check_proper_hemodynamic_parameters(self, hemodynamic_parameters, deviation_constraint=None):
         """
         Check if given hemodynamic parameters are within deviation constraint.
         If yes, return True; otherwise, throw error
@@ -394,7 +394,7 @@ class Initialization:
         :return: True or Error
         """
         deviation_constraint = deviation_constraint or self.deviation_constraint
-        h_stat = self.check_hemodynamic_parameters(hemodynamic_parameters, h_parameter_check_statistics='deviation')
+        h_stat = self.evaluate_hemodynamic_parameters(hemodynamic_parameters, h_parameter_check_statistics='deviation')
         max_deviation = abs(h_stat).values.max()
         if max_deviation <= deviation_constraint:
             return True
@@ -819,7 +819,7 @@ class ParameterGraph:
         para_level = self.get_para_level_mapping()
         return sorted(para_level.keys(), key=lambda key: para_level[key])
 
-    def if_valid_para(self, para):
+    def check_valid_para(self, para):
         """
         Check if a given parameter name is a valid one
         :param para: target name
@@ -896,7 +896,7 @@ class DataUnit(Initialization, ParameterGraph):
         :param value: value to be assigned
         :return: True if successful
         """
-        self.if_valid_para(para)
+        self.check_valid_para(para)
         para_category = self.get_para_category_mapping()
         category = para_category[para]
         if category is 3:
@@ -927,7 +927,7 @@ class DataUnit(Initialization, ParameterGraph):
         :param para: target parameter
         :return: If no descendant has had value, return False; otherwise, True.
         """
-        self.if_valid_para(para)
+        self.check_valid_para(para)
         para_descendant = self.get_para_descendant_mapping()
         descendants = para_descendant[para]
         if not descendants:
@@ -945,7 +945,7 @@ class DataUnit(Initialization, ParameterGraph):
         :param para: target para
         :return: True if para has a value; otherwise False
         """
-        self.if_valid_para(para)
+        self.check_valid_para(para)
         if para in self._secured_data.keys():
             return True
         else:

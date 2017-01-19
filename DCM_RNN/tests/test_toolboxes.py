@@ -101,7 +101,7 @@ class Initialization_tests(unittest.TestCase):
         if_print = False
         n_node = random.randint(3, 10)
         h_para = self.utl.randomly_generate_hemodynamic_parameters(n_node)
-        output = self.utl.check_hemodynamic_parameters(h_para)
+        output = self.utl.evaluate_hemodynamic_parameters(h_para)
         if if_print:
             print(output)
 
@@ -111,7 +111,7 @@ class Initialization_tests(unittest.TestCase):
             n_node = random.randint(3, 10)
             deviation_constrain = random.uniform(1, 3)
             h_para = self.utl.randomly_generate_hemodynamic_parameters(n_node, deviation_constrain)
-            temp = self.utl.if_proper_hemodynamic_parameters(h_para, deviation_constrain)
+            temp = self.utl.check_proper_hemodynamic_parameters(h_para, deviation_constrain)
             self.assertTrue(temp, 'The given hemodynamic parameters are not qualified by given deviation_constraint')
 
     def test_sample_node_number(self):
@@ -283,9 +283,9 @@ class ParameterGraph_tests(unittest.TestCase):
         self.assertEqual(set(para_names), set(para_descendant.keys()))
 
     def test_if_valid_para(self):
-        self.assertTrue(self.pg.if_valid_para('A'))
+        self.assertTrue(self.pg.check_valid_para('A'))
         with self.assertRaises(ValueError):
-            self.pg.if_valid_para('AA')
+            self.pg.check_valid_para('AA')
 
 
 
