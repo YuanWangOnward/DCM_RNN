@@ -744,6 +744,17 @@ class ParameterGraph:
                 print(prerequisites)
                 raise ValueError('Multiple flags found.')
 
+    def get_flag(self, para):
+        """
+         Find if_ flag from the forerunners of a parameter
+        :param para: target parameter
+        :return: None, if forerunners is empty, or there is no flag in forerunners
+                 a flag name if there is a flag in forerunners
+        """
+        self.check_valid_para(para)
+        para_forerunner = self.get_para_forerunner_mapping()
+        return self.abstract_flag(para_forerunner[para])
+
     def make_graph(self, relation_dict=None, file_name=None, rank_dict=None, rank_order=None):
         """
         Create .gv file and then use dot tool to create a diagram.
@@ -964,8 +975,11 @@ class DataUnit(Initialization, ParameterGraph):
             parameters = [para_cate_one[index] for index, value in enumerate(flags) if value is False]
             string = ', '.join(parameters)
             raise ValueError(string + " has (have) not been specified.")
-            # assign parameter one by one follow self._assign_order
-            # n_node
+        # assign parameter one by one follow self._assign_order
+        # n_node
+
+
+
 
     def call_uniformed_assignment_api(self, parameter, value=None, tag='random'):
         """

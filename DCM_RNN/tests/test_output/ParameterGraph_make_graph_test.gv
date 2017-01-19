@@ -24,13 +24,13 @@ digraph G {
           l2a;
           l2b;
           }
-          l1a -> l2b [color="#62712A"];
-          l1a -> l2a [color="#62712A"];
-          l2b ;
-          if_random_l0 -> l1a [color="#E56838"];
-          if_random_l0 -> l1b [color="#E56838"];
-          l1b -> l2b [color="#E26B1B"];
+          l1b -> l2b [color="#85364C"];
           l2a ;
+          if_random_l0 -> l1b [color="#335476"];
+          if_random_l0 -> l1a [color="#335476"];
+          l1a -> l2a [color="#808822"];
+          l1a -> l2b [color="#808822"];
+          l2b ;
           labelloc = "t";
           label = "../tests/test_output/ParameterGraph_make_graph_test";
 }

@@ -261,6 +261,10 @@ class ParameterGraph_tests(unittest.TestCase):
                              'no_flag',
                              'fail to multiple flags')
 
+    def test_get_flag(self):
+        self.assertEqual(self.pg.get_flag('n_node'), 'if_random_node_number')
+        self.assertEqual(self.pg.get_flag('hemodynamic_parameter'), 'if_random_hemodynamic_parameter')
+
     def test_make_graph(self):
         self.pgt.make_graph(self.pgt.get_para_descendant_mapping(),
                             file_name="../tests/test_output/ParameterGraph_make_graph_test",
