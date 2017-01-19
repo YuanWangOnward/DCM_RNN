@@ -9,9 +9,10 @@ import warnings
 import collections
 import subprocess
 
+
 class OrderedDict(collections.OrderedDict):
     def __init__(self, dictionary=None, key_order=None):
-        if dictionary==None and key_order==None:
+        if dictionary == None and key_order == None:
             super().__init__()
         else:
             super().__init__()
@@ -439,9 +440,10 @@ class Initialization:
         h_state_initial[:, 3] = np.random.uniform(low=self.q_init_low, high=self.q_init_high, size=n_node)
         return h_state_initial
 
+
 class ParameterGraph:
     def __init__(self):
-        self.para_forerunner = {
+        self._para_forerunner = {
             # inherited
             'initializer': [],
 
@@ -514,7 +516,6 @@ class ParameterGraph:
             'n_backpro': [],  # number of truncated back propagation steps
             'learning_rate': [],  # used by tensorflow optimization operation
         }
-        # self.para_descendant = self.forerunner2descendant(self.para_forerunner)
 
         self.para_substitute = {
             'alpha': 'hemodynamic_parameter',
@@ -555,9 +556,36 @@ class ParameterGraph:
             'level_4': ['Wxxu', 'Wx']
         }
         level_para_order = ['inherited', 'level_0', 'level_1', 'level_2', 'level_3', 'level_4']
-        self.level_para = OrderedDict(level_para, level_para_order)
+        self._level_para = OrderedDict(level_para, level_para_order)
 
         self.check_parameter_relation()
+
+    def check_parameter_relation(self):
+        """
+        Check if _para_forerunner and para_level are in consistence with each other, since they are hand-coded
+        which is prone to error
+        :return: True or raiseError
+        """
+
+        variable_level_map = {}
+        for key, value in self._level_para.items():
+            for val in value:
+                variable_level_map[val] = self._level_para.get_order_index(key)
+        for key, value in self._para_forerunner.items():
+            if not value:
+                if variable_level_map[key] not in [0, 1]:
+                    raise ValueError(key + ' parameter graph error')
+            else:
+                temp = [variable_level_map[val] for val in value]
+                max_forerunner_level = max(temp)
+                if key in self.para_substitute.keys():
+                    key = self.para_substitute[key]
+                if variable_level_map[key] <= max_forerunner_level:
+                    raise ValueError(key + ' parameter graph error')
+        return True
+
+    def get_para_forerunner_mapping(self):
+        return self._para_forerunner
 
     def forerunner2descendant(self, forerunner_mapping=None, key_order=None):
         """
@@ -567,7 +595,7 @@ class ParameterGraph:
         :param key_order: if an {key:order} dictionary is given, return an OderderDict, otherwise, a dict
         :return: parameter:descendants mapping
         """
-        forerunner_mapping = forerunner_mapping or self.para_forerunner
+        forerunner_mapping = forerunner_mapping or self._para_forerunner
         descendant_mapping = {}
         for key, value in forerunner_mapping.items():
             for val in value:
@@ -583,14 +611,19 @@ class ParameterGraph:
         else:
             return descendant_mapping
 
+    def get_para_descendant_mapping(self):
+        para_forerunner = self.get_para_forerunner_mapping()
+        para_descendant = self.forerunner2descendant(para_forerunner)
+        return para_descendant
+
     def level_para2para_level(self, level_para=None):
         """
         Transfer {level:[parameters]} mapping dictionary to
         {parameter:level} mapping dictionary
         :param level_para: {level:[parameters]} mapping dictionary
-        :return: {parameter:level} mapping dictionary, if level_para is an OrderedDict, return an OrderedDict
+        :return: {parameter:level} mapping dictionary, if _level_para is an OrderedDict, return an OrderedDict
         """
-        level_para = level_para or self.level_para
+        level_para = level_para or self._level_para
         para_level_temp = self.forerunner2descendant(level_para)
         if isinstance(level_para, OrderedDict):
             para_level = OrderedDict()
@@ -610,38 +643,83 @@ class ParameterGraph:
                     para_level[key] = value[0]
         return para_level
 
+    def get_level_para_mapping(self):
+        return self._level_para
+
     def get_para_level_mapping(self, level_para=None):
         """
         Get {parameter:level} dictionary from {level:[parameters]} dictionary
         :param level_para:{level:[parameters]} dictionary
         :return: {parameter:level} dictionary
         """
-        level_para = level_para or self.level_para
+        level_para = level_para or self._level_para
         return self.level_para2para_level(level_para)
 
-    def check_parameter_relation(self):
+    def get_para_category_mapping(self, para_forerunner=None):
         """
-        Check if para_forerunner and para_level are in consistence with each other, since they are hand-coded
-        which is prone to error
-        :return: True or raiseError
+        Base on prerequisites (forerunners), put parameters in to 3 categories.
+        Category one: no prerequisites, should be assigned value directly
+        Category two: with prerequisite and has if_random_ flag in prerequisites, one needs to check flag before assign
+        Category three: with prerequisite and has no flag, should not be assigned directly, its value should be derived
+            by its prerequisites.
+        :param para_forerunner: a dictionary recording _para_forerunner of each parameter
+        :return: a {para:category} dictionary recording category of each parameter
         """
-
-        variable_level_map = {}
-        for key, value in self.level_para.items():
-            for val in value:
-                variable_level_map[val] = self.level_para.get_order_index(key)
-        for key, value in self.para_forerunner.items():
+        para_category = {}
+        para_forerunner = para_forerunner or self._para_forerunner
+        for key, value in para_forerunner.items():
             if not value:
-                if variable_level_map[key] not in [0, 1]:
-                    raise ValueError(key + ' parameter graph error')
+                para_category[key] = 1
             else:
-                temp = [variable_level_map[val] for val in value]
-                max_temp = max(temp)
-                if key in self.para_substitute.keys():
-                    key = self.para_substitute[key]
-                if variable_level_map[key] <= max_temp:
-                    raise ValueError(key + ' parameter graph error')
-        return True
+                flag = self.abstract_flag(value)
+                if flag != None:
+                    para_category[key] = 2
+                else:
+                    para_category[key] = 3
+        return para_category
+
+    def para_category2category_para(self, para_category, category_order=None):
+        """
+        Transform {para:category} mapping to {category:[paras]} mapping
+        :param para_category: {para:category} mapping
+        :param category_order: order of the category, if not specified, sorted() will be used
+        :return: {category:[paras]} mapping, OrderedDict
+        """
+        category_para_temp = {}
+        for key, value in para_category.items():
+            if value in category_para_temp.keys():
+                category_para_temp[value].append(key)
+            else:
+                category_para_temp[value] = [key]
+        if category_order is None:
+            category_order = sorted(category_para_temp.keys())
+        category_para = OrderedDict(category_para_temp, category_order)
+        return category_para
+
+    def get_category_para_mapping(self, para_forerunner=None):
+        para_forerunner = para_forerunner or self._para_forerunner
+        para_category = self.get_para_category_mapping(para_forerunner)
+        category_para = self.para_category2category_para(para_category)
+        return category_para
+
+    def abstract_flag(self, prerequisites):
+        """
+        Find if_ flag from the prerequisites of a parameter
+        :param prerequisites: a list of parameters
+        :return: None, if prerequisites is empty, or there is no flag in prerequisites
+                 a flag name if there is a flag in prerequisites
+        """
+        if not prerequisites:
+            return None
+        else:
+            temp = [s for s in prerequisites if 'if_' in s]
+            if len(temp) == 0:
+                return None
+            elif len(temp) == 1:
+                return temp[0]
+            else:
+                print(prerequisites)
+                raise ValueError('Multiple flags found.')
 
     def make_graph(self, relation_dict=None, file_name=None, rank_dict=None, rank_order=None):
         """
@@ -653,10 +731,10 @@ class ParameterGraph:
         :return: True if it runs to the end
         """
         if relation_dict == None and file_name == None and rank_dict == None and rank_order == None:
-            relation_dict = self.forerunner2descendant(self.para_forerunner)
+            relation_dict = self.forerunner2descendant(self._para_forerunner)
             file_name = "parameter_level_graph"
-            rank_dict = self.level_para
-            rank_order = self.level_para.key_order
+            rank_dict = self._level_para
+            rank_order = self._level_para.key_order
 
         with open("documents/" + file_name + ".gv", 'w') as f:
             f.write("digraph G {\n")
@@ -679,7 +757,9 @@ class ParameterGraph:
             if rank_dict != None:
                 for key, value in rank_dict.items():
                     f.write("          {rank = same;\n")
-                    f.write("          " + str(key) + ";\n")
+                    if type(key) is not str:
+                        key = str(key)
+                    f.write("          " + key + ";\n")
                     for val in value:
                         f.write("          " + val + ";\n")
                     f.write("          }\n")
@@ -695,7 +775,6 @@ class ParameterGraph:
                     # value is not empty
                     string = ""
                     for val in value:
-
                         string = string + "          " + key + " -> " + val + " [color=\"#" + randome_coloar + "\"];\n"
                 f.write(string)
 
@@ -704,79 +783,10 @@ class ParameterGraph:
             f.write('          label = "' + file_name + '";\n')
             f.write("}")
             # call dot tool to draw diagram
-            command = "dot -Tpng ./documents/" + file_name + ".gv -o ./documents/" + file_name + ".png"
-            source_file = "documents/" + file_name + ".gv"
-            target_file = "documents/" + file_name + ".png"
-            #subprocess.call('pwd')
-            #subprocess.call('if test -f "documents/parameter_level_graph.gv"; then echo "The File Exists"; fi')
-            #subprocess.call(command)
-            subprocess.run(["dot", "-Tpng", source_file, "-o", target_file], check=True)
-
-    def abstract_flag(self, prerequisites):
-        """
-        Find if_random_ flag from the prerequisites of a parameter
-        :param prerequisites: a list of parameters
-        :return: None, if prerequisites is empty, or there is no flag in prerequisites
-                 a flag name if there is a flag in prerequisites
-        """
-        if not prerequisites:
-            return None
-        else:
-            temp = [s for s in prerequisites if 'if_random_' in s]
-            if len(temp) == 0:
-                return None
-            elif len(temp) == 1:
-                return temp[0]
-            else:
-                print(prerequisites)
-                raise ValueError('Multiple flags found.')
-
-    def categorize_parameters(self, para_forerunner=None):
-        """
-        Base on prerequisites, put parameters in to 3 categories.
-        Category one: no prerequisites, should be assigned value directly
-        Category two: with prerequisite and has if_random_ flag in prerequisites, one needs to check flag before assign
-        Category three: with prerequisite and has no flag, should not be assigned directly, its value should be derived
-            by its prerequisites.
-        :param para_prerequisite: a dictionary recording prerequisite of each parameter
-        :return: a dictionary recording category of each parameter
-        """
-        para_categories = {}
-        para_forerunner = para_forerunner or self.para_forerunner
-        for key, value in para_forerunner.items():
-            if not value:
-                para_categories[key] = 1
-            else:
-                flag = self.abstract_flag(value)
-                if flag != None:
-                    para_categories[key] = 2
-                else:
-                    para_categories[key] = 3
-        return para_categories
-
-    def para_category2category_para(self, para_category, category_order=None):
-        """
-        Transform {para:category} mapping to {category:[paras]} mapping
-        :param para_category: {para:category} mapping
-        :param category_order: order of the category, if not specified, sorted() will be used
-        :return: {category:[paras]} mapping, OrderedDict
-        """
-        category_para_temp = {}
-        for key, value in para_category.items():
-            if value in category_para_temp.keys():
-                category_para_temp[value].append(key)
-            else:
-                category_para_temp[value]=[key]
-        if category_order is None:
-            category_order = sorted(category_para_temp.keys())
-        category_para = OrderedDict(category_para_temp, category_order)
-        return category_para
-
-    def get_para_category_mapping(self):
-        para_category = self.categorize_parameters()
-        category_para = self.para_category2category_para(para_category)
-        return category_para
-
+            # however, it doesn't work, so removed for the moment
+            # source_file = "documents/" + file_name + ".gv"
+            # target_file = "documents/" + file_name + ".png"
+            # subprocess.run(["dot", "-Tpng", source_file, "-o", target_file], check=True)
 
 
 class DataUnit(Initialization, ParameterGraph):
@@ -800,7 +810,8 @@ class DataUnit(Initialization, ParameterGraph):
                  if_random_delta_t=False,
                  if_random_scan_time=False,
                  ):
-        super().__init__()
+        Initialization.__init__(self)
+        ParameterGraph.__init__(self)
         self._secured_data = {}
         self._secured_data['if_random_neural_parameter'] = if_random_neural_parameter
         self._secured_data['if_random_hemodynamic_parameter'] = if_random_hemodynamic_parameter
@@ -811,26 +822,13 @@ class DataUnit(Initialization, ParameterGraph):
         self._secured_data['if_random_stimuli_number'] = if_random_stimuli_number
         self._secured_data['if_random_delta_t'] = if_random_delta_t
         self._secured_data['if_random_scan_time'] = if_random_scan_time
-        pg = ParameterGraph()
-        self.para_prerequisites = {}
-        # since DataUnit inherits from Initialization now, there is no need to add a instant of
-        # Initialization as an attribute of DataUnit. Remove 'initializer' from prerequisites list
-        for key, value in pg.para_forerunner.items():
-            if key != 'initializer':
-                if not value:
-                    self.para_prerequisites[key] = value
-                else:
-                    if 'initializer' in value:
-                        value.remove('initializer')
-                    self.para_prerequisites[key] = value
-        self.para_categories = self.categorize_parameters(self.para_prerequisites)
 
-
+        self.para_categories = self.get_para_category_mapping()
 
     def call_uniformed_assignment_api(self, parameter, value=None, tag='random'):
         """
         Using different method to assign value to parameter according to the parameter category.
-        See details in categorize_parameters()
+        See details in get_para_category_mapping()
         :param parameter: the target variable to be assigned
         :param value: if a value is needed for the assignment, use it
         :param tag: control value generating process rather than providing a detailed value, like 'random' or 'standard'
@@ -1034,3 +1032,26 @@ class DataUnit(Initialization, ParameterGraph):
                 raise ValueError('n_node or n_stimuli has not be specified.')
         else:
             raise ValueError('if_random_neural_parameter is False, please call set() to specify connection matrices')
+
+        def categorize_parameters(self, para_forerunner=None):
+            """
+            Base on prerequisites (forerunners), put parameters in to 3 categories.
+            Category one: no prerequisites, should be assigned value directly
+            Category two: with prerequisite and has if_random_ flag in prerequisites, one needs to check flag before assign
+            Category three: with prerequisite and has no flag, should not be assigned directly, its value should be derived
+                by its prerequisites.
+            :param para_prerequisite: a dictionary recording prerequisite of each parameter
+            :return: a dictionary recording category of each parameter
+            """
+            para_category = {}
+            para_forerunner = para_forerunner or self.para_forerunner
+            for key, value in para_forerunner.items():
+                if not value:
+                    para_category[key] = 1
+                else:
+                    flag = self.abstract_flag(value)
+                    if flag != None:
+                        para_category[key] = 2
+                    else:
+                        para_category[key] = 3
+            return para_category

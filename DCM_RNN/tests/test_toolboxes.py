@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from DCM_RNN import toolboxes
 import random
+from DCM_RNN.toolboxes import OrderedDict
 import pandas as pd
 import scipy as sp
 import scipy.stats
@@ -147,23 +148,89 @@ class Initialization_tests(unittest.TestCase):
 class ParameterGraph_tests(unittest.TestCase):
     def setUp(self):
         self.pg = toolboxes.ParameterGraph()
+        self.pgt = toolboxes.ParameterGraph()
+        self.pgt._para_forerunner = {"if_random_l0": [],
+                                    "l1a": ["if_random_l0"],
+                                    "l1b": ["if_random_l0"],
+                                    "l2a": ["l1a"],
+                                    "l2b": ["l1a", "l1b"]}
+        self.pgt.para_descendant = {"if_random_l0": ["l1a", "l1b"],
+                                    "l1a": ["l2a", "l2b"],
+                                    "l1b": ["l2b"],
+                                    "l2a": [],
+                                    "l2b": []}
+        level_para = {
+            "level_0": ["if_random_l0"],
+            "level_1": ["l1a", "l1b"],
+            "level_2": ["l2a", "l2b"]
+        }
+        level_para_order = ['level_0', 'level_1', 'level_2']
+        self.pgt._level_para = OrderedDict(level_para, level_para_order)
+        self.pgt.check_parameter_relation()
+        self.pgt.para_level = {"if_random_l0": "level_0",
+                               "l1a": "level_1",
+                               "l1b": "level_1",
+                               "l2a": "level_2",
+                               "l2b": "level_2"}
+        category_para = {1: ["if_random_l0"],
+                         2: ["l1a", "l1b"],
+                         3: ["l2a", "l2b"]}
+        category_order = [1, 2, 3]
+        self.pgt.category_para = OrderedDict(category_para, category_order)
+
+        self.pgt.para_category = {"if_random_l0": 1,
+                                  "l1a": 2,
+                                  "l1b": 2,
+                                  "l2a": 3,
+                                  "l2b": 3}
 
     def tearDown(self):
         del self.pg
-
-    def test_make_graph(self):
-        if_update_graph = True
-        if if_update_graph:
-            self.pg.make_graph()
+        del self.pgt
 
     def test_check_parameter_relation(self):
+        self.assertTrue(self.pgt.check_parameter_relation())
         self.assertTrue(self.pg.check_parameter_relation())
+
+    def test_get_para_forerunner_mapping(self):
+        para_forerunner = self.pgt.get_para_forerunner_mapping()
+        self.assertEqual(para_forerunner, self.pgt._para_forerunner)
+        para_forerunner = self.pg.get_para_forerunner_mapping()
+
+    def test_get_para_descendant_mapping(self):
+        para_descendant = self.pgt.get_para_descendant_mapping()
+        for key in para_descendant:
+            self.assertEqual(set(para_descendant[key]), set(self.pgt.para_descendant[key]))
+        para_descendant = self.pg.get_para_descendant_mapping()
+
+    def test_get_level_para_mapping(self):
+        level_para = self.pgt.get_level_para_mapping()
+        self.assertEqual(level_para, self.pgt._level_para)
+
+        level_para = self.pg.get_level_para_mapping()
 
     def test_get_para_level_mapping(self):
         if_print = False
-        temp = self.pg.get_para_level_mapping()
+        para_level = self.pgt.get_para_level_mapping()
+        self.assertEqual(para_level, self.pgt.para_level)
+        para_level = self.pg.get_para_level_mapping()
         if if_print:
-            print(temp)
+            print(para_level)
+
+    def test_get_para_category_mapping(self):
+        if_print = False
+        para_category = self.pgt.get_para_category_mapping()
+        self.assertEqual(para_category, self.pgt.para_category)
+        para_category = self.pg.get_para_category_mapping()
+
+    def test_get_category_para_mapping(self):
+        if_print = False
+        category_para = self.pgt.get_category_para_mapping()
+        for key in category_para:
+            self.assertEqual(set(category_para[key]), set(self.pgt.category_para[key]))
+        category_para = self.pg.get_category_para_mapping()
+        if if_print:
+            print(category_para)
 
     def test_abstract_flag(self):
         self.assertEqual(self.pg.abstract_flag(['if_random_stimuli_number', 'n_node', 'initializer']),
@@ -181,19 +248,15 @@ class ParameterGraph_tests(unittest.TestCase):
                              'no_flag',
                              'fail to multiple flags')
 
-    def test_categorize_parameters(self):
-        if_print = False
-        category_para = self.pg.get_para_category_mapping()
-        self.pg.make_graph(self.pg.forerunner2descendant(self.pg.para_forerunner),
-                           "parameter_category_graph", rank_dict=category_para, rank_order=category_para.key_order)
-        if if_print:
-            print(category_para)
-
-    def test_get_para_category_mapping(self):
-        if_print = False
-        category_para = self.pg.get_para_category_mapping()
-        if if_print:
-            print(category_para)
+    def test_make_graph(self):
+        self.pgt.make_graph(self.pgt.get_para_descendant_mapping(),
+                            file_name="../tests/test_output/ParameterGraph_make_graph_test",
+                            rank_dict=self.pgt.get_level_para_mapping(),
+                            rank_order=sorted(self.pgt.get_level_para_mapping().keys())
+                            )
+        if_update_graph = True
+        if if_update_graph:
+            self.pg.make_graph()
 
 
 class DataUnit_tests(unittest.TestCase):
