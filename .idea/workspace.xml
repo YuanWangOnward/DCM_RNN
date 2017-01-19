@@ -3,8 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/documents/parameter_level_graph.gv" afterPath="$PROJECT_DIR$/DCM_RNN/documents/parameter_level_graph.gv" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/tests/test_output/ParameterGraph_make_graph_test.gv" afterPath="$PROJECT_DIR$/DCM_RNN/tests/test_output/ParameterGraph_make_graph_test.gv" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/toolboxes.py" afterPath="$PROJECT_DIR$/DCM_RNN/toolboxes.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -63,8 +61,8 @@
       <file leaf-file-name="toolboxes.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/toolboxes.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="126">
-              <caret line="950" column="40" lean-forward="false" selection-start-line="950" selection-start-column="8" selection-end-line="950" selection-end-column="40" />
+            <state relative-caret-position="229">
+              <caret line="974" column="26" lean-forward="false" selection-start-line="974" selection-start-column="8" selection-end-line="974" selection-end-column="26" />
               <folding>
                 <element signature="e#223#2123#0" expanded="false" />
                 <element signature="e#2152#20832#0" expanded="false" />
@@ -147,15 +145,15 @@
                 <element signature="e#38459#38990#1" expanded="false" />
                 <element signature="e#39495#40997#0" expanded="false" />
                 <element signature="e#41039#41071#0" expanded="false" />
-                <element signature="e#45301#48037#0" expanded="false" />
-                <element signature="e#47823#48037#0" expanded="false" />
-                <element signature="e#48093#48861#0" expanded="false" />
-                <element signature="e#48931#49158#0" expanded="false" />
-                <element signature="e#49233#53830#0" expanded="false" />
-                <element signature="e#53902#53906#0" expanded="false" />
-                <element signature="e#53954#54788#0" expanded="false" />
-                <element signature="e#54868#55341#0" expanded="false" />
-                <element signature="e#55406#56046#0" expanded="false" />
+                <element signature="e#45623#48359#0" expanded="false" />
+                <element signature="e#48145#48359#0" expanded="false" />
+                <element signature="e#48415#49183#0" expanded="false" />
+                <element signature="e#49253#49480#0" expanded="false" />
+                <element signature="e#49555#54152#0" expanded="false" />
+                <element signature="e#54224#54228#0" expanded="false" />
+                <element signature="e#54276#55110#0" expanded="false" />
+                <element signature="e#55190#55663#0" expanded="false" />
+                <element signature="e#55728#56368#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -367,9 +365,9 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="22" />
+    <option name="x" value="-3" />
     <option name="y" value="23" />
-    <option name="width" value="1254" />
+    <option name="width" value="1142" />
     <option name="height" value="712" />
   </component>
   <component name="ProjectInspectionProfilesVisibleTreeState">
@@ -999,7 +997,14 @@
       <option name="project" value="LOCAL" />
       <updated>1484862113526</updated>
     </task>
-    <option name="localTasksCounter" value="43" />
+    <task id="LOCAL-00043" summary="Add ParameterGraph.check_has_no_assigned_descendant">
+      <created>1484863851850</created>
+      <option name="number" value="00043" />
+      <option name="presentableId" value="LOCAL-00043" />
+      <option name="project" value="LOCAL" />
+      <updated>1484863851850</updated>
+    </task>
+    <option name="localTasksCounter" value="44" />
     <servers />
   </component>
   <component name="TodoView">
@@ -1012,10 +1017,10 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="22" y="23" width="1254" height="712" extended-state="0" />
+    <frame x="-3" y="23" width="1142" height="712" extended-state="0" />
     <editor active="false" />
     <layout>
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.2137161" sideWeight="0.49455675" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.234676" sideWeight="0.49455675" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.31881803" sideWeight="0.5034542" order="7" side_tool="true" content_ui="tabs" />
@@ -1039,7 +1044,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Delete parameter_unit.py" />
     <MESSAGE value="# package structure rearrangement and add parameter graph &#10;THE MOST IMPORTANT THING IS KEEPING INTEGRALTITY AND CONSISTENCE OF DATA UNIT.&#10;Class DataUnit should have a hidden dictionary recording all the parameters and scanned data.&#10;It should only be written by DataUnit's methods to keep integrality and consistence but should be read easily.&#10;Data should be put in to levels. If one parameter uses other parameters on at most n level, it in at n+1 level.&#10;Ideally, parameters should be specified only from higher level to lower level and it should be pretty easy to generate&#10;lower level parameters randomly with higher level parameters. In the fully random case, only level 0 parameters are&#10;necessary to be set.&#10;Whenever one wants to set a parameter, DataUnit should check its consistence with existing parameters.&#10;But it may be too complex and time consuming. Now, use it as a guide line rather than strict requirement.&#10;Build parameter level relationship graph.&#10;Previous Project, Study, Scanner structure are not necessary so are not used.&#10;&#10;ParameterGraph and ParameterGraph.generate_gv_file are added. They  plot parameter graph with dot tool to show dependency between parameters.&#10;Nicely, the parameter level are very easy to read from the graph, so it's no longer needed to be tracked manually." />
     <MESSAGE value="Add DataUnit and DataUnit.__init__" />
     <MESSAGE value="Add Initialization.sample_node_number" />
@@ -1064,7 +1068,8 @@
     <MESSAGE value="Debug&#10;ParameterGraph.forerunner2descendant.&#10;Add if_complete flag. If True, treat keys in forerunner dictionary as valid parameters.Parameter without a descendant will also be added to resulting dictionary" />
     <MESSAGE value="Standardize naming of function.&#10;If a function starts with if_, it returns True or False.&#10;If a function starts with check_, it returns True or raise error." />
     <MESSAGE value="Add ParameterGraph.hemodynamic_parameter" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add ParameterGraph.hemodynamic_parameter" />
+    <MESSAGE value="Add ParameterGraph.check_has_no_assigned_descendant" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add ParameterGraph.check_has_no_assigned_descendant" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1501,8 +1506,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/toolboxes.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="126">
-          <caret line="950" column="40" lean-forward="false" selection-start-line="950" selection-start-column="8" selection-end-line="950" selection-end-column="40" />
+        <state relative-caret-position="229">
+          <caret line="974" column="26" lean-forward="false" selection-start-line="974" selection-start-column="8" selection-end-line="974" selection-end-column="26" />
           <folding>
             <element signature="e#223#2123#0" expanded="false" />
             <element signature="e#2152#20832#0" expanded="false" />
@@ -1585,15 +1590,15 @@
             <element signature="e#38459#38990#1" expanded="false" />
             <element signature="e#39495#40997#0" expanded="false" />
             <element signature="e#41039#41071#0" expanded="false" />
-            <element signature="e#45301#48037#0" expanded="false" />
-            <element signature="e#47823#48037#0" expanded="false" />
-            <element signature="e#48093#48861#0" expanded="false" />
-            <element signature="e#48931#49158#0" expanded="false" />
-            <element signature="e#49233#53830#0" expanded="false" />
-            <element signature="e#53902#53906#0" expanded="false" />
-            <element signature="e#53954#54788#0" expanded="false" />
-            <element signature="e#54868#55341#0" expanded="false" />
-            <element signature="e#55406#56046#0" expanded="false" />
+            <element signature="e#45623#48359#0" expanded="false" />
+            <element signature="e#48145#48359#0" expanded="false" />
+            <element signature="e#48415#49183#0" expanded="false" />
+            <element signature="e#49253#49480#0" expanded="false" />
+            <element signature="e#49555#54152#0" expanded="false" />
+            <element signature="e#54224#54228#0" expanded="false" />
+            <element signature="e#54276#55110#0" expanded="false" />
+            <element signature="e#55190#55663#0" expanded="false" />
+            <element signature="e#55728#56368#0" expanded="false" />
           </folding>
         </state>
       </provider>

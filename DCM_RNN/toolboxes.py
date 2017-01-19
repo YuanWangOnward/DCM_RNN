@@ -988,12 +988,21 @@ class DataUnit(Initialization, ParameterGraph):
         # assign parameter one by one follow self._assign_order
         assign_order = self.get_assign_order()
         for para in assign_order:
-            if self.if_has_value(para):
-                pass
-        # n_node
-        para = 'n_node'
-        if not self.if_has_value('n_node'):
+            self.check_has_no_assigned_descendant(para)
             flag = self.get_flag(para)
+            self._set(para, flag)
+
+    def _set(self, para, flag):
+        """
+        Used by auto data generating process.
+        Assume all constraints have been checked, and value assignment is allowed.
+        Generate value for para following flag information.
+        :param para: target para
+        :param flag: if_random flag
+        :return:
+        """
+        if para is 'n_node':
+            pass
 
 
 
