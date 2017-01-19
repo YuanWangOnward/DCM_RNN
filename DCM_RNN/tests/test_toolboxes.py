@@ -172,6 +172,12 @@ class ParameterGraph_tests(unittest.TestCase):
                                "l1b": "level_1",
                                "l2a": "level_2",
                                "l2b": "level_2"}
+        self.pgt.para_level_index = {"if_random_l0": 0,
+                               "l1a": 1,
+                               "l1b": 1,
+                               "l2a": 2,
+                               "l2b": 2}
+
         category_para = {1: ["if_random_l0"],
                          2: ["l1a", "l1b"],
                          3: ["l2a", "l2b"]}
@@ -216,6 +222,13 @@ class ParameterGraph_tests(unittest.TestCase):
         para_level = self.pg.get_para_level_mapping()
         if if_print:
             print(para_level)
+
+    def test_get_para_level_index_mapping(self):
+        para_level = self.pgt.get_para_level_index_mapping()
+        self.assertEqual(para_level, self.pgt.para_level_index)
+        para_level = self.pg.get_para_level_index_mapping()
+
+
 
     def test_get_para_category_mapping(self):
         if_print = False
@@ -262,6 +275,20 @@ class ParameterGraph_tests(unittest.TestCase):
 class DataUnit_tests(unittest.TestCase):
     def setUp(self):
         self.du = toolboxes.DataUnit()
+        self.dut = toolboxes.DataUnit()
+
+        self.dut._para_forerunner = {"if_random_l0": [],
+                                     "l1a": ["if_random_l0"],
+                                     "l1b": ["if_random_l0"],
+                                     "l2a": ["l1a"],
+                                     "l2b": ["l1a", "l1b"]}
+        level_para = {
+            "level_0": ["if_random_l0"],
+            "level_1": ["l1a", "l1b"],
+            "level_2": ["l2a", "l2b"]
+        }
+        level_para_order = ['level_0', 'level_1', 'level_2']
+        self.dut._level_para = OrderedDict(level_para, level_para_order)
 
     def tearDown(self):
         del self.du
@@ -292,6 +319,18 @@ class DataUnit_tests(unittest.TestCase):
         self.du._secured_data['if_random_neural_parameter'] = False
         with self.assertRaises(ValueError):
             self.du.set('A', 400)
+
+    def test_get_para_names(self):
+        para_names = self.dut.get_para_names()
+        self.assertEqual(set(para_names), set(self.dut._para_forerunner.keys()))
+        para_names = self.du.get_para_names()
+        para_level = self.du.get_para_level_mapping()
+
+        for idx, value in enumerate(para_names[1:]):
+            pass
+            # self.assertLessEqual(para_level[para_names[idx-1]], value)
+
+
 
 
 

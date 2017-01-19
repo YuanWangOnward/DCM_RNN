@@ -504,7 +504,7 @@ class ParameterGraph:
 
             'Wxx': ['A', 't_delta'],
             'Wxxu': ['B', 't_delta'],
-            'Wx': ['C', 't_delta'],  # 'C' matrix equivalence in DCM_RNN model
+            'Wxu': ['C', 't_delta'],  # 'C' matrix equivalence in DCM_RNN model
 
             'Whh': ['hemodynamic_parameter', 't_delta'],
             'Whx': ['hemodynamic_parameter', 't_delta'],
@@ -553,7 +553,7 @@ class ParameterGraph:
             'level_3': ['u',
                         'B', 'C',
                         'Wxx', 'Whx', 'Whh', 'bh', 'Wo', 'bo'],
-            'level_4': ['Wxxu', 'Wx']
+            'level_4': ['Wxxu', 'Wxu']
         }
         level_para_order = ['inherited', 'level_0', 'level_1', 'level_2', 'level_3', 'level_4']
         self._level_para = OrderedDict(level_para, level_para_order)
@@ -585,7 +585,7 @@ class ParameterGraph:
         return True
 
     def get_para_forerunner_mapping(self):
-        return self._para_forerunner
+        return self._para_forerunner.copy()
 
     def forerunner2descendant(self, forerunner_mapping=None, key_order=None):
         """
@@ -644,7 +644,7 @@ class ParameterGraph:
         return para_level
 
     def get_level_para_mapping(self):
-        return self._level_para
+        return self._level_para.copy()
 
     def get_para_level_mapping(self, level_para=None):
         """
@@ -654,6 +654,19 @@ class ParameterGraph:
         """
         level_para = level_para or self._level_para
         return self.level_para2para_level(level_para)
+
+    def get_para_level_index_mapping(self, level_para=None, order=None):
+        """
+        Get {parameter:level_index} dictionary from {level:[parameters]} dictionary
+        :param level_para:{level:[parameters]} dictionary
+        :param order: [levels] list recording level order
+        :return: {parameter:level} dictionary
+        """
+        level_para = level_para or self._level_para
+        order = order or self._level_para.key_order
+        para_level = self.get_para_level_mapping(level_para)
+        return {key: order.index(value) for key, value in para_level.items()}
+
 
     def get_para_category_mapping(self, para_forerunner=None):
         """
@@ -822,8 +835,24 @@ class DataUnit(Initialization, ParameterGraph):
         self._secured_data['if_random_stimuli_number'] = if_random_stimuli_number
         self._secured_data['if_random_delta_t'] = if_random_delta_t
         self._secured_data['if_random_scan_time'] = if_random_scan_time
+        self._secured_data['initializer'] = self
 
-        self.para_categories = self.get_para_category_mapping()
+        # when do auto data generating, following the order below
+        self._assign_order = ['n_node',
+                              'n_stimuli',
+                              't_scan',
+                              't_delta',
+                              'n_time_point',
+                              'A', 'B', 'C', 'u'
+                              'hemodynamic_parameter',
+                              'initial_x_state',
+                              'initial_h_state',
+                              'Wxx', 'Wxxu', 'Wxu',
+                              'Whh', 'Whx', 'bh',
+                              'Wo', 'bo']
+
+    def get_assign_order(self):
+        return self._assign_order.copy()
 
     def set(self, para, value):
         """
@@ -863,7 +892,6 @@ class DataUnit(Initialization, ParameterGraph):
         else:
             raise ValueError('Category error.')
 
-
     def has_no_assigned_descendant(self, para):
         """
         Check the descendants of a para.
@@ -882,6 +910,43 @@ class DataUnit(Initialization, ParameterGraph):
                 return False
             else:
                 return True
+
+    def get_para_names(self):
+        """
+        Get all parameter names in a DataUnit.
+        :return: a list of parameter names, sorted by parameter level
+        """
+        para_level = self.get_para_level_mapping()
+        return sorted(para_level.keys(), key=lambda key: para_level[key])
+
+    def has_value(self, para):
+        """
+        Check whether if a parameter has been assigned a value
+        :param para: target para
+        :return: True if para has a value; otherwise False
+        """
+        pass
+
+    def complete_data_unit(self):
+        """
+        With given category_one parameters, generate all missing ones
+        :return: True
+        """
+        # check category one parameters
+        cate_para = self.get_category_para_mapping()
+        para_cate_one = cate_para[1]
+        flags = [True if para in self._secured_data.keys() else False for para in para_cate_one]
+        if False in flags:
+            parameters = [para_cate_one[index] for index, value in enumerate(flags) if value is False]
+            string = ', '.join(parameters)
+            raise ValueError(string + " has (have) not been specified.")
+        # assign parameter one by one follow self._assign_order
+        # n_node
+
+
+
+
+
 
 
 
