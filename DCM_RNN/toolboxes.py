@@ -801,6 +801,14 @@ class ParameterGraph:
             # target_file = "documents/" + file_name + ".png"
             # subprocess.run(["dot", "-Tpng", source_file, "-o", target_file], check=True)
 
+    def get_all_para_names(self):
+        """
+        Get all parameter names in a DataUnit.
+        :return: a list of parameter names, sorted by parameter level
+        """
+        para_level = self.get_para_level_mapping()
+        return sorted(para_level.keys(), key=lambda key: para_level[key])
+
 
 class DataUnit(Initialization, ParameterGraph):
     """
@@ -873,12 +881,12 @@ class DataUnit(Initialization, ParameterGraph):
         if category is 3:
             raise ValueError('Category 3 parameter should not be assigned directly')
         elif category is 1:
-            if self.has_no_assigned_descendant(para):
+            if self.if_has_assigned_descendant(para):
                 self._secured_data[para] = value
             else:
                 raise ValueError(para + 'has descendant that has been assigned a value, as a result it cannot be set.')
         elif category is 2:
-            if self.has_no_assigned_descendant(para):
+            if self.if_has_assigned_descendant(para):
                 forerunners = self.get_para_forerunner_mapping()[para]
                 flag = self.abstract_flag(forerunners)
                 if flag is None:
@@ -892,11 +900,11 @@ class DataUnit(Initialization, ParameterGraph):
         else:
             raise ValueError('Category error.')
 
-    def has_no_assigned_descendant(self, para):
+    def if_has_assigned_descendant(self, para):
         """
-        Check the descendants of a para.
+        Check the descendants of a para, if any of them has a value, return True
         :param para: target parameter
-        :return: If no descendant has had value, return True; otherwise, False.
+        :return: If no descendant has had value, return False; otherwise, True.
         """
         para_descendant = self.get_para_descendant_mapping()
         if para not in para_descendant.keys():
@@ -911,21 +919,20 @@ class DataUnit(Initialization, ParameterGraph):
             else:
                 return True
 
-    def get_para_names(self):
-        """
-        Get all parameter names in a DataUnit.
-        :return: a list of parameter names, sorted by parameter level
-        """
-        para_level = self.get_para_level_mapping()
-        return sorted(para_level.keys(), key=lambda key: para_level[key])
 
-    def has_value(self, para):
+    def if_has_value(self, para):
         """
         Check whether if a parameter has been assigned a value
         :param para: target para
         :return: True if para has a value; otherwise False
         """
-        pass
+        if para not in self.get_all_para_names():
+            raise ValueError('Improper parameter name.')
+        else:
+            if para in self._secured_data.keys():
+                return True
+            else:
+                return False
 
     def complete_data_unit(self):
         """

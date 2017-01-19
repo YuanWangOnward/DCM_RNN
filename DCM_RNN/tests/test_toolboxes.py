@@ -271,27 +271,24 @@ class ParameterGraph_tests(unittest.TestCase):
         if if_update_graph:
             self.pg.make_graph()
 
+    def test_get_para_names(self):
+        para_names = self.pgt.get_all_para_names()
+        self.assertEqual(set(para_names), set(self.pgt._para_forerunner.keys()))
+        para_names = self.pg.get_all_para_names()
+        para_level_index = self.pg.get_para_level_index_mapping()
+        for idx, value in enumerate(para_names[1:]):
+            self.assertLessEqual(para_level_index[para_names[idx]],
+                                 para_level_index[value])
+
 
 class DataUnit_tests(unittest.TestCase):
     def setUp(self):
         self.du = toolboxes.DataUnit()
         self.dut = toolboxes.DataUnit()
 
-        self.dut._para_forerunner = {"if_random_l0": [],
-                                     "l1a": ["if_random_l0"],
-                                     "l1b": ["if_random_l0"],
-                                     "l2a": ["l1a"],
-                                     "l2b": ["l1a", "l1b"]}
-        level_para = {
-            "level_0": ["if_random_l0"],
-            "level_1": ["l1a", "l1b"],
-            "level_2": ["l2a", "l2b"]
-        }
-        level_para_order = ['level_0', 'level_1', 'level_2']
-        self.dut._level_para = OrderedDict(level_para, level_para_order)
-
     def tearDown(self):
         del self.du
+        del self.dut
 
     def test_set(self):
         self.du.set('t_delta', 0.2)
@@ -320,16 +317,12 @@ class DataUnit_tests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.du.set('A', 400)
 
-    def test_get_para_names(self):
-        para_names = self.dut.get_para_names()
-        self.assertEqual(set(para_names), set(self.dut._para_forerunner.keys()))
-        para_names = self.du.get_para_names()
-        para_level_index = self.du.get_para_level_index_mapping()
-        for idx, value in enumerate(para_names[1:]):
-            self.assertLessEqual(para_level_index[para_names[idx]],
-                                 para_level_index[value])
+    def test_if_has_value(self):
+        pass
+        #with self.assertRaises(ValueError):
+            #self.du.if_has_value('A')
 
-
+        # self.du._secured_data['Whh']
 
 
 
