@@ -913,30 +913,28 @@ class DataUnit(Initialization, ParameterGraph):
         if category is 3:
             raise ValueError('Category 3 parameter should not be assigned directly')
         elif category is 1:
-            if self.if_has_assigned_descendant(para):
-                self._secured_data[para] = value
-            else:
-                raise ValueError(para + 'has descendant that has been assigned a value, as a result it cannot be set.')
+            self.check_has_no_assigned_descendant(para)
+            self._secured_data[para] = value
         elif category is 2:
-            if self.if_has_assigned_descendant(para):
-                forerunners = self.get_para_forerunner_mapping()[para]
-                flag = self.abstract_flag(forerunners)
-                if flag is None:
-                    self._secured_data[para] = value
-                elif self._secured_data[flag] is False:
+            self.check_has_no_assigned_descendant(para)
+            flag = self.get_flag(para)
+            if flag is None:
+                self._secured_data[para] = value
+            elif flag in self._secured_data.keys():
+                if self._secured_data[flag] is False:
                     self._secured_data[para] = value
                 else:
                     raise ValueError(flag + 'is True, ' + para + 'cannot be assigned directly')
             else:
-                raise ValueError(para + 'has descendant that has been assigned a value, as a result it cannot be set.')
+                raise ValueError(flag + 'has not been assigned, ' + para + 'cannot be assigned directly')
         else:
             raise ValueError('Category error.')
 
-    def if_has_assigned_descendant(self, para):
+    def if_has_no_assigned_descendant(self, para):
         """
-        Check the descendants of a para, if any of them has a value, return True
+        Check the descendants of a para, if any of them has a value, return False
         :param para: target parameter
-        :return: If no descendant has had value, return False; otherwise, True.
+        :return: If no descendant has had value, return True; otherwise, False.
         """
         self.check_valid_para(para)
         para_descendant = self.get_para_descendant_mapping()
@@ -949,6 +947,18 @@ class DataUnit(Initialization, ParameterGraph):
                 return False
             else:
                 return True
+
+    def check_has_no_assigned_descendant(self, para):
+        """
+        Check the descendants of a para, if any of them has a value, raise error
+        :param para: target parameter
+        :return: If no descendant has had value, return True; otherwise, error.
+        """
+        flag = self.if_has_no_assigned_descendant(para)
+        if flag:
+            return True
+        else:
+            raise ValueError(para + 'has descendant with value')
 
     def if_has_value(self, para):
         """
@@ -976,7 +986,14 @@ class DataUnit(Initialization, ParameterGraph):
             string = ', '.join(parameters)
             raise ValueError(string + " has (have) not been specified.")
         # assign parameter one by one follow self._assign_order
+        assign_order = self.get_assign_order()
+        for para in assign_order:
+            if self.if_has_value(para):
+                pass
         # n_node
+        para = 'n_node'
+        if not self.if_has_value('n_node'):
+            flag = self.get_flag(para)
 
 
 
