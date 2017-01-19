@@ -324,11 +324,11 @@ class DataUnit_tests(unittest.TestCase):
         para_names = self.dut.get_para_names()
         self.assertEqual(set(para_names), set(self.dut._para_forerunner.keys()))
         para_names = self.du.get_para_names()
-        para_level = self.du.get_para_level_mapping()
-
+        para_level_index = self.du.get_para_level_index_mapping()
         for idx, value in enumerate(para_names[1:]):
-            pass
-            # self.assertLessEqual(para_level[para_names[idx-1]], value)
+            self.assertLessEqual(para_level_index[para_names[idx]],
+                                 para_level_index[value])
+
 
 
 
