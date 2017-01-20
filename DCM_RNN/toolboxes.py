@@ -77,7 +77,8 @@ class Initialization:
                  C_init_low=None, C_init_high=None,
                  u_t_low=None, u_t_high=None,
                  deviation_constraint=None,
-                 h_parameter_check_statistics=None
+                 h_parameter_check_statistics=None,
+                 n_time_point_unit_length=None
                  ):
 
         self.n_node_low = n_node_low or 3
@@ -122,6 +123,8 @@ class Initialization:
                                              self.hemo_parameter_keys)
         self.hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0.],
                                                  self.hemo_parameter_keys)
+
+        self.n_time_point_unit_length = n_time_point_unit_length or 32
 
     def sample_node_number(self):
         """
@@ -555,9 +558,19 @@ class Initialization:
             bo = V0 * (4.3 * theta0 * E0 * TE + epsilon * r0 * E0 * TE + (1 - epsilon))
             bo_.append(bo)
 
-
         return {'Whh': Whh_, 'Whx': Whx_, 'bh': bh_, 'Wo': Wo_, 'bo': bo_}
 
+    def calculate_n_time_point(self, t_scan, t_delta):
+        """
+        Calculate n_time_point, n_time_point is ceil to self.n_time_point
+        :param t_scan: total scan time in second
+        :param t_delta: time interval for approximate differential equations in second
+        :return: n_time_point
+        """
+        unit_length = self.n_time_point_unit_length
+        para_temp = t_scan/t_delta
+        n_time_point = mth.ceil(para_temp / unit_length) * unit_length
+        return n_time_point
 
 class ParameterGraph:
     def __init__(self):
@@ -1231,7 +1244,15 @@ class DataUnit(Initialization, ParameterGraph):
                     self.set_initial_hemodynamic_state_as_inactivated(self._secured_data['n_node'])
         elif para in ['Wxx', 'Wxxu', 'Wxu']:
             assert flag_name is None
-            show(para, flag_name, flag_value, 'calculation')
+            show(para, flag_name, flag_value, 'calculate_dcm_rnn_x_matrices')
+            para_temp = self.calculate_dcm_rnn_x_matrices(self._secured_data['A'],
+                                                          self._secured_data['B'],
+                                                          self._secured_data['C'],
+                                                          self._secured_data['t_delta'])
+            self._secured_data[para] = para_temp[para]
+        elif para in ['Whh', 'Whx', 'bh', 'Wo', 'bo']:
+            assert flag_name is None
+            show(para, flag_name, flag_value, 'calculate_dcm_rnn_x_matrices')
             para_temp = self.calculate_dcm_rnn_x_matrices(self._secured_data['A'],
                                                           self._secured_data['B'],
                                                           self._secured_data['C'],
