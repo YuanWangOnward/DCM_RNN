@@ -3,6 +3,9 @@
   <component name="ChangeListManager">
     <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/documents/parameter_level_graph.gv" afterPath="$PROJECT_DIR$/DCM_RNN/documents/parameter_level_graph.gv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/tests/test_output/ParameterGraph_make_graph_test.gv" afterPath="$PROJECT_DIR$/DCM_RNN/tests/test_output/ParameterGraph_make_graph_test.gv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py" afterPath="$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/toolboxes.py" afterPath="$PROJECT_DIR$/DCM_RNN/toolboxes.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -53,13 +56,14 @@
       <file leaf-file-name="toolboxes.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/toolboxes.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="106">
-              <caret line="562" column="30" lean-forward="false" selection-start-line="562" selection-start-column="8" selection-end-line="562" selection-end-column="30" />
+            <state relative-caret-position="90">
+              <caret line="1105" column="26" lean-forward="false" selection-start-line="1105" selection-start-column="8" selection-end-line="1105" selection-end-column="26" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
                 <element signature="e#205#2105#0" expanded="false" />
                 <element signature="e#266#1372#0" expanded="false" />
                 <element signature="e#1425#1778#0" expanded="false" />
+                <element signature="e#3246#5528#0" expanded="false" />
                 <element signature="e#5572#5710#0" expanded="false" />
                 <element signature="e#5572#5642#1" expanded="false" />
                 <element signature="e#5790#6227#0" expanded="false" />
@@ -115,6 +119,8 @@
                 <element signature="e#21926#22633#0" expanded="false" />
                 <element signature="e#21926#22127#1" expanded="false" />
                 <element signature="e#22705#23367#0" expanded="false" />
+                <element signature="e#23453#25579#0" expanded="false" />
+                <element signature="e#25644#26085#0" expanded="false" />
                 <element signature="e#26113#43661#0" expanded="false" />
                 <element signature="e#26141#31101#0" expanded="false" />
                 <element signature="e#26165#29313#0" expanded="false" />
@@ -145,20 +151,23 @@
                 <element signature="e#48089#48717#0" expanded="false" />
                 <element signature="e#48781#49171#0" expanded="false" />
                 <element signature="e#49215#49530#0" expanded="false" />
-                <element signature="e#51910#52176#0" expanded="false" />
-                <element signature="e#52223#52523#0" expanded="false" />
-                <element signature="e#52567#52829#0" expanded="false" />
-                <element signature="e#52874#53132#0" expanded="false" />
-                <element signature="e#52913#53029#0" expanded="false" />
-                <element signature="e#53499#53809#0" expanded="false" />
-                <element signature="e#54762#55439#0" expanded="false" />
-                <element signature="e#58219#60955#0" expanded="false" />
-                <element signature="e#60741#60955#0" expanded="false" />
-                <element signature="e#61011#61779#0" expanded="false" />
-                <element signature="e#61849#62076#0" expanded="false" />
-                <element signature="e#62151#66770#0" expanded="false" />
-                <element signature="e#66842#66846#0" expanded="false" />
-                <element signature="e#66894#67728#0" expanded="false" />
+                <element signature="e#49574#50443#0" expanded="false" />
+                <element signature="e#50490#57991#0" expanded="false" />
+                <element signature="e#51270#51731#0" expanded="false" />
+                <element signature="e#51913#52179#0" expanded="false" />
+                <element signature="e#52226#52526#0" expanded="false" />
+                <element signature="e#52570#52832#0" expanded="false" />
+                <element signature="e#52877#53135#0" expanded="false" />
+                <element signature="e#52916#53032#0" expanded="false" />
+                <element signature="e#53515#53825#0" expanded="false" />
+                <element signature="e#54778#55455#0" expanded="false" />
+                <element signature="e#58089#60825#0" expanded="false" />
+                <element signature="e#60611#60825#0" expanded="false" />
+                <element signature="e#60881#61649#0" expanded="false" />
+                <element signature="e#61719#61946#0" expanded="false" />
+                <element signature="e#62021#66640#0" expanded="false" />
+                <element signature="e#66712#66716#0" expanded="false" />
+                <element signature="e#66764#67598#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -192,8 +201,8 @@
       <file leaf-file-name="test_toolboxes.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="362" column="36" lean-forward="true" selection-start-line="362" selection-start-column="36" selection-end-line="362" selection-end-column="36" />
+            <state relative-caret-position="240">
+              <caret line="363" column="0" lean-forward="true" selection-start-line="363" selection-start-column="0" selection-end-line="363" selection-end-column="0" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
                 <element signature="e#326#363#0" expanded="false" />
@@ -1068,7 +1077,14 @@
       <option name="project" value="LOCAL" />
       <updated>1484938657409</updated>
     </task>
-    <option name="localTasksCounter" value="48" />
+    <task id="LOCAL-00048" summary="Add Initialization.calculate_n_time_point">
+      <created>1484939044043</created>
+      <option name="number" value="00048" />
+      <option name="presentableId" value="LOCAL-00048" />
+      <option name="project" value="LOCAL" />
+      <updated>1484939044043</updated>
+    </task>
+    <option name="localTasksCounter" value="49" />
     <servers />
   </component>
   <component name="TodoView">
@@ -1084,13 +1100,13 @@
     <frame x="30" y="23" width="1155" height="712" extended-state="0" />
     <editor active="false" />
     <layout>
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19567099" sideWeight="0.49455675" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19567099" sideWeight="0.49455675" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.31881803" sideWeight="0.5034542" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.31726283" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.39657855" sideWeight="0.49654576" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.31726283" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.39657855" sideWeight="0.49654576" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.2495935" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5054432" order="2" side_tool="true" content_ui="tabs" />
@@ -1108,7 +1124,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Add Initialization.sample_t_delta" />
     <MESSAGE value="Add Initialization.sample_scan_timeww" />
     <MESSAGE value="Add DataUnit.set (not complete)" />
     <MESSAGE value="Add ParameterGraph.check_parameter_relation" />
@@ -1133,7 +1148,8 @@
     <MESSAGE value="Add Initialization.randomly_generate_u" />
     <MESSAGE value="Add Initialization.calculate_dcm_rnn_x_matrices" />
     <MESSAGE value="Add Initialization.calculate_dcm_rnn_h_matrices" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add Initialization.calculate_dcm_rnn_h_matrices" />
+    <MESSAGE value="Add Initialization.calculate_n_time_point" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add Initialization.calculate_n_time_point" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1361,17 +1377,6 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/documents/parameter_graph.png" />
     <entry file="file://$PROJECT_DIR$/DCM_RNN/documents/parameter_graph.gv" />
-    <entry file="file://$PROJECT_DIR$/DCM_RNN/notes.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="60">
-          <caret line="156" column="0" lean-forward="false" selection-start-line="156" selection-start-column="0" selection-end-line="156" selection-end-column="0" />
-          <folding>
-            <element signature="e#94#1748#0" expanded="false" />
-            <element signature="e#1767#4748#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="120">
@@ -1432,10 +1437,37 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/population.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="49">
+          <caret line="162" column="1" lean-forward="false" selection-start-line="162" selection-start-column="1" selection-end-line="162" selection-end-column="1" />
+          <folding>
+            <element signature="e#828#930#0" expanded="false" />
+            <element signature="e#1123#1221#0" expanded="false" />
+            <element signature="e#1367#1416#0" expanded="false" />
+            <element signature="e#2232#2721#0" expanded="false" />
+            <element signature="e#4601#5430#0" expanded="false" />
+            <element signature="e#5011#5409#0" expanded="false" />
+            <element signature="e#5489#6039#0" expanded="false" />
+            <element signature="e#5489#5543#0" expanded="false" />
+            <element signature="e#6087#6369#0" expanded="false" />
+            <element signature="e#6087#6141#0" expanded="false" />
+            <element signature="e#6457#6577#0" expanded="false" />
+            <element signature="e#7663#7871#0" expanded="false" />
+            <element signature="e#9987#11301#0" expanded="false" />
+            <element signature="e#10099#11062#0" expanded="false" />
+            <element signature="e#10132#10377#0" expanded="false" />
+            <element signature="e#10426#10766#0" expanded="false" />
+            <element signature="e#10485#10766#0" expanded="false" />
+            <element signature="e#10814#11062#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="362" column="36" lean-forward="true" selection-start-line="362" selection-start-column="36" selection-end-line="362" selection-end-column="36" />
+        <state relative-caret-position="240">
+          <caret line="363" column="0" lean-forward="true" selection-start-line="363" selection-start-column="0" selection-end-line="363" selection-end-column="0" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
             <element signature="e#326#363#0" expanded="false" />
@@ -1493,42 +1525,27 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/DCM_RNN/population.py">
+    <entry file="file://$PROJECT_DIR$/DCM_RNN/notes.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="49">
-          <caret line="162" column="1" lean-forward="false" selection-start-line="162" selection-start-column="1" selection-end-line="162" selection-end-column="1" />
+        <state relative-caret-position="60">
+          <caret line="156" column="0" lean-forward="false" selection-start-line="156" selection-start-column="0" selection-end-line="156" selection-end-column="0" />
           <folding>
-            <element signature="e#828#930#0" expanded="false" />
-            <element signature="e#1123#1221#0" expanded="false" />
-            <element signature="e#1367#1416#0" expanded="false" />
-            <element signature="e#2232#2721#0" expanded="false" />
-            <element signature="e#4601#5430#0" expanded="false" />
-            <element signature="e#5011#5409#0" expanded="false" />
-            <element signature="e#5489#6039#0" expanded="false" />
-            <element signature="e#5489#5543#0" expanded="false" />
-            <element signature="e#6087#6369#0" expanded="false" />
-            <element signature="e#6087#6141#0" expanded="false" />
-            <element signature="e#6457#6577#0" expanded="false" />
-            <element signature="e#7663#7871#0" expanded="false" />
-            <element signature="e#9987#11301#0" expanded="false" />
-            <element signature="e#10099#11062#0" expanded="false" />
-            <element signature="e#10132#10377#0" expanded="false" />
-            <element signature="e#10426#10766#0" expanded="false" />
-            <element signature="e#10485#10766#0" expanded="false" />
-            <element signature="e#10814#11062#0" expanded="false" />
+            <element signature="e#94#1748#0" expanded="false" />
+            <element signature="e#1767#4748#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/toolboxes.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="106">
-          <caret line="562" column="30" lean-forward="false" selection-start-line="562" selection-start-column="8" selection-end-line="562" selection-end-column="30" />
+        <state relative-caret-position="90">
+          <caret line="1105" column="26" lean-forward="false" selection-start-line="1105" selection-start-column="8" selection-end-line="1105" selection-end-column="26" />
           <folding>
             <element signature="e#0#13#0" expanded="true" />
             <element signature="e#205#2105#0" expanded="false" />
             <element signature="e#266#1372#0" expanded="false" />
             <element signature="e#1425#1778#0" expanded="false" />
+            <element signature="e#3246#5528#0" expanded="false" />
             <element signature="e#5572#5710#0" expanded="false" />
             <element signature="e#5572#5642#1" expanded="false" />
             <element signature="e#5790#6227#0" expanded="false" />
@@ -1584,6 +1601,8 @@
             <element signature="e#21926#22633#0" expanded="false" />
             <element signature="e#21926#22127#1" expanded="false" />
             <element signature="e#22705#23367#0" expanded="false" />
+            <element signature="e#23453#25579#0" expanded="false" />
+            <element signature="e#25644#26085#0" expanded="false" />
             <element signature="e#26113#43661#0" expanded="false" />
             <element signature="e#26141#31101#0" expanded="false" />
             <element signature="e#26165#29313#0" expanded="false" />
@@ -1614,20 +1633,23 @@
             <element signature="e#48089#48717#0" expanded="false" />
             <element signature="e#48781#49171#0" expanded="false" />
             <element signature="e#49215#49530#0" expanded="false" />
-            <element signature="e#51910#52176#0" expanded="false" />
-            <element signature="e#52223#52523#0" expanded="false" />
-            <element signature="e#52567#52829#0" expanded="false" />
-            <element signature="e#52874#53132#0" expanded="false" />
-            <element signature="e#52913#53029#0" expanded="false" />
-            <element signature="e#53499#53809#0" expanded="false" />
-            <element signature="e#54762#55439#0" expanded="false" />
-            <element signature="e#58219#60955#0" expanded="false" />
-            <element signature="e#60741#60955#0" expanded="false" />
-            <element signature="e#61011#61779#0" expanded="false" />
-            <element signature="e#61849#62076#0" expanded="false" />
-            <element signature="e#62151#66770#0" expanded="false" />
-            <element signature="e#66842#66846#0" expanded="false" />
-            <element signature="e#66894#67728#0" expanded="false" />
+            <element signature="e#49574#50443#0" expanded="false" />
+            <element signature="e#50490#57991#0" expanded="false" />
+            <element signature="e#51270#51731#0" expanded="false" />
+            <element signature="e#51913#52179#0" expanded="false" />
+            <element signature="e#52226#52526#0" expanded="false" />
+            <element signature="e#52570#52832#0" expanded="false" />
+            <element signature="e#52877#53135#0" expanded="false" />
+            <element signature="e#52916#53032#0" expanded="false" />
+            <element signature="e#53515#53825#0" expanded="false" />
+            <element signature="e#54778#55455#0" expanded="false" />
+            <element signature="e#58089#60825#0" expanded="false" />
+            <element signature="e#60611#60825#0" expanded="false" />
+            <element signature="e#60881#61649#0" expanded="false" />
+            <element signature="e#61719#61946#0" expanded="false" />
+            <element signature="e#62021#66640#0" expanded="false" />
+            <element signature="e#66712#66716#0" expanded="false" />
+            <element signature="e#66764#67598#0" expanded="false" />
           </folding>
         </state>
       </provider>

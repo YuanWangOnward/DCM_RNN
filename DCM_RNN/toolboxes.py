@@ -1135,13 +1135,13 @@ class DataUnit(Initialization, ParameterGraph):
 
         def show(para_name, flag_name, flag_value, method):
             if flag_name is None:
-                flag_name = 'None'
+                flag_name = 'No_flag'
             message = flag_name + ' is ' + str(flag_value) + ', ' + para_name + ' is set by ' + method
             print(message)
+
         def raise_error(para_name, flag_name, flag_value, error):
             message = flag_name + ' is ' + str(flag_value) + ', ' + para_name + ' ' + error
             raise ValueError(message)
-
 
         assign_order = ['n_node',
                         'n_stimuli',
@@ -1185,10 +1185,9 @@ class DataUnit(Initialization, ParameterGraph):
                 raise_error(para, flag_name, flag_value, 'needs to be set manually')
         elif para is 'n_time_point':
             assert flag_name is None
-            show(para, flag_name, flag_value, 'calculation')
-            para_temp = int(self._secured_data['t_scan'] / self._secured_data['t_delta'])
-            para_temp = mth.ceil(para_temp / 32) * 32
-            self._secured_data[para] = para_temp
+            show(para, flag_name, flag_value, 'calculate_n_time_point')
+            self._secured_data[para] = self.calculate_n_time_point(self._secured_data['t_scan'],
+                                                                   self._secured_data['t_delta'])
         elif para is 'A':
             if flag_value is True:
                 show(para, flag_name, flag_value, 'randomly_generate_A_matrix')
@@ -1252,10 +1251,8 @@ class DataUnit(Initialization, ParameterGraph):
             self._secured_data[para] = para_temp[para]
         elif para in ['Whh', 'Whx', 'bh', 'Wo', 'bo']:
             assert flag_name is None
-            show(para, flag_name, flag_value, 'calculate_dcm_rnn_x_matrices')
-            para_temp = self.calculate_dcm_rnn_x_matrices(self._secured_data['A'],
-                                                          self._secured_data['B'],
-                                                          self._secured_data['C'],
+            show(para, flag_name, flag_value, 'calculate_dcm_rnn_h_matrices')
+            para_temp = self.calculate_dcm_rnn_h_matrices(self._secured_data['hemodynamic_parameter'],
                                                           self._secured_data['t_delta'])
             self._secured_data[para] = para_temp[para]
 
