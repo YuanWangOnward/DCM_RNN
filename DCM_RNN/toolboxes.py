@@ -572,6 +572,7 @@ class Initialization:
         n_time_point = mth.ceil(para_temp / unit_length) * unit_length
         return n_time_point
 
+
 class ParameterGraph:
     def __init__(self):
         self._para_forerunner = {
@@ -974,6 +975,39 @@ class ParameterGraph:
             raise ValueError('Improper name.')
 
 
+class Scanner:
+    def __init__(self, snr_y=None):
+        snr_y = snr_y or 2
+
+    def scan_x(self, sub, u, x_state_initial=None):
+        """
+        Calculate x, namely neural activity
+        :param sub:
+        :param u:
+        :param x_state_initial:
+        :return:
+        """
+
+        u = u or self.u
+        x_state_initial = x_state_initial or sub.x_state_initial
+        x_state = sub.x_state
+
+        x_state[:, 0, 0] = x_state_initial
+        for i in range(1, self.n_time_point):
+            tmp1 = np.matmul(sub.Wxx, x_state[:, 0, i - 1]);
+            tmp2 = [np.matmul(sub.Wxxu[idx], x_state[:, 0, i - 1] * u[idx, i - 1]) for idx in range(sub.n_stimuli)]
+            tmp2 = np.sum(np.asarray(tmp2), 0)
+            tmp3 = np.matmul(sub.Wxu, u[:, i - 1])
+            x_state[:, 0, i] = tmp1 + tmp2 + tmp3
+            '''
+            x_state[:,0,i]=np.matmul(sub.Wxx,x_state[:,0,i-1])+\
+            np.matmul(sub.Wxxu,x_state[:,0,i-1]*u[i-1])+\
+            sub.Wxu*u[i-1]
+            '''
+        output = x_state[:]
+        return output
+
+
 class DataUnit(Initialization, ParameterGraph):
     """
     This class is used to ensure consistence and integrity of all data, but that takes a lot of efforts, so currently,
@@ -1135,7 +1169,7 @@ class DataUnit(Initialization, ParameterGraph):
 
         def show(para_name, flag_name, flag_value, method):
             if flag_name is None:
-                flag_name = 'No_flag'
+                flag_name = 'None_flag'
             message = flag_name + ' is ' + str(flag_value) + ', ' + para_name + ' is set by ' + method
             print(message)
 
@@ -1255,12 +1289,6 @@ class DataUnit(Initialization, ParameterGraph):
             para_temp = self.calculate_dcm_rnn_h_matrices(self._secured_data['hemodynamic_parameter'],
                                                           self._secured_data['t_delta'])
             self._secured_data[para] = para_temp[para]
-
-
-
-
-
-
 
     def call_uniformed_assignment_api(self, parameter, value=None, tag='random'):
         """
@@ -1417,4 +1445,18 @@ class DataUnit(Initialization, ParameterGraph):
                             self.sample_node_number()
                     else:
                         raise ValueError('Improper tag')
+
+    def get_dcm_rnn_x_matrices(self):
+        """
+        Return connection matrices of neural equation in DCM_RNN
+        :return: [Wxx, Wxxu, Wxu]
+        """
+        assert 'Wxx' in self._secured_data.keys()
+        assert 'Wxxu' in self._secured_data.keys()
+        assert 'Wxu' in self._secured_data.keys()
+        return [self._secured_data['Wxx'],
+                self._secured_data['Wxxu'],
+                self._secured_data['Wxu']]
+
+
 
