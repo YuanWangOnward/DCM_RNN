@@ -1318,31 +1318,23 @@ class DataUnit(Initialization, ParameterGraph):
                     else:
                         self._secured_data[parameter] = value
 
-    def check_prerequisites(self, parameter):
+    def check_forerunners(self, para):
         """
-        Check if all prerequisites of a parameter have been specified
-        :param parameter: target parameter
+        Check if all forerunners of a para have been specified
+        :param para: target para
         :return: True or raise error
         """
-        prerequisites_check = [para in self._secured_data.keys() for para in self.para_prerequisites[parameter]]
-        if False in prerequisites_check:
-            not_satisfied_prerequisites = [self.para_prerequisites[parameter] for val in prerequisites_check if not val]
-            string = ''
-            for value in not_satisfied_prerequisites:
-                string = value + ' ' + string
-            raise ValueError(parameter + " cannot be assigned because the following prerequisites have not be "
+        para_forerunners = self.get_para_forerunner_mapping()
+        forerunner_checks = [para in self._secured_data.keys()
+                             for para in para_forerunners[para]]
+        if False in forerunner_checks:
+            not_satisfied_forerunners = [para_forerunners[para][idx]
+                                         for idx, val in enumerate(forerunner_checks) if not val]
+            string = ', '.join(not_satisfied_forerunners)
+            raise ValueError(para + " cannot be assigned because the following prerequisites have not be "
                              + "assigned: " + string)
         else:
             return True
-
-    def set_category_one_parameter(self, parameter, value):
-        """
-        Set value of category one parameter. Directly set.
-        :param parameter: name of parameter
-        :param value: value of parameter
-        :return: None
-        """
-        self._secured_data[parameter] = value
 
     def set_category_two_parameter(self, parameter, value, tag):
         """
@@ -1355,7 +1347,7 @@ class DataUnit(Initialization, ParameterGraph):
         :return:
         """
         # check if all prerequisites exis
-        if self.check_prerequisites(parameter):
+        if self.check_forerunners(parameter):
             flag = self.abstract_flag(self.para_prerequisites[parameter])
             if self._secured_data[flag] == False:
                 if value != None:
@@ -1425,26 +1417,4 @@ class DataUnit(Initialization, ParameterGraph):
                             self.sample_node_number()
                     else:
                         raise ValueError('Improper tag')
-
-    def set_category_three_parameter(self, parameter, value):
-        pass
-
-    def set_backup(self, key, value):
-        if key == 't_scan':
-            if self._secured_data['if_random_scan_time'] == False:
-                self._secured_data['t_scan'] = value
-            else:
-                raise ValueError('t_scan cannot be set because if_random_scan_time=True')
-        elif key == 't_delta':
-            if self._secured_data['if_random_delta_t'] == False:
-                self._secured_data['t_delta'] = value
-            else:
-                raise ValueError('t_delta cannot be set because if_random_delta_t=True')
-        elif key == 'n_node':
-            if self._secured_data['if_random_node_number'] == False:
-                self._secured_data['n_node'] = value
-            else:
-                raise ValueError('n_node cannot be set because if_random_node_number=True')
-        else:
-            raise ValueError(key + ' cannot be set.')
 

@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="">
+    <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="Clear up DataUnit&#10;Remove DataUnit.set_category_one_parameter&#10;Remove DataUnit.set_category_two_parameter&#10;Remove DataUnit.set_category_three_parameter&#10;Remove DataUnit.set_backup">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/documents/parameter_level_graph.gv" afterPath="$PROJECT_DIR$/DCM_RNN/documents/parameter_level_graph.gv" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/tests/test_output/ParameterGraph_make_graph_test.gv" afterPath="$PROJECT_DIR$/DCM_RNN/tests/test_output/ParameterGraph_make_graph_test.gv" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py" afterPath="$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/toolboxes.py" afterPath="$PROJECT_DIR$/DCM_RNN/toolboxes.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -56,8 +53,8 @@
       <file leaf-file-name="toolboxes.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/toolboxes.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="90">
-              <caret line="1105" column="26" lean-forward="false" selection-start-line="1105" selection-start-column="8" selection-end-line="1105" selection-end-column="26" />
+            <state relative-caret-position="198">
+              <caret line="1320" column="25" lean-forward="false" selection-start-line="1320" selection-start-column="8" selection-end-line="1320" selection-end-column="25" />
               <folding>
                 <element signature="e#0#13#0" expanded="true" />
                 <element signature="e#205#2105#0" expanded="false" />
@@ -151,7 +148,6 @@
                 <element signature="e#48089#48717#0" expanded="false" />
                 <element signature="e#48781#49171#0" expanded="false" />
                 <element signature="e#49215#49530#0" expanded="false" />
-                <element signature="e#49574#50443#0" expanded="false" />
                 <element signature="e#50490#57991#0" expanded="false" />
                 <element signature="e#51270#51731#0" expanded="false" />
                 <element signature="e#51913#52179#0" expanded="false" />
@@ -163,11 +159,7 @@
                 <element signature="e#54778#55455#0" expanded="false" />
                 <element signature="e#58089#60825#0" expanded="false" />
                 <element signature="e#60611#60825#0" expanded="false" />
-                <element signature="e#60881#61649#0" expanded="false" />
-                <element signature="e#61719#61946#0" expanded="false" />
-                <element signature="e#62021#66640#0" expanded="false" />
-                <element signature="e#66712#66716#0" expanded="false" />
-                <element signature="e#66764#67598#0" expanded="false" />
+                <element signature="e#61750#66367#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -302,7 +294,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>level_para</find>
       <find>OrderedDict</find>
       <find>1_</find>
       <find>l0</find>
@@ -332,6 +323,7 @@
       <find>Whh</find>
       <find>self.</find>
       <find>hemodynamic_parameters</find>
+      <find>check_prerequisites</find>
     </findStrings>
     <replaceStrings>
       <replace>randomly_initialize_connection_matrices</replace>
@@ -1084,7 +1076,14 @@
       <option name="project" value="LOCAL" />
       <updated>1484939044043</updated>
     </task>
-    <option name="localTasksCounter" value="49" />
+    <task id="LOCAL-00049" summary="Add DataUnit.complete_data_unit (not tested)">
+      <created>1484939452792</created>
+      <option name="number" value="00049" />
+      <option name="presentableId" value="LOCAL-00049" />
+      <option name="project" value="LOCAL" />
+      <updated>1484939452792</updated>
+    </task>
+    <option name="localTasksCounter" value="50" />
     <servers />
   </component>
   <component name="TodoView">
@@ -1106,7 +1105,7 @@
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.31726283" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.39657855" sideWeight="0.49654576" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.39657855" sideWeight="0.49654576" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.2495935" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5054432" order="2" side_tool="true" content_ui="tabs" />
@@ -1124,7 +1123,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Add Initialization.sample_scan_timeww" />
     <MESSAGE value="Add DataUnit.set (not complete)" />
     <MESSAGE value="Add ParameterGraph.check_parameter_relation" />
     <MESSAGE value="Update ParameterGraph.generate_gv_file&#10;level lables are added and parameters at the same level are put into the same rank" />
@@ -1149,11 +1147,12 @@
     <MESSAGE value="Add Initialization.calculate_dcm_rnn_x_matrices" />
     <MESSAGE value="Add Initialization.calculate_dcm_rnn_h_matrices" />
     <MESSAGE value="Add Initialization.calculate_n_time_point" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add Initialization.calculate_n_time_point" />
+    <MESSAGE value="Add DataUnit.complete_data_unit (not tested)" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add DataUnit.complete_data_unit (not tested)" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="37" />
+      <option name="time" value="38" />
     </breakpoint-manager>
     <watches-manager />
   </component>
@@ -1538,8 +1537,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/toolboxes.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="90">
-          <caret line="1105" column="26" lean-forward="false" selection-start-line="1105" selection-start-column="8" selection-end-line="1105" selection-end-column="26" />
+        <state relative-caret-position="198">
+          <caret line="1320" column="25" lean-forward="false" selection-start-line="1320" selection-start-column="8" selection-end-line="1320" selection-end-column="25" />
           <folding>
             <element signature="e#0#13#0" expanded="true" />
             <element signature="e#205#2105#0" expanded="false" />
@@ -1633,7 +1632,6 @@
             <element signature="e#48089#48717#0" expanded="false" />
             <element signature="e#48781#49171#0" expanded="false" />
             <element signature="e#49215#49530#0" expanded="false" />
-            <element signature="e#49574#50443#0" expanded="false" />
             <element signature="e#50490#57991#0" expanded="false" />
             <element signature="e#51270#51731#0" expanded="false" />
             <element signature="e#51913#52179#0" expanded="false" />
@@ -1645,11 +1643,7 @@
             <element signature="e#54778#55455#0" expanded="false" />
             <element signature="e#58089#60825#0" expanded="false" />
             <element signature="e#60611#60825#0" expanded="false" />
-            <element signature="e#60881#61649#0" expanded="false" />
-            <element signature="e#61719#61946#0" expanded="false" />
-            <element signature="e#62021#66640#0" expanded="false" />
-            <element signature="e#66712#66716#0" expanded="false" />
-            <element signature="e#66764#67598#0" expanded="false" />
+            <element signature="e#61750#66367#0" expanded="false" />
           </folding>
         </state>
       </provider>
