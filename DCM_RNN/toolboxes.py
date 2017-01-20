@@ -276,21 +276,23 @@ class Initialization:
 
     def randomly_generate_u(self, n_stimuli, n_time_point, t_delta):
         """
-        Randomly generate input stiluli,
+        Randomly generate input stimuli,
         :param n_stimuli: the amount of stimuli
         :param n_time_point: the total sample point of stimuli
         :param t_delta: time interval between adjacent sample points
-        :return:
+        :return: np.array, random input, size (n_stimuli, n_time_point)
         """
+
         def flip(num):
             if num is 0:
                 return 1
             if num is 1:
                 return 0
+
         u_t_low = self.u_t_low
         u_t_high = self.u_t_high
-        u_n_low = int(u_t_low/t_delta)
-        u_n_high = int(u_t_high/t_delta)
+        u_n_low = int(u_t_low / t_delta)
+        u_n_high = int(u_t_high / t_delta)
         u = np.zeros((n_stimuli, n_time_point))
 
         for n_s in range(n_stimuli):
@@ -306,9 +308,16 @@ class Initialization:
                 i_current = i_next
         return u
 
-
-
-
+    def get_impulse_u(self, n_stimuli, n_time_point):
+        """
+        Generate impulse stimuli.
+        :param n_stimuli: the amount of stimuli
+        :param n_time_point: the total sample point of stimuli
+        :return: np.array, size (n_stimuli, n_time_point)
+        """
+        u = np.zeros((n_stimuli, n_time_point))
+        u[:, 0] = 1
+        return u
 
     def get_hemodynamic_parameter_prior_distributions(self):
         """
@@ -448,7 +457,7 @@ class Initialization:
         """
         return np.zeros(n_node)
 
-    def sample_initial_neural_state(self, n_node):
+    def randomly_generate_initial_neural_state(self, n_node):
         """
         Sample initial neural state. The distribution is set by experience.
         :param n_node: number of nodes (brain areas)
@@ -466,7 +475,7 @@ class Initialization:
         h_state_initial[:, 0] = 0
         return h_state_initial
 
-    def sample_initial_hemodynamic_state(self, n_node):
+    def randomly_generate_initial_hemodynamic_state(self, n_node):
         """
         Sample initial hemodynamic state. The distribution is set by experience.
         :param n_node: number of nodes (brain areas)
@@ -479,6 +488,25 @@ class Initialization:
         h_state_initial[:, 3] = np.random.uniform(low=self.q_init_low, high=self.q_init_high, size=n_node)
         return h_state_initial
 
+    def calculate_dcm_rnn_x_matrices(self, A, B, C, t_delta):
+        """
+        Calculate matrices used in DCM_RNN for neural activity evolving.
+        In DCM, neural level equation x'=Ax+\sigma(xBu)+Cu.
+        In DCM_RNN, neural level equation x_t+1 = Wxx * x_t + \sigma(x_t * Wxxu * u) + Wxu * u
+        :param A:
+        :param B:
+        :param C:
+        :param t_delta: time interval for approximate differential equations in second
+        :return: {'Wxx': Wxx, 'Wxxu': Wxxu, 'Wxu': Wxu}
+        """
+        n_node = A.shape[0]
+        Wxx = np.array(A) * t_delta + np.eye(n_node, n_node, 0)
+        Wxxu = [np.array(b) * t_delta for b in B]
+        Wxu = C * t_delta
+        return {'Wxx': Wxx, 'Wxxu': Wxxu, 'Wxu': Wxu}
+
+    def calculate_dcm_rnn_h_matrices(self):
+        pass
 
 class ParameterGraph:
     def __init__(self):
@@ -1040,67 +1068,125 @@ class DataUnit(Initialization, ParameterGraph):
         :param flag_name: if_random flag
         :return:
         """
+
+        def show(para_name, flag_name, flag_value, method):
+            if flag_name is None:
+                flag_name = 'None'
+            message = flag_name + ' is ' + str(flag_value) + ', ' + para_name + ' is set by ' + method
+            print(message)
+        def raise_error(para_name, flag_name, flag_value, error):
+            message = flag_name + ' is ' + str(flag_value) + ', ' + para_name + ' ' + error
+            raise ValueError(message)
+
+
         assign_order = ['n_node',
-                              'n_stimuli',
-                              't_scan',
-                              't_delta',
-                              'n_time_point',
-                              'A', 'B', 'C', 'u',
-                              'hemodynamic_parameter',
-                              'initial_x_state',
-                              'initial_h_state',
-                              'Wxx', 'Wxxu', 'Wxu',
-                              'Whh', 'Whx', 'bh',
-                              'Wo', 'bo']
-        flag_value = self._secured_data[flag_name]
+                        'n_stimuli',
+                        't_scan',
+                        't_delta',
+                        'n_time_point',
+                        'A', 'B', 'C', 'u',
+                        'hemodynamic_parameter',
+                        'initial_x_state',
+                        'initial_h_state',
+                        'Wxx', 'Wxxu', 'Wxu',
+                        'Whh', 'Whx', 'bh',
+                        'Wo', 'bo']
+        if flag_name is not None:
+            flag_value = self._secured_data[flag_name]
+        else:
+            flag_value = 'none_flag'
         if para is 'n_node':
             if flag_value is True:
+                show(para, flag_name, flag_value, 'sample_node_number')
                 self._secured_data[para] = self.sample_node_number()
             else:
-                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+                raise_error(para, flag_name, flag_value, 'needs to be set manually')
         elif para is 'n_stimuli':
             if flag_value is True:
+                show(para, flag_name, flag_value, 'sample_stimuli_number')
                 self._secured_data[para] = self.sample_stimuli_number(self._secured_data['n_node'])
             else:
-                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+                raise_error(para, flag_name, flag_value, 'needs to be set manually')
         elif para is 't_scan':
             if flag_value is True:
+                show(para, flag_name, flag_value, 'sample_scan_time')
                 self._secured_data[para] = self.sample_scan_time()
             else:
-                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+                raise_error(para, flag_name, flag_value, 'needs to be set manually')
         elif para is 't_delta':
             if flag_value is True:
+                show(para, flag_name, flag_value, 'sample_t_delta')
                 self._secured_data[para] = self.sample_t_delta()
             else:
-                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+                raise_error(para, flag_name, flag_value, 'needs to be set manually')
         elif para is 'n_time_point':
             assert flag_name is None
-            para_temp = int(self._secured_data['t_scan']/self._secured_data['t_delta'])
-            para_temp = mth.ceil(para_temp/32) * 32
-            self._secured_data[para] = int(self._secured_data['t_scan']/self._secured_data['t_delta'])
+            show(para, flag_name, flag_value, 'calculation')
+            para_temp = int(self._secured_data['t_scan'] / self._secured_data['t_delta'])
+            para_temp = mth.ceil(para_temp / 32) * 32
+            self._secured_data[para] = para_temp
         elif para is 'A':
             if flag_value is True:
+                show(para, flag_name, flag_value, 'randomly_generate_A_matrix')
                 self._secured_data[para] = self.randomly_generate_A_matrix(self._secured_data['n_node'])
             else:
-                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+                raise_error(para, flag_name, flag_value, 'needs to be set manually')
         elif para is 'B':
             if flag_value is True:
+                show(para, flag_name, flag_value, 'randomly_generate_B_matrix')
                 self._secured_data[para] = self.randomly_generate_B_matrix(self._secured_data['n_node'],
                                                                            self._secured_data['n_stimuli'])
             else:
-                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+                raise_error(para, flag_name, flag_value, 'needs to be set manually')
         elif para is 'C':
             if flag_value is True:
+                show(para, flag_name, flag_value, 'randomly_generate_C_matrix')
                 self._secured_data[para] = self.randomly_generate_C_matrix(self._secured_data['n_node'],
                                                                            self._secured_data['n_stimuli'])
             else:
-                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
-        elif para is 'C':
+                raise_error(para, flag_name, flag_value, 'needs to be set manually')
+        elif para is 'u':
             if flag_value is True:
-                self._secured_data[para] = self.randomly_generate_C_matrix(self._secured_data['n_node'],
-                                                                           self._secured_data['n_stimuli'])
+                show(para, flag_name, flag_value, 'randomly_generate_u')
+                self._secured_data[para] = self.randomly_generate_u(self._secured_data['n_stimuli'],
+                                                                    self._secured_data['n_time_point'],
+                                                                    self._secured_data['t_delta'])
             else:
-                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+                show(para, flag_name, flag_value, 'get_impulse_u')
+                self._secured_data[para] = self.get_impulse_u(self._secured_data['n_stimuli'],
+                                                              self._secured_data['n_time_point'])
+        elif para is 'hemodynamic_parameter':
+            if flag_value is True:
+                show(para, flag_name, flag_value, 'get_impulse_u')
+                self._secured_data[para] = self.randomly_generate_hemodynamic_parameters(self._secured_data['n_node'])
+            else:
+                show(para, flag_name, flag_value, 'get_standard_hemodynamic_parameters')
+                self._secured_data[para] = self.get_standard_hemodynamic_parameters(self._secured_data['n_node'])
+        elif para is 'initial_x_state':
+            if flag_value is True:
+                show(para, flag_name, flag_value, 'randomly_generate_initial_neural_state')
+                self._secured_data[para] = self.randomly_generate_initial_neural_state(self._secured_data['n_node'])
+            else:
+                show(para, flag_name, flag_value, 'set_initial_neural_state_as_zeros')
+                self._secured_data[para] = self.set_initial_neural_state_as_zeros(self._secured_data['n_node'])
+        elif para is 'initial_h_state':
+            if flag_value is True:
+                show(para, flag_name, flag_value, 'randomly_generate_initial_hemodynamic_state')
+                self._secured_data[para] = \
+                    self.randomly_generate_initial_hemodynamic_state(self._secured_data['n_node'])
+            else:
+                show(para, flag_name, flag_value, 'set_initial_hemodynamic_state_as_inactivated')
+                self._secured_data[para] = \
+                    self.set_initial_hemodynamic_state_as_inactivated(self._secured_data['n_node'])
+        elif para in ['Wxx', 'Wxxu', 'Wxu']:
+            assert flag_name is None
+            show(para, flag_name, flag_value, 'calculation')
+            para_temp = self.calculate_dcm_rnn_x_matrices(self._secured_data['A'],
+                                                          self._secured_data['B'],
+                                                          self._secured_data['C'],
+                                                          self._secured_data['t_delta'])
+            self._secured_data[para] = para_temp[para]
+
 
 
 
@@ -1222,7 +1308,7 @@ class DataUnit(Initialization, ParameterGraph):
                                                                                     self._secured_data['n_stimuli'])
                 elif parameter == 'initial_x_state':
                     if tag == 'random':
-                        self._secured_data[parameter] = self.sample_initial_neural_state(self._secured_data['n_node'])
+                        self._secured_data[parameter] = self.randomly_generate_initial_neural_state(self._secured_data['n_node'])
                     elif tag == 'standard':
                         self._secured_data[parameter] = \
                             self.set_initial_neural_state_as_zeros(self._secured_data['n_node'])
@@ -1231,7 +1317,7 @@ class DataUnit(Initialization, ParameterGraph):
                 elif parameter == 'initial_h_state':
                     if tag == 'random':
                         self._secured_data[parameter] = \
-                            self.sample_initial_hemodynamic_state(self._secured_data['n_node'])
+                            self.randomly_generate_initial_hemodynamic_state(self._secured_data['n_node'])
                     elif tag == 'standard':
                         self._secured_data[parameter] = \
                             self.set_initial_hemodynamic_state_as_inactivated(self._secured_data['n_node'])
@@ -1293,24 +1379,3 @@ class DataUnit(Initialization, ParameterGraph):
         else:
             raise ValueError(key + ' cannot be set.')
 
-    def sample_stimuli_number(self, n_node, stimuli_node_ratio=None):
-        if self._secured_data['if_random_stimuli_number'] == True:
-            if 'n_node' in self._secured_data.keys():
-                n_stimuli = super().sample_stimuli_number(self._secured_data['n_node'])
-                self._secured_data['n_stimuli'] = n_stimuli
-            else:
-                raise ValueError('n_node has not be specified.')
-        else:
-            raise ValueError('if_random_stimuli_number is False, please call set() to specify connection matrices')
-
-    def randomly_initialize_connection_matrices(self):
-        if self._secured_data['if_random_neural_parameter'] == True:
-            if 'n_node' in self._secured_data.keys() and 'n_stimuli' in self._secured_data.keys():
-                connection_matrices = super().randomly_initialize_connection_matrices(
-                    self._secured_data['n_node'],
-                    self._secured_data['n_stimuli'])
-                self._secured_data.update(connection_matrices)
-            else:
-                raise ValueError('n_node or n_stimuli has not be specified.')
-        else:
-            raise ValueError('if_random_neural_parameter is False, please call set() to specify connection matrices')

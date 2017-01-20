@@ -353,21 +353,16 @@ class DataUnit_tests(unittest.TestCase):
 
     def test_if_has_value(self):
         pass
-        #with self.assertRaises(ValueError):
-            #self.du.if_has_value('A')
 
-        # self.du._secured_data['Whh']
+    def test_complete_data_unit(self):
+        self.du._secured_data['if_random_node_number'] = True
+        self.du._secured_data['if_random_delta_t'] = True
+        self.du._secured_data['if_random_scan_time'] = True
+        self.du._secured_data['learning_rate'] = 0.1
+        self.du._secured_data['n_backpro'] = 12
+        self.du.complete_data_unit()
+        print(self.du._secured_data)
 
-
-
-
-    def test_randomly_initialize_connection_matrices(self):
-        with self.assertRaises(ValueError):
-            self.du.randomly_initialize_connection_matrices()
-
-        self.du._secured_data['if_random_neural_parameter'] = False
-        with self.assertRaises(ValueError):
-            self.du.randomly_initialize_connection_matrices()
 
 
 if __name__ == '__main__':
