@@ -505,8 +505,59 @@ class Initialization:
         Wxu = C * t_delta
         return {'Wxx': Wxx, 'Wxxu': Wxxu, 'Wxu': Wxu}
 
-    def calculate_dcm_rnn_h_matrices(self):
-        pass
+    def calculate_dcm_rnn_h_matrices(self, hemodynamic_parameter, t_delta):
+        """
+        Calculate matrices used in DCM_RNN for hemodynamic evolving.
+        :param hemodynamic_parameter: pd.dataframe
+        :param t_delta: time interval for approximate differential equations in second
+        :return: {'Whh': [Whh], 'Whx': [Whx], 'bh': [bh], 'Wo': [Wo], 'bo': [bo]}
+        """
+        n_node = hemodynamic_parameter.shape[0]
+        Whh_ = []
+        Whx_ = []
+        Wo_ = []
+        bh_ = []
+        bo_ = []
+
+        for n in range(n_node):
+            # ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']
+            E0 = hemodynamic_parameter.loc['region_' + str(n), 'E0']
+            k = hemodynamic_parameter.loc['region_' + str(n), 'k']
+            gamma = hemodynamic_parameter.loc['region_' + str(n), 'gamma']
+            tao = hemodynamic_parameter.loc['region_' + str(n), 'tao']
+            epsilon = hemodynamic_parameter.loc['region_' + str(n), 'epsilon']
+            V0 = hemodynamic_parameter.loc['region_' + str(n), 'V0']
+            TE = hemodynamic_parameter.loc['region_' + str(n), 'TE']
+            r0 = hemodynamic_parameter.loc['region_' + str(n), 'r0']
+            theta0 = hemodynamic_parameter.loc['region_' + str(n), 'theta0']
+
+            Whh = np.zeros((4, 7))
+            Whh[0, 0] = -(t_delta * k - 1)
+            Whh[0, 1] = -t_delta * gamma
+            Whh[1, 0] = t_delta
+            Whh[1, 1] = 1
+            Whh[2, 1] = t_delta / tao
+            Whh[2, 2] = 1
+            Whh[2, 4] = -t_delta / tao
+            Whh[3, 3] = 1
+            Whh[3, 5] = -t_delta / tao
+            Whh[3, 6] = t_delta / tao
+            Whh_.append(Whh)
+
+            Whx_.append(np.array([t_delta, 0, 0, 0]).reshape(4, 1))
+
+            Wo = np.array([-(1 - epsilon) * V0, -4.3 * theta0 * E0 * V0 * TE, -epsilon * r0 * E0 * V0 * TE])
+            Wo_.append(Wo)
+
+            bh = np.array(np.asarray([t_delta * gamma, 0, 0, 0]).reshape(4, 1))
+            bh_.append(bh)
+
+            bo = V0 * (4.3 * theta0 * E0 * TE + epsilon * r0 * E0 * TE + (1 - epsilon))
+            bo_.append(bo)
+
+
+        return {'Whh': Whh_, 'Whx': Whx_, 'bh': bh_, 'Wo': Wo_, 'bo': bo_}
+
 
 class ParameterGraph:
     def __init__(self):
