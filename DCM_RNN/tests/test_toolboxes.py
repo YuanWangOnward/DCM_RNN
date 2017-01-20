@@ -6,6 +6,9 @@ from DCM_RNN.toolboxes import OrderedDict
 import pandas as pd
 import scipy as sp
 import scipy.stats
+import matplotlib
+import matplotlib.pyplot as plt
+import math as mth
 
 
 class Initialization_tests(unittest.TestCase):
@@ -144,6 +147,25 @@ class Initialization_tests(unittest.TestCase):
             self.assertTrue(scan_time >= self.utl.scan_time_low)
             self.assertTrue(scan_time < self.utl.scan_time_high)
 
+    def test_randomly_generate_u(self):
+        if_plot = True
+        n_node = self.utl.sample_node_number()
+        n_stimuli = self.utl.sample_stimuli_number(n_node)
+        t_time_point = self.utl.sample_scan_time()
+        t_delta = self.utl.sample_t_delta()
+        para_temp = t_time_point/t_delta
+        n_time_point = mth.ceil(para_temp/32) * 32
+
+        u = self.utl.randomly_generate_u(n_stimuli, n_time_point, t_delta)
+        if if_plot:
+            x = np.arange(n_time_point)
+            for n in range(n_stimuli):
+                y = u[n, :]
+                plt.subplot(n_stimuli, 1, n+1)
+                plt.plot(x, y)
+
+
+
 
 class ParameterGraph_tests(unittest.TestCase):
     def setUp(self):
@@ -262,8 +284,8 @@ class ParameterGraph_tests(unittest.TestCase):
                              'fail to multiple flags')
 
     def test_get_flag(self):
-        self.assertEqual(self.pg.get_flag('n_node'), 'if_random_node_number')
-        self.assertEqual(self.pg.get_flag('hemodynamic_parameter'), 'if_random_hemodynamic_parameter')
+        self.assertEqual(self.pg.get_flag_name('n_node'), 'if_random_node_number')
+        self.assertEqual(self.pg.get_flag_name('hemodynamic_parameter'), 'if_random_hemodynamic_parameter')
 
     def test_make_graph(self):
         self.pgt.make_graph(self.pgt.get_para_descendant_mapping(),

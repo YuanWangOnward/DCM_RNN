@@ -7,7 +7,6 @@ import scipy.stats
 import os
 import warnings
 import collections
-import subprocess
 
 
 class OrderedDict(collections.OrderedDict):
@@ -76,6 +75,7 @@ class Initialization:
                  B_non_zero_probability=None,
                  B_sign_probability=None,
                  C_init_low=None, C_init_high=None,
+                 u_t_low=None, u_t_high=None,
                  deviation_constraint=None,
                  h_parameter_check_statistics=None
                  ):
@@ -111,6 +111,9 @@ class Initialization:
         self.B_sign_probability = B_sign_probability or 0.5
         self.C_init_low = C_init_low or 0.5
         self.C_init_high = C_init_high or 1
+
+        self.u_t_low = u_t_low or 1  # in second
+        self.u_t_high = u_t_high or 10  # in second
 
         self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
         self.deviation_constraint = deviation_constraint or 1
@@ -270,6 +273,42 @@ class Initialization:
         for culumn_index, row_index in enumerate(node_indexes):
             C[row_index, culumn_index] = np.random.uniform(self.C_init_low, self.C_init_high)
         return C
+
+    def randomly_generate_u(self, n_stimuli, n_time_point, t_delta):
+        """
+        Randomly generate input stiluli,
+        :param n_stimuli: the amount of stimuli
+        :param n_time_point: the total sample point of stimuli
+        :param t_delta: time interval between adjacent sample points
+        :return:
+        """
+        def flip(num):
+            if num is 0:
+                return 1
+            if num is 1:
+                return 0
+        u_t_low = self.u_t_low
+        u_t_high = self.u_t_high
+        u_n_low = int(u_t_low/t_delta)
+        u_n_high = int(u_t_high/t_delta)
+        u = np.zeros((n_stimuli, n_time_point))
+
+        for n_s in range(n_stimuli):
+            i_current = 0
+            value = 0
+            while i_current < n_time_point:
+                step = np.random.randint(u_n_low, u_n_high)
+                value = flip(value)
+                i_next = i_current + step
+                if i_next >= n_time_point:
+                    i_next = n_time_point
+                u[n_s, i_current:i_next] = value
+                i_current = i_next
+        return u
+
+
+
+
 
     def get_hemodynamic_parameter_prior_distributions(self):
         """
@@ -744,7 +783,7 @@ class ParameterGraph:
                 print(prerequisites)
                 raise ValueError('Multiple flags found.')
 
-    def get_flag(self, para):
+    def get_flag_name(self, para):
         """
          Find if_ flag from the forerunners of a parameter
         :param para: target parameter
@@ -884,8 +923,8 @@ class DataUnit(Initialization, ParameterGraph):
                               't_scan',
                               't_delta',
                               'n_time_point',
-                              'A', 'B', 'C', 'u'
-                                             'hemodynamic_parameter',
+                              'A', 'B', 'C', 'u',
+                              'hemodynamic_parameter',
                               'initial_x_state',
                               'initial_h_state',
                               'Wxx', 'Wxxu', 'Wxu',
@@ -917,16 +956,16 @@ class DataUnit(Initialization, ParameterGraph):
             self._secured_data[para] = value
         elif category is 2:
             self.check_has_no_assigned_descendant(para)
-            flag = self.get_flag(para)
-            if flag is None:
+            flag_name = self.get_flag_name(para)
+            if flag_name is None:
                 self._secured_data[para] = value
-            elif flag in self._secured_data.keys():
-                if self._secured_data[flag] is False:
+            elif flag_name in self._secured_data.keys():
+                if self._secured_data[flag_name] is False:
                     self._secured_data[para] = value
                 else:
-                    raise ValueError(flag + 'is True, ' + para + 'cannot be assigned directly')
+                    raise ValueError(flag_name + 'is True, ' + para + 'cannot be assigned directly')
             else:
-                raise ValueError(flag + 'has not been assigned, ' + para + 'cannot be assigned directly')
+                raise ValueError(flag_name + 'has not been assigned, ' + para + 'cannot be assigned directly')
         else:
             raise ValueError('Category error.')
 
@@ -989,20 +1028,81 @@ class DataUnit(Initialization, ParameterGraph):
         assign_order = self.get_assign_order()
         for para in assign_order:
             self.check_has_no_assigned_descendant(para)
-            flag = self.get_flag(para)
-            self._set(para, flag)
+            flag_name = self.get_flag_name(para)
+            self._set(para, flag_name)
 
-    def _set(self, para, flag):
+    def _set(self, para, flag_name):
         """
         Used by auto data generating process.
         Assume all constraints have been checked, and value assignment is allowed.
         Generate value for para following flag information.
         :param para: target para
-        :param flag: if_random flag
+        :param flag_name: if_random flag
         :return:
         """
+        assign_order = ['n_node',
+                              'n_stimuli',
+                              't_scan',
+                              't_delta',
+                              'n_time_point',
+                              'A', 'B', 'C', 'u',
+                              'hemodynamic_parameter',
+                              'initial_x_state',
+                              'initial_h_state',
+                              'Wxx', 'Wxxu', 'Wxu',
+                              'Whh', 'Whx', 'bh',
+                              'Wo', 'bo']
+        flag_value = self._secured_data[flag_name]
         if para is 'n_node':
-            pass
+            if flag_value is True:
+                self._secured_data[para] = self.sample_node_number()
+            else:
+                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+        elif para is 'n_stimuli':
+            if flag_value is True:
+                self._secured_data[para] = self.sample_stimuli_number(self._secured_data['n_node'])
+            else:
+                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+        elif para is 't_scan':
+            if flag_value is True:
+                self._secured_data[para] = self.sample_scan_time()
+            else:
+                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+        elif para is 't_delta':
+            if flag_value is True:
+                self._secured_data[para] = self.sample_t_delta()
+            else:
+                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+        elif para is 'n_time_point':
+            assert flag_name is None
+            para_temp = int(self._secured_data['t_scan']/self._secured_data['t_delta'])
+            para_temp = mth.ceil(para_temp/32) * 32
+            self._secured_data[para] = int(self._secured_data['t_scan']/self._secured_data['t_delta'])
+        elif para is 'A':
+            if flag_value is True:
+                self._secured_data[para] = self.randomly_generate_A_matrix(self._secured_data['n_node'])
+            else:
+                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+        elif para is 'B':
+            if flag_value is True:
+                self._secured_data[para] = self.randomly_generate_B_matrix(self._secured_data['n_node'],
+                                                                           self._secured_data['n_stimuli'])
+            else:
+                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+        elif para is 'C':
+            if flag_value is True:
+                self._secured_data[para] = self.randomly_generate_C_matrix(self._secured_data['n_node'],
+                                                                           self._secured_data['n_stimuli'])
+            else:
+                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+        elif para is 'C':
+            if flag_value is True:
+                self._secured_data[para] = self.randomly_generate_C_matrix(self._secured_data['n_node'],
+                                                                           self._secured_data['n_stimuli'])
+            else:
+                raise ValueError(flag_name + ' is ' + flag_value + ', ' + para + ' needs to be set manually')
+
+
 
 
 

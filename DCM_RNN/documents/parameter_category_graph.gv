@@ -6,8 +6,8 @@ digraph G {
           edge[penwidth=2];
           {
           node [shape=plaintext fontsize=36];
-          1 -> 
-          2 -> 
+          1 ->
+          2 ->
           3
           }
           {rank = same;
