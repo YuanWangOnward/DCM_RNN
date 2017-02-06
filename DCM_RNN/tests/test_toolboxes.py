@@ -160,7 +160,7 @@ class Initialization_tests(unittest.TestCase):
         if if_plot:
             x = np.arange(n_time_point)
             for n in range(n_stimuli):
-                y = u[n, :]
+                y = u[:, n]
                 plt.subplot(n_stimuli, 1, n+1)
                 plt.plot(x, y)
 

@@ -25,8 +25,8 @@ du.complete_data_unit(if_show_message=True)
 x_connection_matrices = du.get_dcm_rnn_x_matrices()
 x_state_initial = du._secured_data['initial_x_state']
 u = du._secured_data['u']
-x = sc.scan_x(x_connection_matrices, x_state_initial, u)
-
+#x = sc.scan_x(x_connection_matrices, x_state_initial, u)
+x = du._secured_data['x']
 print(u.shape)
 print(x.shape)
 

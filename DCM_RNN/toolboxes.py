@@ -578,6 +578,8 @@ class ParameterGraph:
         self._para_forerunner = {
             # inherited
             'initializer': [],
+            'parameter_graph': [],
+            'scanner': [],
 
             # level zero
             'if_random_neural_parameter': [],
@@ -644,26 +646,14 @@ class ParameterGraph:
             'Wo': ['hemodynamic_parameter'],
             'bo': ['hemodynamic_parameter'],
 
+            'x': ["Wxx", "Wxxu", "Wxu", 'initial_x_state', 'u'],
             # not necessary before estimation
             'n_backpro': [],  # number of truncated back propagation steps
             'learning_rate': [],  # used by tensorflow optimization operation
         }
 
-        self.para_substitute = {
-            'alpha': 'hemodynamic_parameter',
-            'E0': 'hemodynamic_parameter',
-            'k': 'hemodynamic_parameter',
-            'gamma': 'hemodynamic_parameter',
-            'tao': 'hemodynamic_parameter',
-            'epsilon': 'hemodynamic_parameter',
-            'V0': 'hemodynamic_parameter',
-            'TE': 'hemodynamic_parameter',
-            'r0': 'hemodynamic_parameter',
-            'theta0': 'hemodynamic_parameter'
-        }  # not in use now
-
         level_para = {
-            'inherited': ['initializer'],
+            'inherited': ['initializer', 'parameter_graph', 'scanner'],
             'level_0': ['if_random_neural_parameter',
                         'if_random_hemodynamic_parameter',
                         'if_random_x_state_initial',
@@ -685,9 +675,10 @@ class ParameterGraph:
             'level_3': ['u',
                         'B', 'C',
                         'Wxx', 'Whx', 'Whh', 'bh', 'Wo', 'bo'],
-            'level_4': ['Wxxu', 'Wxu']
+            'level_4': ['Wxxu', 'Wxu'],
+            'level_5': ['x']
         }
-        level_para_order = ['inherited', 'level_0', 'level_1', 'level_2', 'level_3', 'level_4']
+        level_para_order = ['inherited', 'level_0', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5']
         self._level_para = OrderedDict(level_para, level_para_order)
 
         self.check_parameter_relation()
@@ -710,8 +701,6 @@ class ParameterGraph:
             else:
                 temp = [variable_level_map[val] for val in value]
                 max_forerunner_level = max(temp)
-                if key in self.para_substitute.keys():
-                    key = self.para_substitute[key]
                 if variable_level_map[key] <= max_forerunner_level:
                     raise ValueError(key + ' parameter graph error')
         return True
@@ -972,6 +961,9 @@ class ParameterGraph:
         if para in valid_names:
             return True
         else:
+            # print('current parameter name is ' + para)
+            # string = ', '.join(valid_names)
+            # print('all_para_names: ' + string)
             raise ValueError('Improper name.')
 
 
@@ -981,7 +973,7 @@ class Scanner:
                  x_var_low=None, x_var_high=None):
         self.snr_y = snr_y or 2
         self.x_value_bound = x_value_bound or 2.5
-        self.x_var_low = x_var_low or 0.01
+        self.x_var_low = x_var_low or 0.05
         self.x_var_high = x_var_high or 0.45
 
 
@@ -1029,7 +1021,7 @@ class Scanner:
         return True
 
 
-class DataUnit(Initialization, ParameterGraph):
+class DataUnit(Initialization, ParameterGraph, Scanner):
     """
     This class is used to ensure consistence and integrity of all data, but that takes a lot of efforts, so currently,
     it's used in a unsecured manner. Namely, DataUnit inherits dict and it key/value pair can be changed without other
@@ -1052,6 +1044,7 @@ class DataUnit(Initialization, ParameterGraph):
                  ):
         Initialization.__init__(self)
         ParameterGraph.__init__(self)
+        Scanner.__init__(self)
         self._secured_data = {}
         self._secured_data['if_random_neural_parameter'] = if_random_neural_parameter
         self._secured_data['if_random_hemodynamic_parameter'] = if_random_hemodynamic_parameter
@@ -1063,6 +1056,8 @@ class DataUnit(Initialization, ParameterGraph):
         self._secured_data['if_random_delta_t'] = if_random_delta_t
         self._secured_data['if_random_scan_time'] = if_random_scan_time
         self._secured_data['initializer'] = self
+        self._secured_data['parameter_graph'] = self
+        self._secured_data['scanner'] = self
 
         # when do auto data generating, following the order below
         self._assign_order = ['n_node',
@@ -1076,10 +1071,24 @@ class DataUnit(Initialization, ParameterGraph):
                               'initial_h_state',
                               'Wxx', 'Wxxu', 'Wxu',
                               'Whh', 'Whx', 'bh',
-                              'Wo', 'bo']
+                              'Wo', 'bo',
+                              'x']
+
+        # record data which should be kept before auto complement
+        self._locked_data = {}
+        self.lock_current_data()
 
     def get_assign_order(self):
         return self._assign_order.copy()
+
+    def lock_current_data(self):
+        self._locked_data = self._secured_data.copy()
+
+    def refresh_data(self):
+        self._secured_data = self._locked_data.copy()
+
+    def get_locked_data(self):
+        return self._locked_data.copy()
 
     def set(self, para, value):
         """
@@ -1172,6 +1181,18 @@ class DataUnit(Initialization, ParameterGraph):
             parameters = [para_cate_one[index] for index, value in enumerate(flags) if value is False]
             string = ', '.join(parameters)
             raise ValueError(string + " has (have) not been specified.")
+
+        self._locked_data = self._secured_data.copy()
+        self._simple_complete(if_show_message)
+        while not self.if_proper_x(self._secured_data['x']):
+            self.refresh_data()
+            self._simple_complete(if_show_message)
+
+    def _simple_complete(self, if_show_message=False):
+        """
+        complete dataUnit without check quality
+        :return:
+        """
         # assign parameter one by one follow self._assign_order
         assign_order = self.get_assign_order()
         for para in assign_order:
@@ -1204,18 +1225,6 @@ class DataUnit(Initialization, ParameterGraph):
             message = flag_name + ' is ' + str(flag_value) + ', ' + para_name + ' ' + error
             raise ValueError(message)
 
-        assign_order = ['n_node',
-                        'n_stimuli',
-                        't_scan',
-                        't_delta',
-                        'n_time_point',
-                        'A', 'B', 'C', 'u',
-                        'hemodynamic_parameter',
-                        'initial_x_state',
-                        'initial_h_state',
-                        'Wxx', 'Wxxu', 'Wxu',
-                        'Whh', 'Whx', 'bh',
-                        'Wo', 'bo']
         if flag_name is not None:
             flag_value = self._secured_data[flag_name]
         else:
@@ -1316,6 +1325,13 @@ class DataUnit(Initialization, ParameterGraph):
             para_temp = self.calculate_dcm_rnn_h_matrices(self._secured_data['hemodynamic_parameter'],
                                                           self._secured_data['t_delta'])
             self._secured_data[para] = para_temp[para]
+        elif para is 'x':
+            assert flag_name is None
+            show(para, flag_name, flag_value, 'scan_x')
+            x_connection_matrices = self.get_dcm_rnn_x_matrices()
+            x_state_initial = self._secured_data['initial_x_state']
+            u = self._secured_data['u']
+            self._secured_data[para] = self.scan_x(x_connection_matrices, x_state_initial, u)
 
     def call_uniformed_assignment_api(self, parameter, value=None, tag='random'):
         """
