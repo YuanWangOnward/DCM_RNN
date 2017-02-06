@@ -1,4 +1,6 @@
-__pycache__/
-.idea/
+
+
 DCM_RNN/__pycache__/
 .ipynb_checkpoints/
+__pycache__/
+.idea/

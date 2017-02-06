@@ -296,7 +296,7 @@ class Initialization:
         u_t_high = self.u_t_high
         u_n_low = int(u_t_low / t_delta)
         u_n_high = int(u_t_high / t_delta)
-        u = np.zeros((n_stimuli, n_time_point))
+        u = np.zeros((n_time_point, n_stimuli))
 
         for n_s in range(n_stimuli):
             i_current = 0
@@ -316,10 +316,10 @@ class Initialization:
         Generate impulse stimuli.
         :param n_stimuli: the amount of stimuli
         :param n_time_point: the total sample point of stimuli
-        :return: np.array, size (n_stimuli, n_time_point)
+        :return: np.array, size (n_time_point, n_stimuli)
         """
-        u = np.zeros((n_stimuli, n_time_point))
-        u[:, 0] = 1
+        u = np.zeros((n_time_point, n_stimuli))
+        u[0, :] = 1
         return u
 
     def get_hemodynamic_parameter_prior_distributions(self):
@@ -976,8 +976,14 @@ class ParameterGraph:
 
 
 class Scanner:
-    def __init__(self, snr_y=None):
-        snr_y = snr_y or 2
+    def __init__(self, snr_y=None,
+                 x_value_bound=None,
+                 x_var_low=None, x_var_high=None):
+        self.snr_y = snr_y or 2
+        self.x_value_bound = x_value_bound or 2.5
+        self.x_var_low = x_var_low or 0.01
+        self.x_var_high = x_var_high or 0.45
+
 
     def scan_x(self, x_connection_matrices, x_state_initial, u):
         """
@@ -985,16 +991,18 @@ class Scanner:
         :param x_connection_matrices: [Wxx, Wxxu, Wxu]
         :param x_state_initial: np.array (n_node,)
         :param u: input stimuli, np.array (n_time_point, n_stimuli)
-        :return: x, np.array, (n_node, n_time_point)
+        :return: x, np.array, (n_time_point, n_node)
         """
         Wxx = x_connection_matrices[0]
         Wxxu = x_connection_matrices[1]
         Wxu = x_connection_matrices[2]
         n_node = Wxu.shape[0]
         n_stimuli = Wxu.shape[1]
-        n_time_point = u.shape[1]
+        n_time_point = u.shape[0]
         x = np.zeros((n_time_point, n_node))
         x[0, :] = x_state_initial
+        if u.ndim is 1:
+            u = np.expand_dims(u, axis=1)
         for i in range(1, n_time_point):
             tmp1 = np.matmul(Wxx, x[i - 1, :])
             tmp2 = [np.matmul(Wxxu[idx], x[i - 1, :] * u[i - 1, idx]) for idx in range(n_stimuli)]
@@ -1002,6 +1010,23 @@ class Scanner:
             tmp3 = np.matmul(Wxu, u[i - 1, :])
             x[i, :] = tmp1 + tmp2 + tmp3
         return x
+
+    def if_proper_x(self, x):
+        """
+        Check if a x means a good one in terms of some statistics which in includes:
+        max absolute value, variance
+        :param x: neural activities, np.narray of (n_time_point, n_node)
+        :return: True if x means proper; False otherwise
+        """
+        max_abslute_value = max(abs(x.flatten()))
+        variance = np.var(x, 0)
+        min_var = min(variance)
+        max_var = max(variance)
+        if max_abslute_value > self.x_value_bound:
+            return False
+        if min_var < self.x_var_low or max_var > self.x_var_high:
+            return False
+        return True
 
 
 class DataUnit(Initialization, ParameterGraph):
@@ -1256,7 +1281,7 @@ class DataUnit(Initialization, ParameterGraph):
                                                               self._secured_data['n_time_point'])
         elif para is 'hemodynamic_parameter':
             if flag_value is True:
-                show(para, flag_name, flag_value, 'get_impulse_u')
+                show(para, flag_name, flag_value, 'randomly_generate_hemodynamic_parameters')
                 self._secured_data[para] = self.randomly_generate_hemodynamic_parameters(self._secured_data['n_node'])
             else:
                 show(para, flag_name, flag_value, 'get_standard_hemodynamic_parameters')

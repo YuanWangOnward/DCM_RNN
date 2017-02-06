@@ -2,9 +2,6 @@ import importlib
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-
-
 from DCM_RNN import toolboxes
 importlib.reload(toolboxes)
 
@@ -14,6 +11,7 @@ du = toolboxes.DataUnit()
 # du._secured_data['if_random_node_number'] = True
 # du._secured_data['if_random_delta_t'] = True
 # du._secured_data['if_random_scan_time'] = True
+du._secured_data['if_random_stimuli'] = True
 
 du._secured_data['n_node'] = 3
 du._secured_data['t_delta'] = 0.25
@@ -41,9 +39,15 @@ n_node = du._secured_data['n_node']
 # plt.ion()
 # plt.interactive(True)
 
+plt.clf()
 for n in range(n_node):
-    y = x[n, :]
+    y = x[:, n]
     plt.subplot(n_node, 1, n + 1)
     plt.plot(x_axis, y)
-
-
+A = x_connection_matrices[0]
+B = x_connection_matrices[1]
+C = x_connection_matrices[2]
+w, v = np.linalg.eig(A)
+print(str(max(w.real)))
+print(np.var(x,0))
+print(sc.if_proper_x(x))
