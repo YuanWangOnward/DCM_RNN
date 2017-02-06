@@ -314,6 +314,26 @@ class ParameterGraph_tests(unittest.TestCase):
             self.pg.check_valid_para('AA')
 
 
+class Scanner_tests(unittest.TestCase):
+    def setUp(self):
+        self.sc = toolboxes.Scanner()
+        self.du = toolboxes.DataUnit()
+        self.du._secured_data['if_random_node_number'] = True
+        self.du._secured_data['if_random_delta_t'] = True
+        self.du._secured_data['if_random_scan_time'] = True
+        self.du._secured_data['learning_rate'] = 0.1
+        self.du._secured_data['n_backpro'] = 12
+        self.du.complete_data_unit()
+
+    def tearDown(self):
+        del self.sc
+
+    def test_scan_x(self):
+        x_connection_matrices = self.du.get_dcm_rnn_x_matrices()
+        x_state_initial = self.du._secured_data['initial_x_state']
+        u =  self.du._secured_data['u']
+        x = self.sc.scan_x(x_connection_matrices, x_state_initial, u)
+
 
 class DataUnit_tests(unittest.TestCase):
     def setUp(self):
@@ -361,6 +381,9 @@ class DataUnit_tests(unittest.TestCase):
         self.du._secured_data['learning_rate'] = 0.1
         self.du._secured_data['n_backpro'] = 12
         self.du.complete_data_unit()
+        # print(self.du._secured_data)
+
+
 
 
 

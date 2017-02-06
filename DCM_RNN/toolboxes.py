@@ -113,8 +113,8 @@ class Initialization:
         self.C_init_low = C_init_low or 0.5
         self.C_init_high = C_init_high or 1
 
-        self.u_t_low = u_t_low or 1  # in second
-        self.u_t_high = u_t_high or 10  # in second
+        self.u_t_low = u_t_low or 2  # in second
+        self.u_t_high = u_t_high or 8  # in second
 
         self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
         self.deviation_constraint = deviation_constraint or 1
@@ -283,7 +283,7 @@ class Initialization:
         :param n_stimuli: the amount of stimuli
         :param n_time_point: the total sample point of stimuli
         :param t_delta: time interval between adjacent sample points
-        :return: np.array, random input, size (n_stimuli, n_time_point)
+        :return: np.array, random input, size (n_time_point, n_stimuli)
         """
 
         def flip(num):
@@ -307,7 +307,7 @@ class Initialization:
                 i_next = i_current + step
                 if i_next >= n_time_point:
                     i_next = n_time_point
-                u[n_s, i_current:i_next] = value
+                u[i_current:i_next, n_s] = value
                 i_current = i_next
         return u
 
@@ -979,33 +979,29 @@ class Scanner:
     def __init__(self, snr_y=None):
         snr_y = snr_y or 2
 
-    def scan_x(self, sub, u, x_state_initial=None):
+    def scan_x(self, x_connection_matrices, x_state_initial, u):
         """
         Calculate x, namely neural activity
-        :param sub:
-        :param u:
-        :param x_state_initial:
-        :return:
+        :param x_connection_matrices: [Wxx, Wxxu, Wxu]
+        :param x_state_initial: np.array (n_node,)
+        :param u: input stimuli, np.array (n_time_point, n_stimuli)
+        :return: x, np.array, (n_node, n_time_point)
         """
-
-        u = u or self.u
-        x_state_initial = x_state_initial or sub.x_state_initial
-        x_state = sub.x_state
-
-        x_state[:, 0, 0] = x_state_initial
-        for i in range(1, self.n_time_point):
-            tmp1 = np.matmul(sub.Wxx, x_state[:, 0, i - 1]);
-            tmp2 = [np.matmul(sub.Wxxu[idx], x_state[:, 0, i - 1] * u[idx, i - 1]) for idx in range(sub.n_stimuli)]
+        Wxx = x_connection_matrices[0]
+        Wxxu = x_connection_matrices[1]
+        Wxu = x_connection_matrices[2]
+        n_node = Wxu.shape[0]
+        n_stimuli = Wxu.shape[1]
+        n_time_point = u.shape[1]
+        x = np.zeros((n_time_point, n_node))
+        x[0, :] = x_state_initial
+        for i in range(1, n_time_point):
+            tmp1 = np.matmul(Wxx, x[i - 1, :])
+            tmp2 = [np.matmul(Wxxu[idx], x[i - 1, :] * u[i - 1, idx]) for idx in range(n_stimuli)]
             tmp2 = np.sum(np.asarray(tmp2), 0)
-            tmp3 = np.matmul(sub.Wxu, u[:, i - 1])
-            x_state[:, 0, i] = tmp1 + tmp2 + tmp3
-            '''
-            x_state[:,0,i]=np.matmul(sub.Wxx,x_state[:,0,i-1])+\
-            np.matmul(sub.Wxxu,x_state[:,0,i-1]*u[i-1])+\
-            sub.Wxu*u[i-1]
-            '''
-        output = x_state[:]
-        return output
+            tmp3 = np.matmul(Wxu, u[i - 1, :])
+            x[i, :] = tmp1 + tmp2 + tmp3
+        return x
 
 
 class DataUnit(Initialization, ParameterGraph):
@@ -1123,7 +1119,7 @@ class DataUnit(Initialization, ParameterGraph):
         if flag:
             return True
         else:
-            raise ValueError(para + 'has descendant with value')
+            raise ValueError(para + ' has descendant with value')
 
     def if_has_value(self, para):
         """
@@ -1137,9 +1133,10 @@ class DataUnit(Initialization, ParameterGraph):
         else:
             return False
 
-    def complete_data_unit(self):
+    def complete_data_unit(self, if_show_message=False):
         """
         With given category_one parameters, generate all missing ones
+        :param if_show_message: boolean, whether show completing message
         :return: True
         """
         # check category one parameters
@@ -1154,10 +1151,15 @@ class DataUnit(Initialization, ParameterGraph):
         assign_order = self.get_assign_order()
         for para in assign_order:
             self.check_has_no_assigned_descendant(para)
-            flag_name = self.get_flag_name(para)
-            self._set(para, flag_name)
+            if para not in self._secured_data.keys():
+                flag_name = self.get_flag_name(para)
+                self._set(para, flag_name, if_show_message)
+            else:
+                if if_show_message:
+                    print(para + ' has value:')
+                    print(self._secured_data[para])
 
-    def _set(self, para, flag_name):
+    def _set(self, para, flag_name, if_show_message=False):
         """
         Used by auto data generating process.
         Assume all constraints have been checked, and value assignment is allowed.
@@ -1166,12 +1168,12 @@ class DataUnit(Initialization, ParameterGraph):
         :param flag_name: if_random flag
         :return:
         """
-
         def show(para_name, flag_name, flag_value, method):
-            if flag_name is None:
-                flag_name = 'None_flag'
-            message = flag_name + ' is ' + str(flag_value) + ', ' + para_name + ' is set by ' + method
-            print(message)
+            if if_show_message:
+                if flag_name is None:
+                    flag_name = 'None_flag'
+                message = flag_name + ' is ' + str(flag_value) + ', ' + para_name + ' is set by ' + method
+                print(message)
 
         def raise_error(para_name, flag_name, flag_value, error):
             message = flag_name + ' is ' + str(flag_value) + ', ' + para_name + ' ' + error
@@ -1457,6 +1459,12 @@ class DataUnit(Initialization, ParameterGraph):
         return [self._secured_data['Wxx'],
                 self._secured_data['Wxxu'],
                 self._secured_data['Wxu']]
+
+
+
+    @property
+    def secured_data(self):
+        return self._secured_data
 
 
 
