@@ -402,11 +402,47 @@ class Scanner_tests(unittest.TestCase):
         x = self.sc.scan_x(parameter_package)
         np.testing.assert_array_equal(x, x_correct)
 
+    def test_phi_h(self):
+        h_state_current = np.array([1, 1, 1, 1])
+        alpha = 0.5
+        E0 = 0.5
+        h_augmented_correct = np.array([1, 1, 1, 1, 1, 1, 1])
+        h_augmented = self.sc.phi_h(h_state_current, alpha, E0)
+        np.testing.assert_array_equal(h_augmented, h_augmented_correct)
+
+        h_state_current = np.array([0.5, 0.5, 2, 2])
+        alpha = 0.5
+        E0 = 0.5
+        h_augmented_correct = np.array([0.5, 0.5, 2, 2, 4., 4., 0.75])
+        h_augmented = self.sc.phi_h(h_state_current, alpha, E0)
+        np.testing.assert_array_equal(h_augmented, h_augmented_correct)
+
+        h_state_current = np.array([0.5, 0.5, 1, 2])
+        alpha = 0.5
+        E0 = 0.5
+        h_augmented_correct = np.array([0.5, 0.5, 1, 2, 1, 2, 0.75])
+        h_augmented = self.sc.phi_h(h_state_current, alpha, E0)
+        np.testing.assert_array_equal(h_augmented, h_augmented_correct)
+
+
+
+
 
     def test_scan_h(self):
         # parameter_package = self.du.collect_parameter_for_h_scan()
         # self.sc.scan_h(parameter_package)
         pass
+        '''
+         return {'hemodynamic_parameter': self._secured_data['hemodynamic_parameter'],
+                'Whh': self._secured_data['Whh'],
+                'bh': self._secured_data['bh'],
+                'Whx': self._secured_data['Whx'],
+                'initial_h_state': self._secured_data['initial_h_state'],
+                'x': self._secured_data['x']}
+        '''
+
+
+
 
 
 class DataUnit_tests(unittest.TestCase):
