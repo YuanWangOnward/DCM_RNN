@@ -2,16 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="87d70ce8-3bca-41ba-b43f-57dbf6343ed5" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/documents/parameter_category_graph.png" afterPath="$PROJECT_DIR$/DCM_RNN/documents/parameter_category_graph.png" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/documents/parameter_level_graph.png" afterPath="$PROJECT_DIR$/DCM_RNN/documents/parameter_level_graph.png" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/tests/test_output/ParameterGraph_make_graph_test.png" afterPath="$PROJECT_DIR$/DCM_RNN/tests/test_output/ParameterGraph_make_graph_test.png" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/documents/parameter_category_graph.gv" afterPath="$PROJECT_DIR$/DCM_RNN/documents/parameter_category_graph.gv" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/documents/parameter_level_graph.gv" afterPath="$PROJECT_DIR$/DCM_RNN/documents/parameter_level_graph.gv" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/tests/test_output/ParameterGraph_make_graph_test.gv" afterPath="$PROJECT_DIR$/DCM_RNN/tests/test_output/ParameterGraph_make_graph_test.gv" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py" afterPath="$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DCM_RNN/toolboxes.py" afterPath="$PROJECT_DIR$/DCM_RNN/toolboxes.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py" afterPath="$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -408,8 +403,8 @@
       <file leaf-file-name="test_toolboxes.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="86">
-              <caret line="167" column="0" lean-forward="true" selection-start-line="167" selection-start-column="0" selection-end-line="167" selection-end-column="0" />
+            <state relative-caret-position="120">
+              <caret line="327" column="19" lean-forward="false" selection-start-line="327" selection-start-column="8" selection-end-line="327" selection-end-column="19" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
                 <element signature="e#301#6603#0" expanded="false" />
@@ -455,15 +450,17 @@
                 <element signature="e#9446#9606#0" expanded="false" />
                 <element signature="e#9659#9893#0" expanded="false" />
                 <element signature="e#9952#10128#0" expanded="false" />
-                <element signature="e#10186#10387#0" expanded="false" />
-                <element signature="e#10443#10756#0" expanded="false" />
-                <element signature="e#10800#11621#0" expanded="false" />
-                <element signature="e#11359#11621#0" expanded="false" />
-                <element signature="e#11398#11524#0" expanded="false" />
-                <element signature="e#12673#13226#0" expanded="false" />
-                <element signature="e#13270#13403#0" expanded="false" />
-                <element signature="e#15281#15479#0" expanded="false" />
-                <element signature="e#15976#17121#0" expanded="false" />
+                <element signature="e#10184#10385#0" expanded="false" />
+                <element signature="e#10441#10754#0" expanded="false" />
+                <element signature="e#10798#11619#0" expanded="false" />
+                <element signature="e#11357#11619#0" expanded="false" />
+                <element signature="e#11396#11522#0" expanded="false" />
+                <element signature="e#12671#13224#0" expanded="false" />
+                <element signature="e#13268#13401#0" expanded="false" />
+                <element signature="e#13606#16465#0" expanded="false" />
+                <element signature="e#14713#14911#0" expanded="false" />
+                <element signature="e#15437#15635#0" expanded="false" />
+                <element signature="e#16863#18008#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -585,8 +582,8 @@
         <option value="$PROJECT_DIR$/.gitignore" />
         <option value="$PROJECT_DIR$/DCM_RNN/tests/test_generation.py" />
         <option value="$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py" />
-        <option value="$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py" />
         <option value="$PROJECT_DIR$/DCM_RNN/toolboxes.py" />
+        <option value="$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py" />
       </list>
     </option>
   </component>
@@ -961,13 +958,6 @@
       <option name="presentableId" value="Default" />
       <updated>1483470932457</updated>
     </task>
-    <task id="LOCAL-00006" summary="Add Utilities.randomly_generate_B_matrix&#10;add Utilities.roll&#10;untested">
-      <created>1483983834678</created>
-      <option name="number" value="00006" />
-      <option name="presentableId" value="LOCAL-00006" />
-      <option name="project" value="LOCAL" />
-      <updated>1483983834678</updated>
-    </task>
     <task id="LOCAL-00007" summary="Add Utilities.randomly_generate_B_matrix&#10;add Utilities.roll&#10;tested">
       <created>1483986185394</created>
       <option name="number" value="00007" />
@@ -1304,7 +1294,14 @@
       <option name="project" value="LOCAL" />
       <updated>1486582867372</updated>
     </task>
-    <option name="localTasksCounter" value="55" />
+    <task id="LOCAL-00055" summary="Update parameter graph relationship graph">
+      <created>1486584373296</created>
+      <option name="number" value="00055" />
+      <option name="presentableId" value="LOCAL-00055" />
+      <option name="project" value="LOCAL" />
+      <updated>1486584373296</updated>
+    </task>
+    <option name="localTasksCounter" value="56" />
     <servers />
   </component>
   <component name="TodoView">
@@ -1326,7 +1323,7 @@
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3296875" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32970452" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3078125" sideWeight="0.48967552" order="8" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.2296875" sideWeight="0.4935065" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.2296875" sideWeight="0.4935065" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.2495935" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5054432" order="2" side_tool="true" content_ui="tabs" />
@@ -1344,7 +1341,6 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Update DataUnit.call_uniformed_assignment_api  (not complete)" />
     <MESSAGE value="Use category mechanism for secured parameter assignment.&#10;Base on prerequisites, put parameters in to 3 categories.&#10; Category one: no prerequisites, should be assigned value directly&#10;Category two: with prerequisite and has if_random_ flag in prerequisites, one needs to check flag before assign&#10;Category three: with prerequisite and has no flag, should not be assigned directly, its value should be derived by its prerequisites.&#10;&#10;Add DataUnit.categorize_parameters&#10;Add DataUnit.check_prerequisites&#10;Add DataUnit.set_category_one_parameter&#10;Add DataUnit.set_category_two_parameter (not complete)&#10;Add DataUnit.set_category_three_parameter (not complete)&#10;&#10;Update parameter graph&#10;&#10;Remove individual hemodynamic parameter from parameter graph" />
     <MESSAGE value="Upgrade ParameterGraph, adding all kinds of parameter relation operation in it&#10;Move initializer to the first level since now it's inherited directly.&#10;Add ParameterGraph.forerunner2descendant&#10;Add ParameterGraph.level_para2para_level&#10;Add ParameterGraph.get_para_level_mapping&#10;Add ParameterGraph.make_graph to replace Parametergraph.generate_gv_file&#10;Move abstract_flag from DataUnit to ParameterGraph&#10;Move categorize_parameters from DataUnite to PrameterGraph&#10;Add ParameterGraph.para_category2category_para&#10;Add ParameterGraph.get_para_category_mapping&#10;&#10;class DataUnit inherits both Initialization and ParameterGraph" />
     <MESSAGE value="Upgrade ParameterGraph and add tests for it&#10;Now _para_forerunner and _level_para are hidden attributes.&#10;All relationship dictionary should be obtained by calling get_ function.&#10;ParameterGraph methods list:&#10;__init__&#10;check_parameter_relation&#10;get_para_forerunner_mapping&#10;forerunner2descendant&#10;get_para_descendant_mapping&#10;level_para2para_level&#10;get_level_para_mapping&#10;get_para_level_mapping&#10;get_para_category_mapping&#10;para_category2category_para&#10;get_category_para_mapping&#10;abstract_flag&#10;make_graph&#10;" />
@@ -1369,7 +1365,8 @@
     <MESSAGE value="Add Scanner.if_proper_x" />
     <MESSAGE value="Add functionality to ensure quality of generated x&#10;Add DataUnit.lock_current_data&#10;Add DataUnit.refresh_data&#10;Add DataUnit._simple_complete&#10;Update DataUnit.complete_data_unit" />
     <MESSAGE value="DataUnit.complete_data_unit completes up to functional data&#10;A weight factor is added between neural level and hemodynamic level" />
-    <option name="LAST_COMMIT_MESSAGE" value="DataUnit.complete_data_unit completes up to functional data&#10;A weight factor is added between neural level and hemodynamic level" />
+    <MESSAGE value="Update parameter graph relationship graph" />
+    <option name="LAST_COMMIT_MESSAGE" value="Update parameter graph relationship graph" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1664,16 +1661,6 @@
         <state relative-caret-position="108">
           <caret line="2878" column="46" lean-forward="true" selection-start-line="2878" selection-start-column="46" selection-end-line="2878" selection-end-column="46" />
           <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="60">
-          <caret line="6" column="0" lean-forward="true" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#16#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -2020,10 +2007,20 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/experiment1-t_delta/experiment1_main.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="60">
+          <caret line="6" column="0" lean-forward="true" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#16#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/DCM_RNN/tests/test_toolboxes.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="86">
-          <caret line="167" column="0" lean-forward="true" selection-start-line="167" selection-start-column="0" selection-end-line="167" selection-end-column="0" />
+        <state relative-caret-position="120">
+          <caret line="327" column="19" lean-forward="false" selection-start-line="327" selection-start-column="8" selection-end-line="327" selection-end-column="19" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
             <element signature="e#301#6603#0" expanded="false" />
@@ -2069,15 +2066,17 @@
             <element signature="e#9446#9606#0" expanded="false" />
             <element signature="e#9659#9893#0" expanded="false" />
             <element signature="e#9952#10128#0" expanded="false" />
-            <element signature="e#10186#10387#0" expanded="false" />
-            <element signature="e#10443#10756#0" expanded="false" />
-            <element signature="e#10800#11621#0" expanded="false" />
-            <element signature="e#11359#11621#0" expanded="false" />
-            <element signature="e#11398#11524#0" expanded="false" />
-            <element signature="e#12673#13226#0" expanded="false" />
-            <element signature="e#13270#13403#0" expanded="false" />
-            <element signature="e#15281#15479#0" expanded="false" />
-            <element signature="e#15976#17121#0" expanded="false" />
+            <element signature="e#10184#10385#0" expanded="false" />
+            <element signature="e#10441#10754#0" expanded="false" />
+            <element signature="e#10798#11619#0" expanded="false" />
+            <element signature="e#11357#11619#0" expanded="false" />
+            <element signature="e#11396#11522#0" expanded="false" />
+            <element signature="e#12671#13224#0" expanded="false" />
+            <element signature="e#13268#13401#0" expanded="false" />
+            <element signature="e#13606#16465#0" expanded="false" />
+            <element signature="e#14713#14911#0" expanded="false" />
+            <element signature="e#15437#15635#0" expanded="false" />
+            <element signature="e#16863#18008#0" expanded="false" />
           </folding>
         </state>
       </provider>
