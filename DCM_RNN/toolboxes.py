@@ -647,9 +647,9 @@ class ParameterGraph:
             'Wo': ['hemodynamic_parameter'],
             'bo': ['hemodynamic_parameter'],
 
-            'x': ["Wxx", "Wxxu", "Wxu", 'initial_x_state', 'u'],
-            'h': ['Whh', 'Whx', 'bh', 'hemodynamic_parameter', 'x'],
-            'y': ['Wo', 'bo', 'h'],
+            'x': ["Wxx", "Wxxu", "Wxu", 'initial_x_state', 'u', 'scanner'],
+            'h': ['Whh', 'Whx', 'bh', 'hemodynamic_parameter', 'x', 'scanner'],
+            'y': ['Wo', 'bo', 'h', 'scanner'],
             # not necessary before estimation
             'n_backpro': [],  # number of truncated back propagation steps
             'learning_rate': [],  # used by tensorflow optimization operation
@@ -944,10 +944,13 @@ class ParameterGraph:
             f.write('          label = "' + file_name + '";\n')
             f.write("}")
             # call dot tool to draw diagram
-            # however, it doesn't work, so removed for the moment
-            # source_file = "documents/" + file_name + ".gv"
-            # target_file = "documents/" + file_name + ".png"
+            # however, it doesn't work at this moment
+            source_file = "documents/" + file_name + ".gv"
+            target_file = "documents/" + file_name + ".png"
             # subprocess.run(["dot", "-Tpng", source_file, "-o", target_file], check=True)
+            string = ' '.join(["dot", "-Tpng", source_file, "-o", target_file])
+            print('run the following command in package root directory to update graph:')
+            print(string)
 
     def get_all_para_names(self):
         """

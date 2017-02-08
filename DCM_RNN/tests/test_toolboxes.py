@@ -295,6 +295,12 @@ class ParameterGraph_tests(unittest.TestCase):
         if_update_graph = True
         if if_update_graph:
             self.pg.make_graph()
+            self.pg.make_graph(
+                relation_dict=self.pg.get_para_descendant_mapping(),
+                file_name='parameter_category_graph',
+                rank_dict=self.pg.get_category_para_mapping(),
+                rank_order=sorted(self.pg.get_category_para_mapping().keys())
+            )
 
     def test_get_para_names(self):
         para_names = self.pgt.get_all_para_names()

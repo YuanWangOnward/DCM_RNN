@@ -22,6 +22,7 @@ du._secured_data['learning_rate'] = 0.1
 du._secured_data['n_backpro'] = 12
 du.complete_data_unit(if_show_message=False)
 
+
 x = du._secured_data['x']
 h = du._secured_data['h']
 y = du._secured_data['y']
