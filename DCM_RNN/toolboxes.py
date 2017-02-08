@@ -5,6 +5,7 @@ import math as mth
 import scipy as sp
 import scipy.stats
 import os
+import sys
 import warnings
 import collections
 
@@ -568,7 +569,7 @@ class Initialization:
         :return: n_time_point
         """
         unit_length = self.n_time_point_unit_length
-        para_temp = t_scan/t_delta
+        para_temp = t_scan / t_delta
         n_time_point = mth.ceil(para_temp / unit_length) * unit_length
         return n_time_point
 
@@ -647,6 +648,8 @@ class ParameterGraph:
             'bo': ['hemodynamic_parameter'],
 
             'x': ["Wxx", "Wxxu", "Wxu", 'initial_x_state', 'u'],
+            'h': ['Whh', 'Whx', 'bh', 'hemodynamic_parameter', 'x'],
+            'y': ['Wo', 'bo', 'h'],
             # not necessary before estimation
             'n_backpro': [],  # number of truncated back propagation steps
             'learning_rate': [],  # used by tensorflow optimization operation
@@ -676,9 +679,12 @@ class ParameterGraph:
                         'B', 'C',
                         'Wxx', 'Whx', 'Whh', 'bh', 'Wo', 'bo'],
             'level_4': ['Wxxu', 'Wxu'],
-            'level_5': ['x']
+            'level_5': ['x'],
+            'level_6': ['h'],
+            'level_7': ['y']
         }
-        level_para_order = ['inherited', 'level_0', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5']
+        level_para_order = ['inherited', 'level_0', 'level_1', 'level_2', 'level_3', 'level_4', 'level_5',
+                            'level_6', 'level_7']
         self._level_para = OrderedDict(level_para, level_para_order)
 
         self.check_parameter_relation()
@@ -976,25 +982,25 @@ class Scanner:
         self.x_var_low = x_var_low or 0.05
         self.x_var_high = x_var_high or 0.45
 
-
-    def scan_x(self, x_connection_matrices, x_state_initial, u):
+    def scan_x(self, parameter_package):
         """
         Calculate x, namely neural activity
-        :param x_connection_matrices: [Wxx, Wxxu, Wxu]
-        :param x_state_initial: np.array (n_node,)
-        :param u: input stimuli, np.array (n_time_point, n_stimuli)
+        :param parameter_package: a dictionary containing all needed parameters
         :return: x, np.array, (n_time_point, n_node)
         """
-        Wxx = x_connection_matrices[0]
-        Wxxu = x_connection_matrices[1]
-        Wxu = x_connection_matrices[2]
+        Wxx = parameter_package['Wxx']
+        Wxxu = parameter_package['Wxxu']
+        Wxu = parameter_package['Wxu']
+        initial_x_state = parameter_package['initial_x_state']
+        u = parameter_package['u']
+
         n_node = Wxu.shape[0]
         n_stimuli = Wxu.shape[1]
         n_time_point = u.shape[0]
         x = np.zeros((n_time_point, n_node))
-        x[0, :] = x_state_initial
-        if u.ndim is 1:
-            u = np.expand_dims(u, axis=1)
+        x[0, :] = initial_x_state
+        #if u.ndim is 1:
+        #    u = np.expand_dims(u, axis=1)
         for i in range(1, n_time_point):
             tmp1 = np.matmul(Wxx, x[i - 1, :])
             tmp2 = [np.matmul(Wxxu[idx], x[i - 1, :] * u[i - 1, idx]) for idx in range(n_stimuli)]
@@ -1015,10 +1021,98 @@ class Scanner:
         min_var = min(variance)
         max_var = max(variance)
         if max_abslute_value > self.x_value_bound:
+            print('x max_abslute_value = ' + str(max_abslute_value))
             return False
         if min_var < self.x_var_low or max_var > self.x_var_high:
+            print('x min_var = ' + str(min_var))
+            print('x max_var = ' + str(max_var))
             return False
         return True
+
+    def phi_h(self, h_state_current, alpha, E0):
+        """
+        used to map hemodynamic states into higher dimension
+        for hemodynamic states scan
+        :param h_state_current:
+        :param alpha:
+        :param E0:
+        :return:
+        """
+        h_state_augmented = np.zeros(7)
+        h_state_augmented[0:4] = h_state_current
+        h_state_augmented[4] = h_state_current[2] ** (1 / alpha)
+        h_state_augmented[5] = h_state_current[3] / (h_state_current[2]) * h_state_augmented[4]
+        h_state_augmented[6] = (1 - (1 - E0) ** (1 / h_state_current[1])) / (E0) * h_state_current[1]
+        return h_state_augmented
+
+    def scan_h(self, parameter_package):
+        """
+        Calculate h, namely hemodynamic response
+        :param parameter_package: a dictionary containing all needed parameters
+        :return: np.array of size (n_time_point, n_node, 4)
+        """
+        hemodynamic_parameters = parameter_package['hemodynamic_parameter']
+        Whh = parameter_package['Whh']
+        bh = parameter_package['bh']
+        Whx = parameter_package['Whx']
+        initial_h_state = parameter_package['initial_h_state']
+        x = parameter_package['x']
+        x = 0.02 * x
+
+        n_time_point = x.shape[0]
+        n_node = x.shape[1]
+        eps = np.finfo(float).eps
+        h = np.ones((n_time_point, n_node, 4))
+        h[:, :, 0] = 0
+        h[0, :, :] = initial_h_state
+
+        for t in range(1, n_time_point):
+            for n in range(0, n_node):
+                alpha = hemodynamic_parameters.loc['region_' + str(n), 'alpha']
+                E0 = hemodynamic_parameters.loc['region_' + str(n), 'E0']
+                h_temp = (np.matmul(Whh[n], self.phi_h(h[t - 1, n, :], alpha, E0)).reshape(4, 1)
+                          + Whx[n] * x[t - 1, n] + bh[n]).reshape(4)
+                # s doesn't need protection
+                h[t, n, 0] = h_temp[0]
+                # avoid f, v, q run into non-positive value
+                fvq_tm1 = h[t - 1, n, 1:]
+                fvq_temp = h_temp[1:]
+                fvq_delta = fvq_temp - fvq_tm1
+                fvq_t = fvq_tm1 * np.exp(fvq_delta / fvq_tm1)
+                fvq_t = np.array([value if value > eps else eps for value in list(fvq_t)])
+                h[t, n, 1:] = fvq_t
+        return h
+
+    def phi_o(self, h_state_current):
+        """
+        used to map hemodynamic states into higher dimension
+        for fMRI output
+        :param h_state_current:
+        :return:
+        """
+        o_state_augmented = np.zeros(3)
+        o_state_augmented[0:2] = h_state_current[2:4]
+        o_state_augmented[2] = o_state_augmented[1] / o_state_augmented[0]
+        return o_state_augmented
+
+    def scan_y(self, parameter_package):
+        """
+        Calculate value, namely observable functional signal
+        :param parameter_package: a dictionary containing all needed parameters
+        :return: np.array of size (n_time_point, n_node)
+        """
+
+        Wo = parameter_package['Wo']
+        bo = parameter_package['bo']
+        h = parameter_package['h']
+        n_time_point = h.shape[0]
+        n_node = h.shape[1]
+        y = np.zeros((n_time_point, n_node))
+
+        for t in range(0, n_time_point):
+            for n in range(0, n_node):
+                y[t, n] = np.matmul(Wo[n], self.phi_o(h[t, n, :])) + bo[n]
+        return y
 
 
 class DataUnit(Initialization, ParameterGraph, Scanner):
@@ -1072,7 +1166,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                               'Wxx', 'Wxxu', 'Wxu',
                               'Whh', 'Whx', 'bh',
                               'Wo', 'bo',
-                              'x']
+                              'x', 'h', 'y']
 
         # record data which should be kept before auto complement
         self._locked_data = {}
@@ -1193,7 +1287,6 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         complete dataUnit without check quality
         :return:
         """
-        # assign parameter one by one follow self._assign_order
         assign_order = self.get_assign_order()
         for para in assign_order:
             self.check_has_no_assigned_descendant(para)
@@ -1214,6 +1307,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         :param flag_name: if_random flag
         :return:
         """
+
         def show(para_name, flag_name, flag_value, method):
             if if_show_message:
                 if flag_name is None:
@@ -1328,10 +1422,69 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         elif para is 'x':
             assert flag_name is None
             show(para, flag_name, flag_value, 'scan_x')
-            x_connection_matrices = self.get_dcm_rnn_x_matrices()
-            x_state_initial = self._secured_data['initial_x_state']
-            u = self._secured_data['u']
-            self._secured_data[para] = self.scan_x(x_connection_matrices, x_state_initial, u)
+            parameter_package = self.collect_parameter_for_x_scan()
+            self._secured_data[para] = self.scan_x(parameter_package)
+        elif para is 'h':
+            assert flag_name is None
+            show(para, flag_name, flag_value, 'scan_h')
+            parameter_package = self.collect_parameter_for_h_scan()
+            self._secured_data[para] = self.scan_h(parameter_package)
+        elif para is 'y':
+            assert flag_name is None
+            show(para, flag_name, flag_value, 'scan_y')
+            parameter_package = self.collect_parameter_for_y_scan()
+            self._secured_data[para] = self.scan_y(parameter_package)
+
+    def get_dcm_rnn_x_matrices(self):
+        """
+        Return connection matrices of neural equation in DCM_RNN
+        :return: [Wxx, Wxxu, Wxu]
+        """
+        assert 'Wxx' in self._secured_data.keys()
+        assert 'Wxxu' in self._secured_data.keys()
+        assert 'Wxu' in self._secured_data.keys()
+        return [self._secured_data['Wxx'],
+                self._secured_data['Wxxu'],
+                self._secured_data['Wxu']]
+
+    def check_forerunners(self, para):
+        """
+        Check if all forerunners of a para have been specified
+        :param para: target para
+        :return: True or raise error
+        """
+        para_forerunners = self.get_para_forerunner_mapping()
+        forerunner_checks = [para in self._secured_data.keys()
+                             for para in para_forerunners[para]]
+        if False in forerunner_checks:
+            not_satisfied_forerunners = [para_forerunners[para][idx]
+                                         for idx, val in enumerate(forerunner_checks) if not val]
+            string = ', '.join(not_satisfied_forerunners)
+            raise ValueError(para + " cannot be assigned because the following prerequisites have not be "
+                             + "assigned: " + string)
+        else:
+            return True
+
+    def collect_parameter_for_x_scan(self):
+        return {'Wxx': self._secured_data['Wxx'],
+                'Wxxu': self._secured_data['Wxxu'],
+                'Wxu': self._secured_data['Wxu'],
+                'initial_x_state': self._secured_data['initial_x_state'],
+                'u': self._secured_data['u']}
+
+    def collect_parameter_for_h_scan(self):
+        return {'hemodynamic_parameter': self._secured_data['hemodynamic_parameter'],
+                'Whh': self._secured_data['Whh'],
+                'bh': self._secured_data['bh'],
+                'Whx': self._secured_data['Whx'],
+                'initial_h_state': self._secured_data['initial_h_state'],
+                'x': self._secured_data['x']}
+
+    def collect_parameter_for_y_scan(self):
+        return {'Wo': self._secured_data['Wo'],
+                'bo': self._secured_data['bo'],
+                'h': self._secured_data['h']}
+
 
     def call_uniformed_assignment_api(self, parameter, value=None, tag='random'):
         """
@@ -1389,24 +1542,6 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                     else:
                         self._secured_data[parameter] = value
 
-    def check_forerunners(self, para):
-        """
-        Check if all forerunners of a para have been specified
-        :param para: target para
-        :return: True or raise error
-        """
-        para_forerunners = self.get_para_forerunner_mapping()
-        forerunner_checks = [para in self._secured_data.keys()
-                             for para in para_forerunners[para]]
-        if False in forerunner_checks:
-            not_satisfied_forerunners = [para_forerunners[para][idx]
-                                         for idx, val in enumerate(forerunner_checks) if not val]
-            string = ', '.join(not_satisfied_forerunners)
-            raise ValueError(para + " cannot be assigned because the following prerequisites have not be "
-                             + "assigned: " + string)
-        else:
-            return True
-
     def set_category_two_parameter(self, parameter, value, tag):
         """
         Set value of category two parameter.
@@ -1440,7 +1575,8 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                                                                                     self._secured_data['n_stimuli'])
                 elif parameter == 'initial_x_state':
                     if tag == 'random':
-                        self._secured_data[parameter] = self.randomly_generate_initial_neural_state(self._secured_data['n_node'])
+                        self._secured_data[parameter] = self.randomly_generate_initial_neural_state(
+                            self._secured_data['n_node'])
                     elif tag == 'standard':
                         self._secured_data[parameter] = \
                             self.set_initial_neural_state_as_zeros(self._secured_data['n_node'])
@@ -1489,23 +1625,6 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                     else:
                         raise ValueError('Improper tag')
 
-    def get_dcm_rnn_x_matrices(self):
-        """
-        Return connection matrices of neural equation in DCM_RNN
-        :return: [Wxx, Wxxu, Wxu]
-        """
-        assert 'Wxx' in self._secured_data.keys()
-        assert 'Wxxu' in self._secured_data.keys()
-        assert 'Wxu' in self._secured_data.keys()
-        return [self._secured_data['Wxx'],
-                self._secured_data['Wxxu'],
-                self._secured_data['Wxu']]
-
-
-
     @property
     def secured_data(self):
         return self._secured_data
-
-
-

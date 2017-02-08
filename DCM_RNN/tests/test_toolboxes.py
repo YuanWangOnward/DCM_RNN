@@ -166,7 +166,6 @@ class Initialization_tests(unittest.TestCase):
 
 
 
-
 class ParameterGraph_tests(unittest.TestCase):
     def setUp(self):
         self.pg = toolboxes.ParameterGraph()
@@ -317,6 +316,7 @@ class ParameterGraph_tests(unittest.TestCase):
 class Scanner_tests(unittest.TestCase):
     def setUp(self):
         self.sc = toolboxes.Scanner()
+        '''
         self.du = toolboxes.DataUnit()
         self.du._secured_data['if_random_node_number'] = True
         self.du._secured_data['if_random_delta_t'] = True
@@ -324,15 +324,62 @@ class Scanner_tests(unittest.TestCase):
         self.du._secured_data['learning_rate'] = 0.1
         self.du._secured_data['n_backpro'] = 12
         self.du.complete_data_unit()
+        '''
 
     def tearDown(self):
         del self.sc
+        # del self.du
 
     def test_scan_x(self):
-        x_connection_matrices = self.du.get_dcm_rnn_x_matrices()
-        x_state_initial = self.du._secured_data['initial_x_state']
-        u =  self.du._secured_data['u']
-        x = self.sc.scan_x(x_connection_matrices, x_state_initial, u)
+        '''
+        parameter_package = self.du.collect_parameter_for_x_scan()
+        x = self.sc.scan_x(parameter_package)
+        self.assertTrue(self.sc.if_proper_x(x))
+        '''
+        # test case 1
+        n_node = 3
+        n_stimuli = 1
+        n_time_point = 2
+        Wxx = np.eye(n_node)
+        Wxxu = [np.eye(n_node) for _ in range(n_stimuli)]
+        Wxu = np.eye(n_node, n_stimuli)
+        initial_x_state = np.zeros(n_node)
+        u = np.zeros((n_time_point, n_stimuli))
+        u[0, :] = 1
+        x_correct = np.zeros((n_time_point, n_node))
+        x_correct[1, 0] = 1
+        parameter_package = {'Wxx': Wxx,
+                             'Wxxu': Wxxu,
+                             'Wxu': Wxu,
+                             'initial_x_state': initial_x_state,
+                             'u': u}
+        x = self.sc.scan_x(parameter_package)
+        np.testing.assert_array_equal(x, x_correct)
+
+        # test Wxx
+        n_node = 3
+        n_stimuli = 1
+        n_time_point = 2
+        Wxx = np.eye(n_node)
+        Wxxu = [np.eye(n_node) for _ in range(n_stimuli)]
+        Wxu = np.eye(n_node, n_stimuli)
+        initial_x_state = np.ones(n_node)
+        u = np.zeros((n_time_point, n_stimuli))
+        x_correct = np.ones((n_time_point, n_node))
+        parameter_package = {'Wxx': Wxx,
+                             'Wxxu': Wxxu,
+                             'Wxu': Wxu,
+                             'initial_x_state': initial_x_state,
+                             'u': u}
+        x = self.sc.scan_x(parameter_package)
+        np.testing.assert_array_equal(x, x_correct)
+
+
+
+    def test_scan_h(self):
+        # parameter_package = self.du.collect_parameter_for_h_scan()
+        # self.sc.scan_h(parameter_package)
+        pass
 
 
 class DataUnit_tests(unittest.TestCase):
@@ -373,19 +420,6 @@ class DataUnit_tests(unittest.TestCase):
 
     def test_if_has_value(self):
         pass
-
-    def test_complete_data_unit(self):
-        self.du._secured_data['if_random_node_number'] = True
-        self.du._secured_data['if_random_delta_t'] = True
-        self.du._secured_data['if_random_scan_time'] = True
-        self.du._secured_data['learning_rate'] = 0.1
-        self.du._secured_data['n_backpro'] = 12
-        self.du.complete_data_unit()
-        # print(self.du._secured_data)
-
-
-
-
 
 
 if __name__ == '__main__':
