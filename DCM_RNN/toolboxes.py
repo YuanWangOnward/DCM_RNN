@@ -119,10 +119,11 @@ class Initialization:
 
         self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
         self.deviation_constraint = deviation_constraint or 1
-        self.hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0']
-        self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3],
+        self.hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0',
+                                    'x_h_coupling']
+        self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3, 0.02],
                                              self.hemo_parameter_keys)
-        self.hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0.],
+        self.hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0., 0.],
                                                  self.hemo_parameter_keys)
 
         self.n_time_point_unit_length = n_time_point_unit_length or 32
@@ -534,6 +535,7 @@ class Initialization:
             TE = hemodynamic_parameter.loc['region_' + str(n), 'TE']
             r0 = hemodynamic_parameter.loc['region_' + str(n), 'r0']
             theta0 = hemodynamic_parameter.loc['region_' + str(n), 'theta0']
+            x_h_coupling = hemodynamic_parameter.loc['region_' + str(n), 'x_h_coupling']
 
             Whh = np.zeros((4, 7))
             Whh[0, 0] = -(t_delta * k - 1)
@@ -548,7 +550,7 @@ class Initialization:
             Whh[3, 6] = t_delta / tao
             Whh_.append(Whh)
 
-            Whx_.append(np.array([t_delta, 0, 0, 0]).reshape(4, 1))
+            Whx_.append(np.array([t_delta * x_h_coupling, 0, 0, 0]).reshape(4, 1))
 
             Wo = np.array([-(1 - epsilon) * V0, -4.3 * theta0 * E0 * V0 * TE, -epsilon * r0 * E0 * V0 * TE])
             Wo_.append(Wo)
@@ -1060,7 +1062,6 @@ class Scanner:
         Whx = parameter_package['Whx']
         initial_h_state = parameter_package['initial_h_state']
         x = parameter_package['x']
-        x = 0.02 * x
 
         n_time_point = x.shape[0]
         n_node = x.shape[1]
@@ -1075,6 +1076,9 @@ class Scanner:
                 E0 = hemodynamic_parameters.loc['region_' + str(n), 'E0']
                 h_temp = (np.matmul(Whh[n], self.phi_h(h[t - 1, n, :], alpha, E0)).reshape(4, 1)
                           + Whx[n] * x[t - 1, n] + bh[n]).reshape(4)
+                '''
+                # do not use exp trick to protect f, v, q to be possitive
+                # it induces error in our approximation
                 # s doesn't need protection
                 h[t, n, 0] = h_temp[0]
                 # avoid f, v, q run into non-positive value
@@ -1084,6 +1088,8 @@ class Scanner:
                 fvq_t = fvq_tm1 * np.exp(fvq_delta / fvq_tm1)
                 fvq_t = np.array([value if value > eps else eps for value in list(fvq_t)])
                 h[t, n, 1:] = fvq_t
+                '''
+                h[t, n, :] = h_temp
         return h
 
     def phi_o(self, h_state_current):

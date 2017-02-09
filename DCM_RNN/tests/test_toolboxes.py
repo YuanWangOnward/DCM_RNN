@@ -425,21 +425,102 @@ class Scanner_tests(unittest.TestCase):
         np.testing.assert_array_equal(h_augmented, h_augmented_correct)
 
 
-
-
-
     def test_scan_h(self):
-        # parameter_package = self.du.collect_parameter_for_h_scan()
-        # self.sc.scan_h(parameter_package)
-        pass
-        '''
-         return {'hemodynamic_parameter': self._secured_data['hemodynamic_parameter'],
-                'Whh': self._secured_data['Whh'],
-                'bh': self._secured_data['bh'],
-                'Whx': self._secured_data['Whx'],
-                'initial_h_state': self._secured_data['initial_h_state'],
-                'x': self._secured_data['x']}
-        '''
+        n_node = 1
+        n_time_point = 2
+        initializer = toolboxes.Initialization()
+        hemodynamic_parameter = initializer.get_standard_hemodynamic_parameters(n_node)
+        for n in range(0, n_node):
+            hemodynamic_parameter.loc['region_' + str(n), 'alpha'] = 0.5
+            hemodynamic_parameter.loc['region_' + str(n), 'E0'] = 0.5
+        Whh = [np.eye(4, 7)]
+        bh = [np.zeros((4, 1))]
+        Whx = [np.zeros((4, 1))]
+        x = np.zeros((n_time_point, n_node))
+        initial_h_state = np.array([1, 1, 1, 1])
+        h_state_correct = np.ones((n_time_point, n_node, 4))
+        parameter_package = {'hemodynamic_parameter': hemodynamic_parameter,
+                             'Whh': Whh,
+                             'bh': bh,
+                             'Whx': Whx,
+                             'initial_h_state': initial_h_state,
+                             'x': x}
+        h_state = self.sc.scan_h(parameter_package)
+        np.testing.assert_array_equal(h_state, h_state_correct)
+
+        # test Whh
+        n_node = 1
+        n_time_point = 2
+        initializer = toolboxes.Initialization()
+        hemodynamic_parameter = initializer.get_standard_hemodynamic_parameters(n_node)
+        for n in range(0, n_node):
+            hemodynamic_parameter.loc['region_' + str(n), 'alpha'] = 0.5
+            hemodynamic_parameter.loc['region_' + str(n), 'E0'] = 0.5
+        Whh = [np.eye(4, 7) * 2]
+        bh = [np.zeros((4, 1))]
+        Whx = [np.zeros((4, 1))]
+        x = np.zeros((n_time_point, n_node))
+        initial_h_state = np.array([1, 1, 1, 1])
+        h_state_correct = np.ones((n_time_point, n_node, 4))
+        h_state_correct[1, 0, :] = 2
+        parameter_package = {'hemodynamic_parameter': hemodynamic_parameter,
+                             'Whh': Whh,
+                             'bh': bh,
+                             'Whx': Whx,
+                             'initial_h_state': initial_h_state,
+                             'x': x}
+        h_state = self.sc.scan_h(parameter_package)
+        np.testing.assert_array_equal(h_state, h_state_correct)
+
+        # test bh
+        n_node = 1
+        n_time_point = 2
+        initializer = toolboxes.Initialization()
+        hemodynamic_parameter = initializer.get_standard_hemodynamic_parameters(n_node)
+        for n in range(0, n_node):
+            hemodynamic_parameter.loc['region_' + str(n), 'alpha'] = 0.5
+            hemodynamic_parameter.loc['region_' + str(n), 'E0'] = 0.5
+        Whh = [np.zeros((4, 7))]
+        bh = [np.random.rand(4, 1)]
+        Whx = [np.zeros((4, 1))]
+        x = np.zeros((n_time_point, n_node))
+        initial_h_state = np.array([1, 1, 1, 1])
+        h_state_correct = np.ones((n_time_point, n_node, 4))
+        h_state_correct[1, 0, :] = bh[0].reshape(4)
+        parameter_package = {'hemodynamic_parameter': hemodynamic_parameter,
+                             'Whh': Whh,
+                             'bh': bh,
+                             'Whx': Whx,
+                             'initial_h_state': initial_h_state,
+                             'x': x}
+        h_state = self.sc.scan_h(parameter_package)
+        np.testing.assert_array_equal(h_state, h_state_correct)
+
+        # test Whx
+        n_node = 1
+        n_time_point = 2
+        initializer = toolboxes.Initialization()
+        hemodynamic_parameter = initializer.get_standard_hemodynamic_parameters(n_node)
+        for n in range(0, n_node):
+            hemodynamic_parameter.loc['region_' + str(n), 'alpha'] = 0.5
+            hemodynamic_parameter.loc['region_' + str(n), 'E0'] = 0.5
+        Whh = [np.zeros((4, 7))]
+        bh = [np.zeros((4, 1))]
+        Whx = [np.random.rand(4, 1)]
+        x = np.ones((n_time_point, n_node))
+        initial_h_state = np.array([1, 1, 1, 1])
+        h_state_correct = np.ones((n_time_point, n_node, 4))
+        h_state_correct[1, 0, :] = Whx[0].reshape(4)
+        parameter_package = {'hemodynamic_parameter': hemodynamic_parameter,
+                             'Whh': Whh,
+                             'bh': bh,
+                             'Whx': Whx,
+                             'initial_h_state': initial_h_state,
+                             'x': x}
+        h_state = self.sc.scan_h(parameter_package)
+        np.testing.assert_array_equal(h_state, h_state_correct)
+
+
 
 
 
