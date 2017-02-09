@@ -424,7 +424,6 @@ class Scanner_tests(unittest.TestCase):
         h_augmented = self.sc.phi_h(h_state_current, alpha, E0)
         np.testing.assert_array_equal(h_augmented, h_augmented_correct)
 
-
     def test_scan_h(self):
         n_node = 1
         n_time_point = 2
@@ -520,10 +519,41 @@ class Scanner_tests(unittest.TestCase):
         h_state = self.sc.scan_h(parameter_package)
         np.testing.assert_array_equal(h_state, h_state_correct)
 
+    def test_scan_y(self):
+        Wo = [np.ones(3)]
+        bo = [np.eye(1)]
+        h = np.zeros((1, 1, 4))
+        h[0, 0, :] = np.array([1, 1, 1, 1])
+        y_correct = np.array(4)
+        parameter_package = {'Wo': Wo,
+                             'bo': bo,
+                             'h': h}
+        y = self.sc.scan_y(parameter_package)
+        np.testing.assert_array_equal(y, y_correct)
 
+        # test Wo
+        Wo = [np.ones(3)]
+        bo = [np.zeros(1)]
+        h = np.zeros((1, 1, 4))
+        h[0, 0, :] = np.array([1, 1, 1, 2])
+        y_correct = np.array(5)
+        parameter_package = {'Wo': Wo,
+                             'bo': bo,
+                             'h': h}
+        y = self.sc.scan_y(parameter_package)
+        np.testing.assert_array_equal(y, y_correct)
 
-
-
+        # test bo
+        Wo = [np.zeros(3)]
+        bo = [np.ones(1)]
+        h = np.zeros((1, 1, 4))
+        h[0, 0, :] = np.array([1, 1, 1, 2])
+        y_correct = np.array(1)
+        parameter_package = {'Wo': Wo,
+                             'bo': bo,
+                             'h': h}
+        y = self.sc.scan_y(parameter_package)
+        np.testing.assert_array_equal(y, y_correct)
 
 
 class DataUnit_tests(unittest.TestCase):

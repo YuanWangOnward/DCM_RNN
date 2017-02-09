@@ -8,7 +8,7 @@ importlib.reload(toolboxes)
 sc = toolboxes.Scanner()
 du = toolboxes.DataUnit()
 
-du._secured_data['if_random_node_number'] = True
+du._secured_data['if_random_node_number'] = False
 # du._secured_data['if_random_delta_t'] = True
 # du._secured_data['if_random_scan_time'] = True
 du._secured_data['if_random_stimuli'] = True
@@ -17,7 +17,7 @@ du._secured_data['if_random_h_state_initial'] = False
 
 du._secured_data['t_delta'] = 0.25
 du._secured_data['t_scan'] = 5 * 60
-
+du._secured_data['n_node'] = 3
 du._secured_data['learning_rate'] = 0.1
 du._secured_data['n_backpro'] = 12
 du.complete_data_unit(if_show_message=False)
