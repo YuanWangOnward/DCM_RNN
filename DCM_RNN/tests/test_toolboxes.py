@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import math as mth
 
 
-class Initialization_tests(unittest.TestCase):
+class InitializationTests(unittest.TestCase):
     def setUp(self):
         self.utl = toolboxes.Initialization()
 
@@ -165,8 +165,7 @@ class Initialization_tests(unittest.TestCase):
                 plt.plot(x, y)
 
 
-
-class ParameterGraph_tests(unittest.TestCase):
+class ParameterGraphTests(unittest.TestCase):
     def setUp(self):
         self.pg = toolboxes.ParameterGraph()
         self.pgt = toolboxes.ParameterGraph()
@@ -317,7 +316,7 @@ class ParameterGraph_tests(unittest.TestCase):
             self.pg.check_valid_para('AA')
 
 
-class Scanner_tests(unittest.TestCase):
+class ScannerTests(unittest.TestCase):
     def setUp(self):
         self.sc = toolboxes.Scanner()
 
@@ -556,7 +555,7 @@ class Scanner_tests(unittest.TestCase):
         np.testing.assert_array_equal(y, y_correct)
 
 
-class DataUnit_tests(unittest.TestCase):
+class DataUnitTests(unittest.TestCase):
     def setUp(self):
         self.du = toolboxes.DataUnit()
         self.dut = toolboxes.DataUnit()
