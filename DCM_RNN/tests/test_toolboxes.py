@@ -560,6 +560,17 @@ class DataUnitTests(unittest.TestCase):
         self.du = toolboxes.DataUnit()
         self.dut = toolboxes.DataUnit()
 
+        self.du._secured_data['if_random_node_number'] = False
+        self.du._secured_data['if_random_stimuli'] = True
+        self.du._secured_data['if_random_x_state_initial'] = False
+        self.du._secured_data['if_random_h_state_initial'] = False
+
+        self.du._secured_data['t_delta'] = 0.25
+        self.du._secured_data['t_scan'] = 5 * 60
+        self.du._secured_data['n_node'] = 3
+        self.du._secured_data['learning_rate'] = 0.1
+        self.du._secured_data['n_backpro'] = 12
+
     def tearDown(self):
         del self.du
         del self.dut
@@ -593,6 +604,15 @@ class DataUnitTests(unittest.TestCase):
 
     def test_if_has_value(self):
         pass
+
+    def test_collect_parameter_core(self):
+        self.du.complete_data_unit()
+        para_core = self.du.collect_parameter_core()
+        dut = toolboxes.DataUnit()
+        dut.load_parameter_core(para_core)
+        dut.recover_data_unit()
+        self.assertEqual(set(dut._secured_data.keys()), set(self.du._secured_data.keys()))
+        np.testing.assert_array_equal(dut._secured_data['y'], self.du._secured_data['y'])
 
 
 if __name__ == '__main__':

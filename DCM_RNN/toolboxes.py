@@ -1181,8 +1181,10 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         self._locked_data = {}
         self.lock_current_data()
 
-    def get_assign_order(self):
-        return self._assign_order.copy()
+    def get_assign_order(self, start_category=1):
+        para_cate = self.get_para_category_mapping()
+        assign_order = [para for para in self._assign_order if para_cate[para] >= start_category]
+        return assign_order
 
     def lock_current_data(self):
         self._locked_data = self._secured_data.copy()
@@ -1258,48 +1260,64 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         else:
             raise ValueError(para + ' has descendant with value')
 
-    def if_has_value(self, para):
+    def if_has_value(self, para, search_target_dictionary=None):
         """
-        Check whether if a parameter has been assigned a value
+        Check whether if a parameter has been assigned a value in search_target_dictionary
         :param para: target para
+        :param search_target_dictionary:
         :return: True if para has a value; otherwise False
         """
+        search_target_dictionary = search_target_dictionary or self._secured_data
         self.check_valid_para(para)
-        if para in self._secured_data.keys():
+        if para in search_target_dictionary.keys():
             return True
         else:
             return False
 
-    def complete_data_unit(self, if_show_message=False):
+    def check_all_have_values(self, parameters, search_target_dictionary=None):
         """
-        With given category_one parameters, generate all missing ones
+        Check whether all parameters in the list parameters have values in search_target_dictionary
+        :param parameters: a list of target parameters
+        :param search_target_dictionary: where to search values
+        :return: True if all parameters have values; otherwise raise error
+        """
+        search_target_dictionary = search_target_dictionary or self._secured_data
+        flags = [self.if_has_value(para, search_target_dictionary) for para in parameters]
+        if False in flags:
+            parameters = [parameters[index] for index, value in enumerate(flags) if value is False]
+            string = ', '.join(parameters)
+            raise ValueError(string + " has (have) not been specified.")
+        else:
+            return True
+
+
+    def complete_data_unit(self, start_categorty=1, if_show_message=False):
+        """
+        Generate missing parameters
+        :param start_categorty: if it starts from category n, category n parameters must have had values
         :param if_show_message: boolean, whether show completing message
-        :return: True
+        :return:
         """
         # check category one parameters
         cate_para = self.get_category_para_mapping()
-        para_cate_one = cate_para[1]
-        flags = [True if para in self._secured_data.keys() else False for para in para_cate_one]
-        if False in flags:
-            parameters = [para_cate_one[index] for index, value in enumerate(flags) if value is False]
-            string = ', '.join(parameters)
-            raise ValueError(string + " has (have) not been specified.")
-
-        self._locked_data = self._secured_data.copy()
-        self._simple_complete(if_show_message)
+        parameters_needed = cate_para[start_categorty]
+        self.check_all_have_values(parameters_needed)
+        assign_order = self.get_assign_order(start_categorty)
+        self.lock_current_data()
+        self._simple_complete(assign_order, if_show_message)
         while not self.if_proper_x(self._secured_data['x']):
             self.refresh_data()
-            self._simple_complete(if_show_message)
+            self._simple_complete(assign_order, if_show_message)
 
-    def _simple_complete(self, if_show_message=False):
+    def _simple_complete(self, assign_order, if_show_message=False):
         """
         complete dataUnit without check quality
+        :param assign_order: a list indicating parameter assign order
         :return:
         """
-        assign_order = self.get_assign_order()
         for para in assign_order:
-            self.check_has_no_assigned_descendant(para)
-            if para not in self._secured_data.keys():
+            # self.check_has_no_assigned_descendant(para)
+            if not self.if_has_value(para):
                 flag_name = self.get_flag_name(para)
                 self._set(para, flag_name, if_show_message)
             else:
@@ -1493,6 +1511,45 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         return {'Wo': self._secured_data['Wo'],
                 'bo': self._secured_data['bo'],
                 'h': self._secured_data['h']}
+
+    def lock_current_data(self):
+        """
+        Copy data in _secured_data into _locked_data
+        :return:
+        """
+        self._locked_data = self._secured_data.copy()
+
+    def collect_parameter_core(self):
+        """
+        :return: Return the initial setting and core paremeters, with which the DCM model can be reproduced.
+                 Namely, the category one and two parameters
+        """
+        para_core = dict()
+        cate_para = dict(self.get_category_para_mapping())
+        for cate in [1, 2]:
+            for para in cate_para[cate]:
+                para_core[para] = self._secured_data[para]
+        return para_core
+
+    def load_parameter_core(self, parameter_core):
+        """
+        Load the given parameter_core
+        :param parameter_core: a dictionary having core parameters need to reproduced original dateUnit
+        :return:
+        """
+        cate_para = dict(self.get_category_para_mapping())
+        core_para = cate_para[1] + cate_para[2]
+        self.check_all_have_values(core_para, parameter_core)
+        self._secured_data = parameter_core.copy()
+
+    def recover_data_unit(self):
+        """
+        :return:
+        """
+        self.complete_data_unit(start_categorty=2)
+
+
+
 
 
     def call_uniformed_assignment_api(self, parameter, value=None, tag='random'):
