@@ -1577,8 +1577,6 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
 
 
-
-
     def call_uniformed_assignment_api(self, parameter, value=None, tag='random'):
         """
         Using different method to assign value to parameter according to the parameter category.

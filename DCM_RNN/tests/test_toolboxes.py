@@ -9,6 +9,8 @@ import scipy.stats
 import matplotlib
 import matplotlib.pyplot as plt
 import math as mth
+import os
+import pickle
 
 
 class InitializationTests(unittest.TestCase):
@@ -605,7 +607,7 @@ class DataUnitTests(unittest.TestCase):
     def test_if_has_value(self):
         pass
 
-    def test_collect_parameter_core(self):
+    def test_save_and_load(self):
         self.du.complete_data_unit()
         para_core = self.du.collect_parameter_core()
         dut = toolboxes.DataUnit()
@@ -613,6 +615,17 @@ class DataUnitTests(unittest.TestCase):
         dut.recover_data_unit()
         self.assertEqual(set(dut._secured_data.keys()), set(self.du._secured_data.keys()))
         np.testing.assert_array_equal(dut._secured_data['y'], self.du._secured_data['y'])
+        # data_path = "../tests/test_output/du_core.pkl"
+        data_path = "du_core.pkl"
+        with open(data_path, 'wb') as f:
+            pickle.dump(para_core, f)
+        with open(data_path, 'rb') as f:
+            para_core_loaded = pickle.load(f)
+        dut.load_parameter_core(para_core_loaded)
+        dut.recover_data_unit()
+        self.assertEqual(set(dut._secured_data.keys()), set(self.du._secured_data.keys()))
+
+
 
 
 if __name__ == '__main__':
