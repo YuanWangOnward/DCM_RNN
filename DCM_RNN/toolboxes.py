@@ -83,7 +83,7 @@ class Initialization:
                  ):
 
         self.n_node_low = n_node_low or 3
-        self.n_node_high = n_node_high or 11
+        self.n_node_high = n_node_high or 5
         self.stimuli_node_ratio = stimuli_node_ratio or 1 / 3
         self.t_delta_low = t_delta_low or 0.05
         self.t_delta_high = t_delta_high or 0.5
@@ -981,11 +981,14 @@ class ParameterGraph:
 class Scanner:
     def __init__(self, snr_y=None,
                  x_value_bound=None,
-                 x_var_low=None, x_var_high=None):
+                 x_var_low=None, x_var_high=None,
+                 h_value_low=None, h_value_high=None):
         self.snr_y = snr_y or 2
         self.x_value_bound = x_value_bound or 2.5
         self.x_var_low = x_var_low or 0.05
         self.x_var_high = x_var_high or 0.45
+        self.h_value_low = h_value_low or 0.125
+        self.h_value_high = h_value_low or 8
 
     def scan_x(self, parameter_package):
         """
@@ -1016,7 +1019,7 @@ class Scanner:
 
     def if_proper_x(self, x):
         """
-        Check if a x means a good one in terms of some statistics which in includes:
+        Check if a x seems a good one in terms of some statistics which in includes:
         max absolute value, variance
         :param x: neural activities, np.narray of (n_time_point, n_node)
         :return: True if x means proper; False otherwise
@@ -1026,13 +1029,32 @@ class Scanner:
         min_var = min(variance)
         max_var = max(variance)
         if max_abslute_value > self.x_value_bound:
-            print('x max_abslute_value = ' + str(max_abslute_value))
+            # print('x max_abslute_value = ' + str(max_abslute_value))
+            print("Not proper x: max value")
             return False
         if min_var < self.x_var_low or max_var > self.x_var_high:
-            print('x min_var = ' + str(min_var))
-            print('x max_var = ' + str(max_var))
+            # print('x min_var = ' + str(min_var))
+            # print('x max_var = ' + str(max_var))
+            print("Not proper x: variance")
             return False
         return True
+
+    def if_proper_h(self, h):
+        """
+        Check if a set of generated h seems a reasonable one.
+        Namely, f, v, q should be within [self.h_value_low, self.h_value_high] all the time
+        :param h: test hemodynamic state, np.array of (n_time_point, n_node, 4)
+        :return: True if x means proper; False otherwise
+        """
+        h_temp = h[:, :, 1:].flatten()
+        min_value = np.min(h_temp)
+        max_value = np.max(h_temp)
+        if min_value >= self.h_value_low and max_value <= self.h_value_high:
+            return True
+        else:
+            print("Not proper h")
+            return False
+
 
     def phi_h(self, h_state_current, alpha, E0):
         """
@@ -1303,10 +1325,14 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         parameters_needed = cate_para[start_categorty]
         self.check_all_have_values(parameters_needed)
         assign_order = self.get_assign_order(start_categorty)
+        trail_count = 1
+        print("Trail NO." + str(trail_count))
         self.lock_current_data()
         self._simple_complete(assign_order, if_show_message)
-        while not self.if_proper_x(self._secured_data['x']):
+        while not self.if_proper_x(self._secured_data['x']) or not self.if_proper_h(self._secured_data['h']):
             self.refresh_data()
+            trail_count += 1
+            print("Trail NO." + str(trail_count))
             self._simple_complete(assign_order, if_show_message)
 
     def _simple_complete(self, assign_order, if_show_message=False):
@@ -1526,9 +1552,10 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         """
         para_core = dict()
         cate_para = dict(self.get_category_para_mapping())
-        for cate in [1, 2]:
-            for para in cate_para[cate]:
-                para_core[para] = self._secured_data[para]
+        core_para = cate_para[1] + cate_para[2]
+        self.check_all_have_values(core_para)
+        for para in core_para:
+            para_core[para] = self._secured_data[para]
         return para_core
 
     def load_parameter_core(self, parameter_core):
