@@ -980,15 +980,18 @@ class ParameterGraph:
 
 class Scanner:
     def __init__(self, snr_y=None,
-                 x_value_bound=None,
+                 x_max_bound=None, x_mean_bound=None,
                  x_var_low=None, x_var_high=None,
+                 # x_low_frequency_energy_perscent=None,
                  h_value_low=None, h_value_high=None):
         self.snr_y = snr_y or 2
-        self.x_value_bound = x_value_bound or 5
-        self.x_var_low = x_var_low or 0.05
-        self.x_var_high = x_var_high or 0.9
+        self.x_max_bound = x_max_bound or 8
+        self.x_mean_bound = x_mean_bound or 2
+        self.x_var_low = x_var_low or 0.1
+        self.x_var_high = x_var_high or 4
+        # self.x_low_frequency_energy_perscent = x_low_frequency_energy_perscent or 0.25
         self.h_value_low = h_value_low or 0.125
-        self.h_value_high = h_value_low or 8
+        self.h_value_high = h_value_high or 8
 
     def scan_x(self, parameter_package):
         """
@@ -1024,13 +1027,26 @@ class Scanner:
         :param x: neural activities, np.narray of (n_time_point, n_node)
         :return: True if x means proper; False otherwise
         """
-        max_abslute_value = max(abs(x.flatten()))
-        variance = np.var(x, 0)
+        max_absolute_value = max(abs(x.flatten()))
+        max_mean_value = np.max(abs(np.mean(x, axis=0)))
+        n_time_point = x.shape[0]
+        variance = np.var(x[int(n_time_point/2):, :], 0)
         min_var = min(variance)
         max_var = max(variance)
-        if max_abslute_value > self.x_value_bound:
+
+        '''
+        fx = np.fft.fft(x, axis=0) / np.sqrt(x.shape[0])
+        low_frequency_range = int(x.shape[0]/20)
+        low_frequency_energy = 1
+        energy_persentage = 1
+        '''
+
+        if max_absolute_value > self.x_max_bound:
             # print('x max_abslute_value = ' + str(max_abslute_value))
             print("Not proper x: max value")
+            return False
+        if max_mean_value > self.x_mean_bound:
+            print("Not proper x: mean value")
             return False
         if min_var < self.x_var_low or max_var > self.x_var_high:
             # print('x min_var = ' + str(min_var))
