@@ -4,22 +4,82 @@
 import importlib
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
+import time
+from PIL import Image
 
 from DCM_RNN import toolboxes
 importlib.reload(toolboxes)
 
-du = toolboxes.DataUnit()
 
-du._secured_data['if_random_node_number'] = True
-du._secured_data['if_random_stimuli'] = True
-du._secured_data['if_random_x_state_initial'] = False
-du._secured_data['if_random_h_state_initial'] = False
+import os
+print('working directory is ' + os.getcwd())
 
-du._secured_data['t_delta'] = 0.25
-du._secured_data['t_scan'] = 5 * 60
-du._secured_data['learning_rate'] = 0.1
-du._secured_data['n_backpro'] = 12
-du.complete_data_unit(if_show_message=False)
+
+
+for current_base_number in range(1):
+    current_base_name = 'DB' + str(current_base_number)
+    current_data = []
+
+    while len(current_data) < 500:
+        # new and setting
+        du = toolboxes.DataUnit()
+        du._secured_data['if_random_node_number'] = True
+        du._secured_data['if_random_stimuli'] = True
+        du._secured_data['if_random_x_state_initial'] = False
+        du._secured_data['if_random_h_state_initial'] = False
+        du._secured_data['t_delta'] = 0.25
+        du._secured_data['t_scan'] = 5 * 60
+        du._secured_data['learning_rate'] = 0.1
+        du._secured_data['n_backpro'] = 12
+        du.complete_data_unit(if_show_message=False)
+
+        # add data
+        du_core = du.collect_parameter_core()
+        current_data.append(du_core)
+        print('Number of current data base ' + str(len(current_data)))
+
+    # save data
+    print('Number of current data base ' + str(len(current_data)))
+    data_path = current_base_name + '.pkl'
+    with open(data_path, 'wb') as f:
+        pickle.dump(current_data, f)
+
+
+# check data base
+current_base_number = 0
+current_base_name = 'DB' + str(current_base_number)
+data_path = current_base_name + '.pkl'
+with open(data_path, 'rb') as f:
+    para_core_loaded = pickle.load(f)
+
+
+for i in range(0, 30):
+    plt.figure()
+    du = toolboxes.DataUnit()
+    du.load_parameter_core(para_core_loaded[i])
+    du.recover_data_unit()
+    x_axis = np.arange(du._secured_data['n_time_point']) * du._secured_data['t_delta']
+    n_node = du._secured_data['n_node']
+    y = du._secured_data['y']
+    plt.clf()
+    for n in range(n_node):
+        value = y[:, n].squeeze()
+        plt.subplot(n_node, 1, n + 1)
+        plt.plot(x_axis, value)
+        time.sleep(0.5)
+
+'''
+# show results
+        x_axis = np.arange(du._secured_data['n_time_point']) * du._secured_data['t_delta']
+        n_node = du._secured_data['n_node']
+        y = du._secured_data['y']
+        plt.clf()
+        for n in range(n_node):
+            value = y[:, n].squeeze()
+            plt.subplot(n_node, 1, n + 1)
+            plt.plot(x_axis, value)
+
 
 x = du._secured_data['x']
 h = du._secured_data['h']
@@ -45,8 +105,4 @@ for n in range(n_node):
     value = y[:, n].squeeze()
     plt.subplot(n_node, 1, n + 1)
     plt.plot(x_axis, value)
-
-
-# store data
-du_core = du.collect_parameter_core()
-
+'''

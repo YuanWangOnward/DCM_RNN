@@ -83,7 +83,7 @@ class Initialization:
                  ):
 
         self.n_node_low = n_node_low or 3
-        self.n_node_high = n_node_high or 5
+        self.n_node_high = n_node_high or 10
         self.stimuli_node_ratio = stimuli_node_ratio or 1 / 3
         self.t_delta_low = t_delta_low or 0.05
         self.t_delta_high = t_delta_high or 0.5
@@ -984,9 +984,9 @@ class Scanner:
                  x_var_low=None, x_var_high=None,
                  h_value_low=None, h_value_high=None):
         self.snr_y = snr_y or 2
-        self.x_value_bound = x_value_bound or 2.5
+        self.x_value_bound = x_value_bound or 5
         self.x_var_low = x_var_low or 0.05
-        self.x_var_high = x_var_high or 0.45
+        self.x_var_high = x_var_high or 0.9
         self.h_value_low = h_value_low or 0.125
         self.h_value_high = h_value_low or 8
 
@@ -1020,7 +1020,7 @@ class Scanner:
     def if_proper_x(self, x):
         """
         Check if a x seems a good one in terms of some statistics which in includes:
-        max absolute value, variance
+        max absolute value and energy distribution on frequency
         :param x: neural activities, np.narray of (n_time_point, n_node)
         :return: True if x means proper; False otherwise
         """
@@ -1054,7 +1054,6 @@ class Scanner:
         else:
             print("Not proper h")
             return False
-
 
     def phi_h(self, h_state_current, alpha, E0):
         """

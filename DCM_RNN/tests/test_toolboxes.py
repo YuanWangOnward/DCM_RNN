@@ -616,7 +616,7 @@ class DataUnitTests(unittest.TestCase):
         self.assertEqual(set(dut._secured_data.keys()), set(self.du._secured_data.keys()))
         np.testing.assert_array_equal(dut._secured_data['y'], self.du._secured_data['y'])
         # data_path = "../tests/test_output/du_core.pkl"
-        data_path = "du_core.pkl"
+        data_path = "tests/test_output/du_core.pkl"
         with open(data_path, 'wb') as f:
             pickle.dump(para_core, f)
         with open(data_path, 'rb') as f:
