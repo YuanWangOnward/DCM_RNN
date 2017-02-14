@@ -1,5 +1,7 @@
 import random
 import numpy as np
+import scipy as sp
+import scipy.ndimage
 import pandas as pd
 import math as mth
 import scipy as sp
@@ -402,7 +404,7 @@ class Initialization:
 
     def evaluate_hemodynamic_parameters(self, hemodynamic_parameters, h_parameter_check_statistics=None):
         """
-        For each hemodynamic parameter, evaluate how it derives from the means.
+        For each hemodynamic parameter, map how it derives from the means.
         :param hemodynamic_parameters: a pandas.dataframe, containing sampled hemodynamic parameters
         :param h_parameter_check_statistics: specify which kind of statistic to check,
                it takes value in {'deviation', 'pdf'}
@@ -608,10 +610,10 @@ class ParameterGraph:
             'u': ['if_random_stimuli',
                   'n_stimuli',
                   'n_time_point',
+                  't_delta',
                   'initializer'],
 
-            'A': ['t_delta',
-                  'if_random_neural_parameter',
+            'A': ['if_random_neural_parameter',
                   'n_node',
                   'initializer'],
             'B': ['if_random_neural_parameter',
@@ -1329,7 +1331,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
             return True
 
 
-    def complete_data_unit(self, start_categorty=1, if_show_message=False):
+    def complete_data_unit(self, start_categorty=1, if_check_property=True, if_show_message=False):
         """
         Generate missing parameters
         :param start_categorty: if it starts from category n, category n parameters must have had values
@@ -1341,14 +1343,17 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         parameters_needed = cate_para[start_categorty]
         self.check_all_have_values(parameters_needed)
         assign_order = self.get_assign_order(start_categorty)
-        trail_count = 1
-        print("Trail NO." + str(trail_count))
-        self.lock_current_data()
-        self._simple_complete(assign_order, if_show_message)
-        while not self.if_proper_x(self._secured_data['x']) or not self.if_proper_h(self._secured_data['h']):
-            self.refresh_data()
-            trail_count += 1
+        if if_check_property:
+            trail_count = 1
             print("Trail NO." + str(trail_count))
+            self.lock_current_data()
+            self._simple_complete(assign_order, if_show_message)
+            while not self.if_proper_x(self._secured_data['x']) or not self.if_proper_h(self._secured_data['h']):
+                self.refresh_data()
+                trail_count += 1
+                print("Trail NO." + str(trail_count))
+                self._simple_complete(assign_order, if_show_message)
+        else:
             self._simple_complete(assign_order, if_show_message)
 
     def _simple_complete(self, assign_order, if_show_message=False):
@@ -1589,25 +1594,90 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         """
         :return:
         """
-        self.complete_data_unit(start_categorty=2)
+        self.complete_data_unit(start_categorty=2, if_check_property=False)
 
-    def plot(self, variable, if_new_figure=True):
-        value = self._secured_data[variable]
+    def plot(self, para_name, if_new_figure=True):
+        para_value = self._secured_data[para_name]
         n_node = self._secured_data['n_node']
         x_axis = np.arange(self._secured_data['n_time_point']) * self._secured_data['t_delta']
-        if variable in ['x', 'y']:
+        if para_name in ['x', 'y']:
             plt.clf()
             for n in range(n_node):
-                value_temp = value[:, n]
+                value_temp = para_value[:, n]
                 plt.subplot(n_node, 1, n + 1)
                 plt.plot(x_axis, value_temp)
-        elif variable is 'h':
+        elif para_name is 'h':
             if if_new_figure:
                 plt.figure()
             for n in range(n_node):
-                value_temp = value[:, n, :].squeeze()
+                value_temp = para_value[:, n, :].squeeze()
                 plt.subplot(n_node, 1, n + 1)
                 plt.plot(x_axis, value_temp)
+
+    def map(self, source_para_name, source_para_values, target_para_name):
+        """
+        After loading a parameter core, use different values of source parameter and output target parameter,
+        to map the influence of source parameter on the target parameter. Supported source_para [t_delta]
+        :param source_para_name:
+        :param source_para_values: a list of values source parameters
+        :param target_para_name:
+        :return: a list of target parameters
+        """
+        output = []
+        self.lock_current_data()
+        if source_para_name == 't_delta':
+            t_delta_original = self._secured_data['t_delta']
+            for value in source_para_values:
+                self.refresh_data()
+                self._secured_data[source_para_name] = value
+
+                # all source_para_name's descendants need to be modified accordingly
+                # for t_delta, u must be manually modified
+                u = self._secured_data['u']
+                factor = np.ones(u.ndim)
+                factor[0] = t_delta_original/value
+                u_rescaled = scipy.ndimage.zoom(u, factor, order=0, mode='nearest')
+                self._secured_data['u'] = u_rescaled
+
+                self.recover_data_unit()
+                output.append(self._secured_data[target_para_name])
+            return output
+        else:
+            print(source_para_name + ' is not supported yet.')
+
+    def resample(self, states, target_shape):
+        """
+        Resample states to same shape for comparison.
+        :param states: a list of states
+        :param target_shape: desired shape
+        :return: a list of states of the same time point.
+        """
+        states_resampled = []
+        for state in states:
+            factor = np.array(target_shape)/np.array(state.shape)
+            state_resampled = scipy.ndimage.zoom(state, factor, order=0, mode='nearest')
+            states_resampled.append(state_resampled)
+        return states_resampled
+
+    def compare(self, arrays, ground_truth):
+        """
+        Compare and calculate rMSE of each in arrays against ground_truth
+        :param arrays: a list of arrays of the same shape
+        :param ground_truth: a array, used as ground truth
+        :return: a list of rMSE
+        """
+        rMSE = []
+        ground_truth = ground_truth.flatten()
+        norm_ground_truth = np.linalg.norm(ground_truth)
+        for array in arrays:
+            error = array.flatten() - ground_truth
+            norm_error = np.linalg.norm(error)
+            rMSE.append(norm_error/norm_ground_truth)
+        return rMSE
+
+
+
+
 
 
 
