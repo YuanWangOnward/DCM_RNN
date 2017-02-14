@@ -17,11 +17,11 @@ print('working directory is ' + os.getcwd())
 
 
 
-for current_base_number in range(1):
+for current_base_number in range(10):
     current_base_name = 'DB' + str(current_base_number)
     current_data = []
 
-    while len(current_data) < 20:
+    while len(current_data) < 500:
         # new and setting
         du = toolboxes.DataUnit()
         du._secured_data['if_random_node_number'] = True
@@ -44,8 +44,7 @@ for current_base_number in range(1):
     data_path = current_base_name + '.pkl'
     with open(data_path, 'wb') as f:
         pickle.dump(current_data, f)
-
-
+'''
 # check data base
 current_base_number = 0
 current_base_name = 'DB' + str(current_base_number)
@@ -69,7 +68,7 @@ for i in range(0, 20):
         plt.plot(x_axis, value)
     #    time.sleep(0.5)
 
-'''
+
 ii = 0
 plt.clf()
 plt.subplot(3,1,1)

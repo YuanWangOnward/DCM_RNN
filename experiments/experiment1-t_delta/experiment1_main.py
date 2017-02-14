@@ -1,9 +1,38 @@
 import importlib
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 
 from DCM_RNN import toolboxes
 importlib.reload(toolboxes)
+from data import database_toolboxes as dbt
+importlib.reload(dbt)
+dbo = dbt.Operations()
+
+
+# load data base
+current_base_number = 0
+current_base_name = 'data/DB' + str(current_base_number)
+data_path = current_base_name + '.pkl'
+data = dbo.load_database(data_path)
+
+# check data
+i = 0
+du = toolboxes.DataUnit()
+du.load_parameter_core(data[i])
+du.recover_data_unit()
+du.plot('y')
+
+# for each DCM, recover fMRI signal with different t_delta [0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.5, 1]
+i = 0
+
+
+
+# compare and record MSE
+# plot the result
+
+
+
 
 sc = toolboxes.Scanner()
 du = toolboxes.DataUnit()

@@ -8,6 +8,7 @@ import os
 import sys
 import warnings
 import collections
+import matplotlib.pyplot as plt
 
 
 class OrderedDict(collections.OrderedDict):
@@ -1589,6 +1590,25 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         :return:
         """
         self.complete_data_unit(start_categorty=2)
+
+    def plot(self, variable, if_new_figure=True):
+        value = self._secured_data[variable]
+        n_node = self._secured_data['n_node']
+        x_axis = np.arange(self._secured_data['n_time_point']) * self._secured_data['t_delta']
+        if variable in ['x', 'y']:
+            plt.clf()
+            for n in range(n_node):
+                value_temp = value[:, n]
+                plt.subplot(n_node, 1, n + 1)
+                plt.plot(x_axis, value_temp)
+        elif variable is 'h':
+            if if_new_figure:
+                plt.figure()
+            for n in range(n_node):
+                value_temp = value[:, n, :].squeeze()
+                plt.subplot(n_node, 1, n + 1)
+                plt.plot(x_axis, value_temp)
+
 
 
 
