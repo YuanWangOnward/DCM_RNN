@@ -12,6 +12,12 @@ import math as mth
 import os
 import pickle
 
+def cdr(relative_path):
+    file_path = os.path.dirname(os.path.realpath(__file__))
+    os.chdir(file_path + relative_path)
+    IF_PRINT = False
+    if IF_PRINT:
+        print('working directory is ' + os.getcwd())
 
 class InitializationTests(unittest.TestCase):
     def setUp(self):
@@ -608,7 +614,14 @@ class DataUnitTests(unittest.TestCase):
         pass
 
     def test_save_and_load(self):
-        self.du.complete_data_unit()
+        # self.du.complete_data_unit()
+        #file_path = os.path.dirname(os.path.realpath(__file__))
+        #os.chdir(file_path + "/../")
+        #print('working directory is ' + os.getcwd())
+        cdr("/../")
+        data_path = 'resources/template0.pkl'
+        with open(data_path, 'rb') as f:
+            self.du = pickle.load(f)
         para_core = self.du.collect_parameter_core()
         dut = toolboxes.DataUnit()
         dut.load_parameter_core(para_core)
@@ -616,6 +629,7 @@ class DataUnitTests(unittest.TestCase):
         self.assertEqual(set(dut._secured_data.keys()), set(self.du._secured_data.keys()))
         np.testing.assert_array_equal(dut._secured_data['y'], self.du._secured_data['y'])
         # data_path = "../tests/test_output/du_core.pkl"
+        print('working directory is ' + os.getcwd())
         data_path = "tests/test_output/du_core.pkl"
         with open(data_path, 'wb') as f:
             pickle.dump(para_core, f)
@@ -626,9 +640,6 @@ class DataUnitTests(unittest.TestCase):
         self.assertEqual(set(dut._secured_data.keys()), set(self.du._secured_data.keys()))
 
 
-
-
 if __name__ == '__main__':
-    os.chdir("/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/DCM_RNN")
-    print('Test running in ' + os.getcwd())
+
     unittest.main()

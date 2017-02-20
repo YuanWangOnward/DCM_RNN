@@ -25,7 +25,6 @@ du._secured_data['if_random_node_number'] = False
 du._secured_data['if_random_stimuli_number'] = False
 du._secured_data['if_random_delta_t'] = False
 du._secured_data['if_random_scan_time'] = False
-
 du._secured_data['t_delta'] = 1. / 16.
 du._secured_data['t_scan'] = 3 * 60
 du._secured_data['n_node'] = 3
@@ -76,3 +75,6 @@ if IF_LOADING_TEST:
     with open(data_path, 'rb') as f:
         du_load = pickle.load(f)
         np.testing.assert_array_equal(du._secured_data['y'], du_load._secured_data['y'])
+
+# template1, by data generation process
+
