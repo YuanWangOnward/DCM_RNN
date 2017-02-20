@@ -1,13 +1,12 @@
 import importlib
-import numpy as np
-import matplotlib.pyplot as plt
-import pickle
 import os
-import scipy.ndimage
-import plotly.plotly as py  # tools to communicate with Plotly's server
+import pickle
 
+import matplotlib.pyplot as plt
+import numpy as np
 
 from DCM_RNN import toolboxes
+
 importlib.reload(toolboxes)
 from data import database_toolboxes as dbt
 importlib.reload(dbt)
