@@ -14,9 +14,9 @@ class get_a_data_helper:
 
 
 	def split_data(self,data, truncation_dimension=None, n_recurrence=None,store_name=None):
-		# truncate data into [batch_size, n_recurrent] for training
-		# data are assumed to be np.array like 
-		# if a data name is given, it's stored in the class instance with given name
+		# truncate cores into [batch_size, n_recurrent] for training
+		# cores are assumed to be np.array like
+		# if a cores name is given, it's stored in the class instance with given name
 		# the function return a list, each is a training batch
 		truncation_dimension = truncation_dimension or data.ndim-1
 		n_recurrence = n_recurrence or self.n_recurrence
@@ -34,9 +34,9 @@ class get_a_data_helper:
 		return output
 
 	def cut2shape(self,data, shape_target, truncation_dimension=None, n_recurrence=None,store_name=None):
-		# truncate data into [batch_size, n_recurrent] for training
-		# data are assumed to be np.array like 
-		# if a data name is given, it's stored in the class instance with given name
+		# truncate cores into [batch_size, n_recurrent] for training
+		# cores are assumed to be np.array like
+		# if a cores name is given, it's stored in the class instance with given name
 		# the function return a list, each is a training batch
 		truncation_dimension = truncation_dimension or data.ndim-1
 		n_recurrence = n_recurrence or self.n_recurrence

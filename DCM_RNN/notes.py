@@ -158,7 +158,7 @@ para_forerunner = {
 '''
 # package structure rearrangement
 THE MOST IMPORTANT THING IS KEEPING INTEGRALTITY AND CONSISTENCE OF DATA UNIT.
-Class DataUnit should have a hidden dictionary recording all the parameters and scanned data.
+Class DataUnit should have a hidden dictionary recording all the parameters and scanned cores.
 It should only be written by DataUnit's methods to keep integrality and consistence but should be read easily.
 Data should be put in to levels. If one parameter uses other parameters on at most n level, it in at n+1 level.
 Ideally, parameters should be specified only from higher level to lower level and it should be pretty easy to generate

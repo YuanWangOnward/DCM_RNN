@@ -629,4 +629,6 @@ class DataUnitTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    os.chdir("/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/DCM_RNN")
+    print('Test running in ' + os.getcwd())
     unittest.main()

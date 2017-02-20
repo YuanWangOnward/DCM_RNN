@@ -34,18 +34,18 @@ for current_base_number in range(10):
         du._secured_data['n_backpro'] = 12
         du.complete_data_unit(if_show_message=False)
 
-        # add data
+        # add cores
         du_core = du.collect_parameter_core()
         current_data.append(du_core)
-        print('Number of current data base ' + str(len(current_data)))
+        print('Number of current cores base ' + str(len(current_data)))
 
-    # save data
-    print('Number of current data base ' + str(len(current_data)))
+    # save cores
+    print('Number of current cores base ' + str(len(current_data)))
     data_path = current_base_name + '.pkl'
     with open(data_path, 'wb') as f:
         pickle.dump(current_data, f)
 '''
-# check data base
+# check cores base
 current_base_number = 0
 current_base_name = 'DB' + str(current_base_number)
 data_path = current_base_name + '.pkl'

@@ -357,7 +357,7 @@ class Initialization:
         """
         Get standard hemodynamic parameters, namely, the means of prior distribution of hemodynamic parameters
         :param n_node: number of nodes (brain areas)
-        :return: a pandas data frame, containing hemodynamic parameters for all the nodes
+        :return: a pandas cores frame, containing hemodynamic parameters for all the nodes
         """
         return self.get_expanded_hemodynamic_parameter_prior_distributions(n_node)['mean']
 
@@ -367,7 +367,7 @@ class Initialization:
         The sample range is constrained to mean +/- deviation_constraint * standard_deviation
         :param n_node: number of nodes (brain areas)
         :param deviation_constraint: float, used to constrain the sample range
-        :return: a pandas data frame, containing hemodynamic parameters for all the nodes,
+        :return: a pandas cores frame, containing hemodynamic parameters for all the nodes,
                  and optionally, normalized standard deviation.
         """
         deviation_constraint = deviation_constraint or self.deviation_constraint
@@ -1013,8 +1013,7 @@ class Scanner:
         n_time_point = u.shape[0]
         x = np.zeros((n_time_point, n_node))
         x[0, :] = initial_x_state
-        #if u.ndim is 1:
-        #    u = np.expand_dims(u, axis=1)
+
         for i in range(1, n_time_point):
             tmp1 = np.matmul(Wxx, x[i - 1, :])
             tmp2 = [np.matmul(Wxxu[idx], x[i - 1, :] * u[i - 1, idx]) for idx in range(n_stimuli)]
@@ -1166,7 +1165,7 @@ class Scanner:
 
 class DataUnit(Initialization, ParameterGraph, Scanner):
     """
-    This class is used to ensure consistence and integrity of all data, but that takes a lot of efforts, so currently,
+    This class is used to ensure consistence and integrity of all cores, but that takes a lot of efforts, so currently,
     it's used in a unsecured manner. Namely, DataUnit inherits dict and it key/value pair can be changed without other
     constraints, which means they might not be consistent.
     A internal dictionary, _secured_data is a dictionary should only manipulated by internal methods. It's not
@@ -1202,7 +1201,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         self._secured_data['parameter_graph'] = self
         self._secured_data['scanner'] = self
 
-        # when do auto data generating, following the order below
+        # when do auto cores generating, following the order below
         self._assign_order = ['n_node',
                               'n_stimuli',
                               't_scan',
@@ -1217,7 +1216,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                               'Wo', 'bo',
                               'x', 'h', 'y']
 
-        # record data which should be kept before auto complement
+        # record cores which should be kept before auto complement
         self._locked_data = {}
         self.lock_current_data()
 
@@ -1374,7 +1373,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def _set(self, para, flag_name, if_show_message=False):
         """
-        Used by auto data generating process.
+        Used by auto cores generating process.
         Assume all constraints have been checked, and value assignment is allowed.
         Generate value for para following flag information.
         :param para: target para
@@ -1561,7 +1560,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def lock_current_data(self):
         """
-        Copy data in _secured_data into _locked_data
+        Copy cores in _secured_data into _locked_data
         :return:
         """
         self._locked_data = self._secured_data.copy()
@@ -1641,6 +1640,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
                 self.recover_data_unit()
                 output.append(self._secured_data[target_para_name])
+            self.refresh_data()
             return output
         else:
             print(source_para_name + ' is not supported yet.')

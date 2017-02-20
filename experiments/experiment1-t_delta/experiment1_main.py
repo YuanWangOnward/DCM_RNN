@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import pickle
 import os
 import scipy.ndimage
+import plotly.plotly as py  # tools to communicate with Plotly's server
+
 
 from DCM_RNN import toolboxes
 importlib.reload(toolboxes)
@@ -15,33 +17,54 @@ dbo = dbt.Operations()
 os.chdir("/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/data")
 print('working directory is ' + os.getcwd())
 
-
-# load data base
-current_base_number = 0
+# load cores base
+current_base_number = 1
 current_base_name = 'DB' + str(current_base_number)
 data_path = current_base_name + '.pkl'
-data = dbo.load_database(data_path)
+cores = dbo.load_database(data_path)
 
-# check data
-i = 0
+# check cores 13, 27, 68
+i = 13
 du = toolboxes.DataUnit()
-du.load_parameter_core(data[i])
+du.load_parameter_core(cores[i])
+print(du._secured_data['n_node'])
 du.recover_data_unit()
 du.plot('y')
 
 
-# for each DCM, recover fMRI signal with different t_delta [0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.5, 1]
+# for each DCM, recover fMRI signal with different t_delta
+t_delta_list = [0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.5]
 rMSEs = []
-for i in range(1):
+for i in range(len(cores)):
     print('current processing: ' + str(i))
     du = toolboxes.DataUnit()
-    du.load_parameter_core(data[i])
-    y_list = du.map('t_delta', [1. / 2 ** 8, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.5], 'y')
+    du.load_parameter_core(cores[i])
+    y_list = du.map('t_delta', t_delta_list, 'y')
     y_resampled = du.resample(y_list, y_list[-1].shape)
     rMSE = du.compare(y_resampled, y_resampled[0])
     rMSEs.append(rMSE)
+    if np.mod(i, 20) == 19:
+        data_path = os.getcwd() + '/../experiments/experiment1-t_delta/results' + str(i) + '.pkl'
+        with open(data_path, 'wb') as f:
+            pickle.dump(rMSEs, f)
 
 for value in y_resampled:
-    plt.plot(value[:, 2])
+    plt.plot(value[:, 0])
 
+# load result
+'''
+data_path = os.getcwd() + '/../experiments/experiment1-t_delta/results' + str(i) + '.pkl'
+with open(data_path, 'rb') as f:
+    rMSEs = pickle.load(f)
+'''
 
+# plot histogram of rMSE
+
+rMSEs = np.array(rMSEs)
+histogram = plt.figure()
+bins = np.linspace(0, 1, 100)
+for n in range(rMSEs.shape[1]):
+    temp = rMSEs[:, n]
+    temp = temp[~np.isnan(temp)]
+    plt.hist(temp, bins, alpha=0.5)
+plt.show()
