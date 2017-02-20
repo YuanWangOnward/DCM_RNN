@@ -1,6 +1,6 @@
 # Randomly generating seemingly realistic DCM model is time consuming.
 # This file generates DCMs and store them for further analysis.
-
+import os
 import importlib
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,9 +12,9 @@ from DCM_RNN import toolboxes
 importlib.reload(toolboxes)
 
 
-import os
+file_path = os.path.dirname(os.path.realpath(__file__))
+os.chdir(file_path + "/../data")
 print('working directory is ' + os.getcwd())
-
 
 
 for current_base_number in range(10):
@@ -44,7 +44,11 @@ for current_base_number in range(10):
     data_path = current_base_name + '.pkl'
     with open(data_path, 'wb') as f:
         pickle.dump(current_data, f)
+
+
 '''
+# Codes used to check generated data
+
 # check cores base
 current_base_number = 0
 current_base_name = 'DB' + str(current_base_number)
