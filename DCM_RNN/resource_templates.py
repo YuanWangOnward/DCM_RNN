@@ -76,5 +76,4 @@ if IF_LOADING_TEST:
         du_load = pickle.load(f)
         np.testing.assert_array_equal(du._secured_data['y'], du_load._secured_data['y'])
 
-# template1, by data generation process
 

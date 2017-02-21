@@ -293,16 +293,16 @@ class ParameterGraphTests(unittest.TestCase):
 
     def test_make_graph(self):
         self.pgt.make_graph(self.pgt.get_para_descendant_mapping(),
-                            file_name="../tests/test_output/ParameterGraph_make_graph_test",
+                            file_name="test_output/ParameterGraph_make_graph_test",
                             rank_dict=self.pgt.get_level_para_mapping(),
                             rank_order=sorted(self.pgt.get_level_para_mapping().keys())
                             )
         if_update_graph = True
         if if_update_graph:
-            self.pg.make_graph()
+            self.pg.make_graph(file_name='../documents/parameter_level_graph')
             self.pg.make_graph(
                 relation_dict=self.pg.get_para_descendant_mapping(),
-                file_name='parameter_category_graph',
+                file_name='../documents/parameter_category_graph',
                 rank_dict=self.pg.get_category_para_mapping(),
                 rank_order=sorted(self.pg.get_category_para_mapping().keys())
             )
@@ -614,12 +614,9 @@ class DataUnitTests(unittest.TestCase):
         pass
 
     def test_save_and_load(self):
-        # self.du.complete_data_unit()
-        #file_path = os.path.dirname(os.path.realpath(__file__))
-        #os.chdir(file_path + "/../")
-        #print('working directory is ' + os.getcwd())
-        cdr("/../")
-        data_path = 'resources/template0.pkl'
+        print('working directory is ' + os.getcwd())
+        #  cdr("/../")
+        data_path = '../resources/template0.pkl'
         with open(data_path, 'rb') as f:
             self.du = pickle.load(f)
         para_core = self.du.collect_parameter_core()
@@ -629,8 +626,7 @@ class DataUnitTests(unittest.TestCase):
         self.assertEqual(set(dut._secured_data.keys()), set(self.du._secured_data.keys()))
         np.testing.assert_array_equal(dut._secured_data['y'], self.du._secured_data['y'])
         # data_path = "../tests/test_output/du_core.pkl"
-        print('working directory is ' + os.getcwd())
-        data_path = "tests/test_output/du_core.pkl"
+        data_path = "test_output/du_core.pkl"
         with open(data_path, 'wb') as f:
             pickle.dump(para_core, f)
         with open(data_path, 'rb') as f:
@@ -641,5 +637,4 @@ class DataUnitTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
     unittest.main()

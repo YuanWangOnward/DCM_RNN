@@ -11,6 +11,7 @@ import sys
 import warnings
 import collections
 import matplotlib.pyplot as plt
+import subprocess
 
 
 class OrderedDict(collections.OrderedDict):
@@ -896,13 +897,19 @@ class ParameterGraph:
         :param rank_order: [rank_names] list recording rank order
         :return: True if it runs to the end
         """
-        if relation_dict == None and file_name == None and rank_dict == None and rank_order == None:
-            relation_dict = self.forerunner2descendant(self._para_forerunner)
-            file_name = "parameter_level_graph"
+        '''
+            if relation_dict == None and file_name == None and rank_dict == None and rank_order == None:
+            relation_dict = self.forerunner2descendant(self.get_para_forerunner_mapping())
+            file_name = "documents/parameter_level_graph"
             rank_dict = self._level_para
             rank_order = self._level_para.key_order
+        '''
+        relation_dict = relation_dict or self.forerunner2descendant(self.get_para_forerunner_mapping())
+        file_name = file_name or "documents/parameter_level_graph"
+        rank_dict = rank_dict or self._level_para
+        rank_order = rank_order or self._level_para.key_order
 
-        with open("documents/" + file_name + ".gv", 'w') as f:
+        with open(file_name + ".gv", 'w') as f:
             f.write("digraph G {\n")
             f.write("          splines=ortho;\n")
             f.write("          fontsize = 48;\n")
@@ -950,11 +957,12 @@ class ParameterGraph:
             f.write("}")
             # call dot tool to draw diagram
             # however, it doesn't work at this moment
-            source_file = "documents/" + file_name + ".gv"
-            target_file = "documents/" + file_name + ".png"
-            # subprocess.run(["dot", "-Tpng", source_file, "-o", target_file], check=True)
+            source_file = file_name + ".gv"
+            target_file = file_name + ".png"
+            subprocess.run(["dot", "-Tpng", source_file, "-o", target_file], check=True)
             string = ' '.join(["dot", "-Tpng", source_file, "-o", target_file])
-            print('run the following command in package root directory to update graph:')
+            print('run the following command in the terminal to update graph:')
+            print('cd ' + os.getcwd())
             print(string)
 
     def get_all_para_names(self):
