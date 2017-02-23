@@ -76,7 +76,7 @@ class OrderedDict(collections.OrderedDict):
                     for key in key_order:
                         self[key] = dictionary[key]
             else:
-                raise ValueError('Key order should be a list or dictionary')
+                raise ValueError('Key order should be r list or dictionary')
 
     def form_list_order(self, dict_order):
         """
@@ -95,7 +95,7 @@ class OrderedDict(collections.OrderedDict):
         :return: index
         """
         if key not in self.key_order:
-            raise ValueError(key + ' is not a valid element in key order')
+            raise ValueError(key + ' is not r valid element in key order')
         else:
             return self.key_order.index(key)
 
@@ -201,13 +201,13 @@ class Initialization:
 
     def randomly_initialize_connection_matrices(self, n_node, n_stimuli, sparse_level=None):
         """
-        Generate a set of matrices for neural level equation x'=Ax+\sigma(xBu)+Cu.
+        Generate r set of matrices for neural level equation x'=Ax+\sigma(xBu)+Cu.
         For assumptions about each matrix, please refer to each individual generating function.
         :param n_node: number of nodes (brain areas)
         :param n_stimuli: number of stimuli
         :param sparse_level: sparse level of off_diagonal elements, [0, 1],
         actual non-zeros elements equal int(sparse_level * (n_node-1) * n_node)
-        :return: a dictionary with elements 'A', 'B', and 'C'
+        :return: r dictionary with elements 'A', 'B', and 'C'
         """
         sparse_level = sparse_level or self.sparse_level
         connection_matrices = {'A': self.randomly_generate_sparse_A_matrix(n_node, sparse_level),
@@ -217,9 +217,9 @@ class Initialization:
 
     def roll(self, probability):
         """
-        sample a random number from [0,1), if it's smaller than or equal to given probability, return True,
+        sample r random number from [0,1), if it's smaller than or equal to given probability, return True,
         otherwise, False
-        :param probability: a number from [0 ,1]
+        :param probability: r number from [0 ,1]
         :return: boolean
         """
         if random.random() >= probability:
@@ -230,7 +230,7 @@ class Initialization:
     def check_transition_matrix(self, A):
         """
         Check whether all the eigenvalues of A have negative real parts
-        to ensure a corresponding linear system is stable
+        to ensure r corresponding linear system is stable
         :param A: candidate transition matrix
         :return: True or False
         """
@@ -252,7 +252,7 @@ class Initialization:
         :param n_node: number of nodes (brain areas)
         :param sparse_level: sparse level of off_diagonal elements, [0, 1],
         actual non-zeros elements equal int(sparse_level * (n_node-1) * n_node)
-        :return: a sparse A matrix
+        :return: r sparse A matrix
         """
         sparse_level = sparse_level or self.sparse_level
 
@@ -287,7 +287,7 @@ class Initialization:
         Strength is in (-0.5, -0.2] U [0.2, 0.5)
         :param n_node: number of nodes (brain areas)
         :param n_stimuli: number of stimuli
-        :return: a list of B matrices
+        :return: r list of B matrices
         """
         if n_node < n_stimuli:
             raise ValueError('Improper number of nodes and stimuli')
@@ -312,7 +312,7 @@ class Initialization:
         Strength is in [0.5, 1)
         :param n_node: number of nodes (brain areas)
         :param n_stimuli: number of stimuli
-        :return: a C matrix
+        :return: r C matrix
         """
         if n_node < n_stimuli:
             raise ValueError('Improper number of nodes and stimuli')
@@ -370,7 +370,7 @@ class Initialization:
     def get_hemodynamic_parameter_prior_distributions(self):
         """
         Get prior distribution for hemodynamic parameters (Gaussian)
-        :return: a pandas.dataframe containing mean, variance, and standard deviation of each parameter
+        :return: r pandas.dataframe containing mean, variance, and standard deviation of each parameter
         """
         prior_distribution = pd.DataFrame()
         prior_distribution['mean'] = self.hemo_parameter_mean
@@ -382,7 +382,7 @@ class Initialization:
         """
         Repeat hemodynamic parameter prior distributions for each node and structure the results into pandas.dataframe
         :param n_node: number of nodes (brain areas)
-        :return: a dict of  pandas.dataframe, containing hemodynamic parameter distributions for all the nodes,
+        :return: r dict of  pandas.dataframe, containing hemodynamic parameter distributions for all the nodes,
                  distribution parameters include mean and standard deviation.
         """
         distributions = self.get_hemodynamic_parameter_prior_distributions()
@@ -397,7 +397,7 @@ class Initialization:
         """
         Get standard hemodynamic parameters, namely, the means of prior distribution of hemodynamic parameters
         :param n_node: number of nodes (brain areas)
-        :return: a pandas cores frame, containing hemodynamic parameters for all the nodes
+        :return: r pandas cores frame, containing hemodynamic parameters for all the nodes
         """
         return self.get_expanded_hemodynamic_parameter_prior_distributions(n_node)['mean']
 
@@ -407,14 +407,14 @@ class Initialization:
         The sample range is constrained to mean +/- deviation_constraint * standard_deviation
         :param n_node: number of nodes (brain areas)
         :param deviation_constraint: float, used to constrain the sample range
-        :return: a pandas cores frame, containing hemodynamic parameters for all the nodes,
+        :return: r pandas cores frame, containing hemodynamic parameters for all the nodes,
                  and optionally, normalized standard deviation.
         """
         deviation_constraint = deviation_constraint or self.deviation_constraint
 
         def sample_hemodynamic_parameters(hemodynamic_parameters_mean, hemodynamic_parameters_std,
                                           deviation_constraint):
-            # sample a subject from hemodynamic parameter distribution
+            # sample r subject from hemodynamic parameter distribution
             h_mean = hemodynamic_parameters_mean
             h_std = hemodynamic_parameters_std
 
@@ -445,10 +445,10 @@ class Initialization:
     def evaluate_hemodynamic_parameters(self, hemodynamic_parameters, h_parameter_check_statistics=None):
         """
         For each hemodynamic parameter, map how it derives from the means.
-        :param hemodynamic_parameters: a pandas.dataframe, containing sampled hemodynamic parameters
+        :param hemodynamic_parameters: r pandas.dataframe, containing sampled hemodynamic parameters
         :param h_parameter_check_statistics: specify which kind of statistic to check,
                it takes value in {'deviation', 'pdf'}
-        :return: a pandas.dataframe, containing checking statistics
+        :return: r pandas.dataframe, containing checking statistics
         """
         h_parameter_check_statistics = h_parameter_check_statistics or self.h_parameter_check_statistics
         n_node = hemodynamic_parameters.shape[0]
@@ -484,7 +484,7 @@ class Initialization:
         """
         Check if given hemodynamic parameters are within deviation constraint.
         If yes, return True; otherwise, throw error
-        :param hemodynamic_parameters: a pandas.dataframe to be checked
+        :param hemodynamic_parameters: r pandas.dataframe to be checked
         :param deviation_constraint: target deviation constraint, in normalized deviation,
         say if deviation_constraint=1, parameter with +/- one normalized deviation is acceptable
         :return: True or Error
@@ -764,9 +764,9 @@ class ParameterGraph:
         Transfer {parameter:[forerunners]} mapping  dictionary to
         {parameter:[descendants]} mapping dictionary
         :param forerunner_mapping: parameter:forerunners mapping dictionary
-        :param key_order: if an {key:order} dictionary is given, return an OderderDict, otherwise, a dict
+        :param key_order: if an {key:order} dictionary is given, return an OderderDict, otherwise, r dict
         :param if_complete: if True, treat keys in forerunner dictionary as valid parameters.
-            Parameter without a descendant will also be added to resulting dictionary
+            Parameter without r descendant will also be added to resulting dictionary
         :return: parameter: {parameter:[descendants]} mapping dictionary
         """
         forerunner_mapping = forerunner_mapping or self._para_forerunner
@@ -857,8 +857,8 @@ class ParameterGraph:
         Category two: with prerequisite and has if_random_ flag in prerequisites, one needs to check flag before assign
         Category three: with prerequisite and has no flag, should not be assigned directly, its value should be derived
             by its prerequisites.
-        :param para_forerunner: a dictionary recording _para_forerunner of each parameter
-        :return: a {para:category} dictionary recording category of each parameter
+        :param para_forerunner: r dictionary recording _para_forerunner of each parameter
+        :return: r {para:category} dictionary recording category of each parameter
         """
         para_category = {}
         para_forerunner = para_forerunner or self._para_forerunner
@@ -899,10 +899,10 @@ class ParameterGraph:
 
     def abstract_flag(self, prerequisites):
         """
-        Find if_ flag from the prerequisites of a parameter
-        :param prerequisites: a list of parameters
+        Find if_ flag from the prerequisites of r parameter
+        :param prerequisites: r list of parameters
         :return: None, if prerequisites is empty, or there is no flag in prerequisites
-                 a flag name if there is a flag in prerequisites
+                 r flag name if there is r flag in prerequisites
         """
         if not prerequisites:
             return None
@@ -918,10 +918,10 @@ class ParameterGraph:
 
     def get_flag_name(self, para):
         """
-         Find if_ flag from the forerunners of a parameter
+         Find if_ flag from the forerunners of r parameter
         :param para: target parameter
         :return: None, if forerunners is empty, or there is no flag in forerunners
-                 a flag name if there is a flag in forerunners
+                 r flag name if there is r flag in forerunners
         """
         self.check_valid_para(para)
         para_forerunner = self.get_para_forerunner_mapping()
@@ -929,7 +929,7 @@ class ParameterGraph:
 
     def make_graph(self, relation_dict=None, file_name=None, rank_dict=None, rank_order=None):
         """
-        Create .gv file and then use dot tool to create a diagram.
+        Create .gv file and then use dot tool to create r diagram.
         :param relation_dict: {form:[tos]} structure, recording edges
         :param file_name: title, file name of .gv and .png file
         :param rank_dict: {rank_name:[members]} dict recording rank information
@@ -1000,21 +1000,21 @@ class ParameterGraph:
             target_file = file_name + ".png"
             subprocess.run(["dot", "-Tpng", source_file, "-o", target_file], check=True)
             string = ' '.join(["dot", "-Tpng", source_file, "-o", target_file])
-            print('run the following command in the terminal to update graph:')
+            print('run2 the following command in the terminal to update graph:')
             print('cd ' + os.getcwd())
             print(string)
 
     def get_all_para_names(self):
         """
-        Get all parameter names in a DataUnit.
-        :return: a list of parameter names, sorted by parameter level
+        Get all parameter names in r DataUnit.
+        :return: r list of parameter names, sorted by parameter level
         """
         para_level = self.get_para_level_mapping()
         return sorted(para_level.keys(), key=lambda key: para_level[key])
 
     def check_valid_para(self, para):
         """
-        Check if a given parameter name is a valid one
+        Check if r given parameter name is r valid one
         :param para: target name
         :return: True or raise error
         """
@@ -1046,7 +1046,7 @@ class Scanner:
     def scan_x(self, parameter_package):
         """
         Calculate x, namely neural activity
-        :param parameter_package: a dictionary containing all needed parameters
+        :param parameter_package: r dictionary containing all needed parameters
         :return: x, np.array, (n_time_point, n_node)
         """
         Wxx = parameter_package['Wxx']
@@ -1071,7 +1071,7 @@ class Scanner:
 
     def if_proper_x(self, x):
         """
-        Check if a x seems a good one in terms of some statistics which in includes:
+        Check if r x seems r good one in terms of some statistics which in includes:
         max absolute value and energy distribution on frequency
         :param x: neural activities, np.narray of (n_time_point, n_node)
         :return: True if x means proper; False otherwise
@@ -1106,7 +1106,7 @@ class Scanner:
 
     def if_proper_h(self, h):
         """
-        Check if a set of generated h seems a reasonable one.
+        Check if r set of generated h seems r reasonable one.
         Namely, f, v, q should be within [self.h_value_low, self.h_value_high] all the time
         :param h: test hemodynamic state, np.array of (n_time_point, n_node, 4)
         :return: True if x means proper; False otherwise
@@ -1139,7 +1139,7 @@ class Scanner:
     def scan_h(self, parameter_package):
         """
         Calculate h, namely hemodynamic response
-        :param parameter_package: a dictionary containing all needed parameters
+        :param parameter_package: r dictionary containing all needed parameters
         :return: np.array of size (n_time_point, n_node, 4)
         """
         hemodynamic_parameters = parameter_package['hemodynamic_parameter']
@@ -1167,7 +1167,7 @@ class Scanner:
                 # it induces error in our approximation
                 # s doesn't need protection
                 h[t, n, 0] = h_temp[0]
-                # avoid f, v, q run into non-positive value
+                # avoid f, v, q run2 into non-positive value
                 fvq_tm1 = h[t - 1, n, 1:]
                 fvq_temp = h_temp[1:]
                 fvq_delta = fvq_temp - fvq_tm1
@@ -1193,7 +1193,7 @@ class Scanner:
     def scan_y(self, parameter_package):
         """
         Calculate value, namely observable functional signal
-        :param parameter_package: a dictionary containing all needed parameters
+        :param parameter_package: r dictionary containing all needed parameters
         :return: np.array of size (n_time_point, n_node)
         """
 
@@ -1212,10 +1212,10 @@ class Scanner:
 
 class DataUnit(Initialization, ParameterGraph, Scanner):
     """
-    This class is used to ensure consistence and integrity of all cores, but that takes a lot of efforts, so currently,
-    it's used in a unsecured manner. Namely, DataUnit inherits dict and it key/value pair can be changed without other
+    This class is used to ensure consistence and integrity of all cores, but that takes r lot of efforts, so currently,
+    it's used in r unsecured manner. Namely, DataUnit inherits dict and it key/value pair can be changed without other
     constraints, which means they might not be consistent.
-    A internal dictionary, _secured_data is a dictionary should only manipulated by internal methods. It's not
+    A internal dictionary, _secured_data is r dictionary should only manipulated by internal methods. It's not
     implemented currently but DataUnit should keep it structure so that this functionality can be added easily.
     """
     init = Initialization()
@@ -1283,10 +1283,10 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def set(self, para, value):
         """
-        Set value to a parameter.
-        A parameter can only be directly assigned a number if it is of category one or two (see ParameterGraph)
-        When a parameter is assigned a number, its compatibility should be checked with existing parameters.
-        But it takes a lot of time to implement.
+        Set value to r parameter.
+        A parameter can only be directly assigned r number if it is of category one or two (see ParameterGraph)
+        When r parameter is assigned r number, its compatibility should be checked with existing parameters.
+        But it takes r lot of time to implement.
         Now it only check if_random flag and descendant.
         If if_random flag is True, or if its descendants have had value, it should not be assigned.
         :param para: name of target parameter
@@ -1318,15 +1318,15 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def get(self, para_name):
         """
-        Get a parameter from _secured_data
+        Get r parameter from _secured_data
         :param para_name:
         :return:
         """
-        return self._secured_data[para_name]
+        return copy.deepcopy(self._secured_data[para_name])
 
     def if_has_no_assigned_descendant(self, para):
         """
-        Check the descendants of a para, if any of them has a value, return False
+        Check the descendants of r para, if any of them has r value, return False
         :param para: target parameter
         :return: If no descendant has had value, return True; otherwise, False.
         """
@@ -1344,7 +1344,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def check_has_no_assigned_descendant(self, para):
         """
-        Check the descendants of a para, if any of them has a value, raise error
+        Check the descendants of r para, if any of them has r value, raise error
         :param para: target parameter
         :return: If no descendant has had value, return True; otherwise, error.
         """
@@ -1356,10 +1356,10 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def if_has_value(self, para, search_target_dictionary=None):
         """
-        Check whether if a parameter has been assigned a value in search_target_dictionary
+        Check whether if r parameter has been assigned r value in search_target_dictionary
         :param para: target para
         :param search_target_dictionary:
-        :return: True if para has a value; otherwise False
+        :return: True if para has r value; otherwise False
         """
         search_target_dictionary = search_target_dictionary or self._secured_data
         self.check_valid_para(para)
@@ -1370,10 +1370,10 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def check_all_have_values(self, parameters, search_target_dictionary=None):
         """
-        Check whether all parameters in the list parameters have values in search_target_dictionary
-        :param parameters: a list of target parameters
-        :param search_target_dictionary: where to search values
-        :return: True if all parameters have values; otherwise raise error
+        Check whether all parameters in the list parameters have true_values in search_target_dictionary
+        :param parameters: r list of target parameters
+        :param search_target_dictionary: where to search true_values
+        :return: True if all parameters have true_values; otherwise raise error
         """
         search_target_dictionary = search_target_dictionary or self._secured_data
         flags = [self.if_has_value(para, search_target_dictionary) for para in parameters]
@@ -1387,7 +1387,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
     def complete_data_unit(self, start_categorty=1, if_check_property=True, if_show_message=False):
         """
         Generate missing parameters
-        :param start_categorty: if it starts from category n, category n parameters must have had values
+        :param start_categorty: if it starts from category n, category n parameters must have had true_values
         :param if_show_message: boolean, whether show completing message
         :return:
         """
@@ -1412,7 +1412,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
     def _simple_complete(self, assign_order, if_show_message=False):
         """
         complete dataUnit without check quality
-        :param assign_order: a list indicating parameter assign order
+        :param assign_order: r list indicating parameter assign order
         :return:
         """
         for para in assign_order:
@@ -1576,7 +1576,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def check_forerunners(self, para):
         """
-        Check if all forerunners of a para have been specified
+        Check if all forerunners of r para have been specified
         :param para: target para
         :return: True or raise error
         """
@@ -1635,7 +1635,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
     def load_parameter_core(self, parameter_core):
         """
         Load the given parameter_core
-        :param parameter_core: a dictionary having core parameters need to reproduced original dateUnit
+        :param parameter_core: r dictionary having core parameters need to reproduced original dateUnit
         :return:
         """
         cate_para = dict(self.get_category_para_mapping())
@@ -1669,12 +1669,12 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def map(self, source_para_name, source_para_values, target_para_name):
         """
-        After loading a parameter core, use different values of source parameter and ys target parameter,
+        After loading r parameter core, use different true_values of source parameter and ys target parameter,
         to map the influence of source parameter on the target parameter. Supported source_para [t_delta]
         :param source_para_name:
-        :param source_para_values: a list of values source parameters
+        :param source_para_values: r list of true_values source parameters
         :param target_para_name:
-        :return: a list of target parameters
+        :return: r list of target parameters
         """
         output = []
         self.lock_current_data()
@@ -1721,9 +1721,9 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
     def resample(self, states, target_shape):
         """
         Resample states to same shape for comparison.
-        :param states: a list of states
+        :param states: r list of states
         :param target_shape: desired shape
-        :return: a list of states of the same time point.
+        :return: r list of states of the same time point.
         """
         states_resampled = []
         for state in states:
@@ -1735,9 +1735,9 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
     def compare(self, arrays, ground_truth):
         """
         Compare and calculate rMSE of each in arrays against ground_truth
-        :param arrays: a list of arrays of the same shape
-        :param ground_truth: a array, used as ground truth
-        :return: a list of rMSE
+        :param arrays: r list of arrays of the same shape
+        :param ground_truth: r array, used as ground truth
+        :return: r list of rMSE
         """
         rMSE = []
         ground_truth = ground_truth.flatten()

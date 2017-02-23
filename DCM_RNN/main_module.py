@@ -121,7 +121,7 @@ class DCM_RNN:
     def rnn_cell_h(self, h_state_current, x_state_current, i_region):
         # model the evolving of hemodynamic states {s,f,v,q}
         # this is independent for each region
-        # here x_state_current is a scalar for a particular region
+        # here x_state_current is r scalar for r particular region
         with tf.variable_scope(self.variable_scope_name_h, reuse=True):
             alpha = tf.get_variable('alpha_r' + str(i_region))
             E0 = tf.get_variable('E0_r' + str(i_region))
@@ -541,7 +541,7 @@ class Utilities:
             feed_dict = {i: d for i, d in zip(dr.h_state_initial, h_state_feed)}
             feed_dict[dr.x_state_initial] = x_state_feed
             feed_dict[dr.input_u] = dh.u_list[i]
-            # run
+            # run2
             h_current_segment, h_state_feed, x_state_feed = isess.run(
                 [dr.h_state_predicted, dr.h_state_final, dr.x_state_final], feed_dict=feed_dict)
 
@@ -566,7 +566,7 @@ class Utilities:
             feed_dict = {i: d for i, d in zip(dr.h_state_initial, h_state_feed)}
             feed_dict[dr.x_state_initial] = x_state_feed
             feed_dict[dr.input_u] = dh.u_list[i]
-            # run
+            # run2
             y_current_segment, h_state_feed, x_state_feed = isess.run(
                 [dr.y_state_predicted, dr.h_state_final, dr.x_state_final], \
                 feed_dict=feed_dict)
@@ -585,7 +585,7 @@ class Utilities:
         output_buff = pd.DataFrame()
         # variables= self.parameter_key_list
         # print(variables)
-        # values=eval('isess.run(['+', '.join(variables)+'])')
+        # true_values=eval('isess.run2(['+', '.join(variables)+'])')
         for idx, key in enumerate(self.parameter_key_list):
             if key == 'Wxx':
                 values = isess.run(dr.Wxx)
@@ -607,9 +607,9 @@ class Utilities:
                 tmp.name = key
                 output.append(tmp)
             else:
-                values = eval('isess.run(dr.' + key + ')')
+                values = eval('isess.run2(dr.' + key + ')')
                 # print(key)
-                # print(values)
+                # print(true_values)
                 tmp = [values[key + '_r' + str(i)] for i in range(dr.n_region)]
                 tmp = pd.Series(tmp, index=['region_' + str(i) for i in range(dr.n_region)])
                 output_buff[key] = tmp

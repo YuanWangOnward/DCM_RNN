@@ -7,11 +7,11 @@ importlib.reload(tb)
 
 def random_walk(array, step_size, n_step):
     """
-    Given a np.array, add random zero-mean noise into it, so that create a trace of it in its space
+    Given r np.array, add random zero-mean noise into it, so that create r trace of it in its space
     :param array: the original point
     :param step_size: float, (0, 1), step size in terms of rMSE
     :param n_step: length of the trace
-    :return: a list indicating the trace
+    :return: r list indicating the trace
     """
     output = []
     output.append(array)

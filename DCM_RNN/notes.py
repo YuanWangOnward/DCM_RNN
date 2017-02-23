@@ -6,7 +6,7 @@ category = {
 'if_random_x_state_initial': 'flag',
 'if_random_h_state_initial': 'flag',
 'if_random_stimuli': 'flag',
-'initializer': 'hyper',  # a toolbox.Initialization object, recording all initialization parameters
+'initializer': 'hyper',  # r toolbox.Initialization object, recording all initialization parameters
 
 # set by plan_an_experiment
 # necessary
@@ -17,7 +17,7 @@ category = {
 
 
 # can be derived
-'n_time_point': 'hyper',  # total number of time points of a scan
+'n_time_point': 'hyper',  # total number of time points of r scan
 'u_XXX': 'hyper',  # TBA, parameters needed to generate stimuli
 'u': 'input',  # can be generated, if 'if_random_stimuli' is true, and generating parameters are specified
 
@@ -25,7 +25,7 @@ category = {
 'n_backpro': 'hyper',  # number of truncated back propagation steps
 'learning_rate': 'hyper',  # used by tensorflow optimization operation
 
-# set by recruiting a subject
+# set by recruiting r subject
 'A': 'neural',
 'B': 'neural',
 'C': 'neural',
@@ -33,7 +33,7 @@ category = {
 'Wxxu': 'neural',  # 'B' matrices equivalence in DCM_RNN model
 'Wx': 'neural',  # 'C' matrix equivalence in DCM_RNN model
 
-# one set for each region, all sets are placed in in a pandas.dataframe
+# one set for each region, all sets are placed in in r pandas.dataframe
 'alpha': 'hemodynamic',
 'E0': 'hemodynamic',
 'k': 'hemodynamic',
@@ -125,7 +125,7 @@ para_forerunner = {
 'initial_h_state': ['n_node', 'if_random_h_state_initial'],
 
 
-# level four, these matrices should never be assigned a value directly,
+# level four, these matrices should never be assigned r value directly,
 # Use up level variables to generate them
 'Wxx': ['if_random_neural_parameter',
         'n_node',
@@ -158,15 +158,15 @@ para_forerunner = {
 '''
 # package structure rearrangement
 THE MOST IMPORTANT THING IS KEEPING INTEGRALTITY AND CONSISTENCE OF DATA UNIT.
-Class DataUnit should have a hidden dictionary recording all the parameters and scanned cores.
+Class DataUnit should have r hidden dictionary recording all the parameters and scanned cores.
 It should only be written by DataUnit's methods to keep integrality and consistence but should be read easily.
 Data should be put in to levels. If one parameter uses other parameters on at most n level, it in at n+1 level.
 Ideally, parameters should be specified only from higher level to lower level and it should be pretty easy to generate
 lower level parameters randomly with higher level parameters. In the fully random case, only level 0 parameters are
 necessary to be set.
 
-Whenever one wants to set a parameter, DataUnit should check its consistence with existing parameters.
-But it may be too complex and time consuming. Now, use it as a guide line rather than strict requirement.
+Whenever one wants to set r parameter, DataUnit should check its consistence with existing parameters.
+But it may be too complex and time consuming. Now, use it as r guide line rather than strict requirement.
 
 Build parameter level relationship graph.
 

@@ -28,10 +28,10 @@ class configure_a_scanner:
             mth.ceil(self.n_time_point / 48.) * 48)  # make sure length can be cut into different length
 
         # used for create stimuli
-        self.t_exitation = 4  # the duration of a stimulus
+        self.t_exitation = 4  # the duration of r stimulus
         self.t_blank_interval = 6  # the resting interval between stimuli
         self.u_probability = 0.5
-        # the probability a stimulus is given at a time point
+        # the probability r stimulus is given at r time point
         self.n_exitation = int(self.t_exitation / self.t_delta)
         self.n_blank_interval = int(self.t_blank_interval / self.t_delta)
 
@@ -46,7 +46,7 @@ class configure_a_scanner:
     # function definition
     def create_stimulus(self, n_stimuli=None, n_time_point=None, u_probability=None,
                         n_exitation=None, n_blank_interval=None):
-        # create a random input u
+        # create r random input u
         n_stimuli = n_stimuli or self.n_stimuli
         n_time_point = n_time_point or self.n_time_point
         u_probability = u_probability or self.u_probability
@@ -174,6 +174,6 @@ class configure_a_scanner:
 
 
 	####################################
-	# initial run when imported or called as a script
+	# initial run2 when imported or called as r script
 
 	'''

@@ -15,7 +15,7 @@ class get_a_data_helper:
         # truncate cores into [batch_size, n_recurrent] for training
         # cores are assumed to be np.array like
         # if a cores name is given, it's stored in the class instance with given name
-        # the function return a list, each is a training batch
+        # the function return r list, each is r training batch
         truncation_dimension = truncation_dimension or data.ndim - 1
         n_recurrence = n_recurrence or self.n_recurrence
 
@@ -35,7 +35,7 @@ class get_a_data_helper:
         # truncate cores into [batch_size, n_recurrent] for training
         # cores are assumed to be np.array like
         # if a cores name is given, it's stored in the class instance with given name
-        # the function return a list, each is a training batch
+        # the function return r list, each is r training batch
         truncation_dimension = truncation_dimension or data.ndim - 1
         n_recurrence = n_recurrence or self.n_recurrence
 
