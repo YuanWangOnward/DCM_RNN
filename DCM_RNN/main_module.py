@@ -158,7 +158,7 @@ class DCM_RNN:
 
     def phi_o(self, h_state_current):
         # used to map hemodynamic states into higher dimension
-        # for fMRI output
+        # for fMRI ys
         o_state_augmented = [h_state_current[i + 2] for i in range(2)]
         tmp = tf.div(o_state_augmented[1], o_state_augmented[0])
         o_state_augmented.append(tmp)
@@ -570,7 +570,7 @@ class Utilities:
             y_current_segment, h_state_feed, x_state_feed = isess.run(
                 [dr.y_state_predicted, dr.h_state_final, dr.x_state_final], \
                 feed_dict=feed_dict)
-            # orgnize output
+            # orgnize ys
             # print(len(y_current_segment))
             # print(len(y_current_segment[0]))
             y_current_segment = np.asarray(y_current_segment)

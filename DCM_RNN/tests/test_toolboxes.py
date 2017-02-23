@@ -12,13 +12,6 @@ import math as mth
 import os
 import pickle
 
-def cdr(relative_path):
-    file_path = os.path.dirname(os.path.realpath(__file__))
-    os.chdir(file_path + relative_path)
-    IF_PRINT = False
-    if IF_PRINT:
-        print('working directory is ' + os.getcwd())
-
 class InitializationTests(unittest.TestCase):
     def setUp(self):
         self.utl = toolboxes.Initialization()
@@ -615,7 +608,6 @@ class DataUnitTests(unittest.TestCase):
 
     def test_save_and_load(self):
         print('working directory is ' + os.getcwd())
-        #  cdr("/../")
         data_path = '../resources/template0.pkl'
         with open(data_path, 'rb') as f:
             self.du = pickle.load(f)

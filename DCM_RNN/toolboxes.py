@@ -12,6 +12,45 @@ import warnings
 import collections
 import matplotlib.pyplot as plt
 import subprocess
+import pickle
+import copy
+
+
+def cdr(relative_path, if_print=False):
+    file_path = os.path.dirname(os.path.realpath(__file__))
+    os.chdir(file_path + relative_path)
+    if if_print:
+        print('working directory is ' + os.getcwd())
+
+
+def load_template(data_path):
+    with open(data_path, 'rb') as f:
+        template = pickle.load(f)
+    return template
+
+
+def load_data(data_path):
+    with open(data_path, 'rb') as f:
+        template = pickle.load(f)
+    return template
+
+
+def save_data(data_path, data):
+    with open(data_path, 'wb') as f:
+        pickle.dump(data, f)
+
+
+def mse(value_hat, value_true):
+    mse = ((value_hat.flatten() - value_true.flatten()) ** 2).mean()
+    return mse
+
+
+def rmse(value_hat, value_true):
+    error = value_hat.flatten() - value_true.flatten()
+    norm_true = np.linalg.norm(value_true.flatten())
+    norm_error = np.linalg.norm(error)
+    rmse = norm_error / norm_true
+    return rmse
 
 
 class OrderedDict(collections.OrderedDict):
@@ -379,8 +418,8 @@ class Initialization:
             h_mean = hemodynamic_parameters_mean
             h_std = hemodynamic_parameters_std
 
-            h_para = h_mean.copy()
-            h_devi = h_std.copy()
+            h_para = copy.deepcopy(h_mean)
+            h_devi = copy.deepcopy(h_std)
 
             p_shape = h_mean.shape
             for r in range(p_shape[0]):
@@ -417,8 +456,8 @@ class Initialization:
         h_mean = temp['mean']
         h_std = temp['std']
 
-        h_devi = h_mean.copy()
-        h_pdf = h_mean.copy()
+        h_devi = copy.deepcopy(h_mean)
+        h_pdf = copy.deepcopy(h_mean)
         h_para = hemodynamic_parameters
 
         p_shape = h_mean.shape
@@ -718,7 +757,7 @@ class ParameterGraph:
         return True
 
     def get_para_forerunner_mapping(self):
-        return self._para_forerunner.copy()
+        return copy.deepcopy(self._para_forerunner)
 
     def forerunner2descendant(self, forerunner_mapping=None, key_order=None, if_complete=True):
         """
@@ -788,7 +827,7 @@ class ParameterGraph:
         return para_level
 
     def get_level_para_mapping(self):
-        return self._level_para.copy()
+        return copy.deepcopy(self._level_para)
 
     def get_para_level_mapping(self, level_para=None):
         """
@@ -1142,7 +1181,7 @@ class Scanner:
     def phi_o(self, h_state_current):
         """
         used to map hemodynamic states into higher dimension
-        for fMRI output
+        for fMRI ys
         :param h_state_current:
         :return:
         """
@@ -1234,13 +1273,13 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         return assign_order
 
     def lock_current_data(self):
-        self._locked_data = self._secured_data.copy()
+        self._locked_data = copy.deepcopy(self._secured_data)
 
     def refresh_data(self):
-        self._secured_data = self._locked_data.copy()
+        self._secured_data = copy.deepcopy(self._locked_data)
 
     def get_locked_data(self):
-        return self._locked_data.copy()
+        return copy.deepcopy(self._locked_data)
 
     def set(self, para, value):
         """
@@ -1276,6 +1315,14 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                 raise ValueError(flag_name + 'has not been assigned, ' + para + 'cannot be assigned directly')
         else:
             raise ValueError('Category error.')
+
+    def get(self, para_name):
+        """
+        Get a parameter from _secured_data
+        :param para_name:
+        :return:
+        """
+        return self._secured_data[para_name]
 
     def if_has_no_assigned_descendant(self, para):
         """
@@ -1570,7 +1617,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         Copy cores in _secured_data into _locked_data
         :return:
         """
-        self._locked_data = self._secured_data.copy()
+        self._locked_data = copy.deepcopy(self._secured_data)
 
     def collect_parameter_core(self):
         """
@@ -1594,7 +1641,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         cate_para = dict(self.get_category_para_mapping())
         core_para = cate_para[1] + cate_para[2]
         self.check_all_have_values(core_para, parameter_core)
-        self._secured_data = parameter_core.copy()
+        self._secured_data = copy.deepcopy(parameter_core)
 
     def recover_data_unit(self):
         """
@@ -1622,7 +1669,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def map(self, source_para_name, source_para_values, target_para_name):
         """
-        After loading a parameter core, use different values of source parameter and output target parameter,
+        After loading a parameter core, use different values of source parameter and ys target parameter,
         to map the influence of source parameter on the target parameter. Supported source_para [t_delta]
         :param source_para_name:
         :param source_para_values: a list of values source parameters
@@ -1645,6 +1692,25 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                 u_rescaled = scipy.ndimage.zoom(u, factor, order=0, mode='nearest')
                 self._secured_data['u'] = u_rescaled
 
+                self.recover_data_unit()
+                output.append(self._secured_data[target_para_name])
+            self.refresh_data()
+            return output
+        elif source_para_name in ['A', 'B', 'C']:
+            for value in source_para_values:
+                self.refresh_data()
+                self._secured_data[source_para_name] = value
+                self.recover_data_unit()
+                output.append(self._secured_data[target_para_name])
+                print(self.get('Wxx'))
+            self.refresh_data()
+            return output
+        elif source_para_name in ['effictive_connection']:
+            for value in source_para_values:
+                self.refresh_data()
+                self._secured_data['A'] = value['A']
+                self._secured_data['B'] = value['B']
+                self._secured_data['C'] = value['C']
                 self.recover_data_unit()
                 output.append(self._secured_data[target_para_name])
             self.refresh_data()

@@ -126,7 +126,7 @@ class Subject:
 
     def phi_o(self, h_state_current):
         # used to map hemodynamic states into higher dimension
-        # for fMRI output
+        # for fMRI ys
         o_state_augmented = np.zeros(3)
         o_state_augmented[0:2] = h_state_current[2:4]
         o_state_augmented[2] = o_state_augmented[1] / o_state_augmented[0]

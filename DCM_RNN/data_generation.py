@@ -17,7 +17,7 @@ os.chdir(file_path + "/../data")
 print('working directory is ' + os.getcwd())
 
 
-for current_base_number in range(10):
+for current_base_number in range(3, 4):
     current_base_name = 'DB' + str(current_base_number)
     current_data = []
 

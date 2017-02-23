@@ -43,7 +43,7 @@ class get_a_data_helper:
 
         if len_total % n_recurrence == 0:
             output = np.array_split(data, int(len_total / n_recurrence), truncation_dimension)
-            # print(output[0].shape)
+            # print(ys[0].shape)
             # print()
             output = [item.reshape(shape_target) for item in output]
         else:

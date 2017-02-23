@@ -17,7 +17,7 @@ os.chdir("/Users/yuanwang/Google_Drive/projects/Gits/DCM-RNN/data")
 print('working directory is ' + os.getcwd())
 
 # load cores base
-current_base_number = 1
+current_base_number = 2
 current_base_name = 'DB' + str(current_base_number)
 data_path = current_base_name + '.pkl'
 cores = dbo.load_database(data_path)
