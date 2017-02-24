@@ -53,6 +53,13 @@ def rmse(value_hat, value_true):
     return rmse
 
 
+def argsort2(array):
+    return np.squeeze(np.dstack(np.unravel_index(np.argsort(array.ravel()), array.shape)))
+
+def take_value(array, rc_locations):
+    return [array[x[0], x[1]] for x in rc_locations]
+
+
 class OrderedDict(collections.OrderedDict):
     def __init__(self, dictionary=None, key_order=None):
         if dictionary == None and key_order == None:

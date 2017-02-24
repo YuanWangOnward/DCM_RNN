@@ -4,7 +4,16 @@ import DCM_RNN.toolboxes as tb
 import numpy as np
 import matplotlib.pyplot as plt
 import importlib
+import scipy as sp
+import matplotlib.image as mpimg
 importlib.reload(tb)
+
+
+def assign(du, target, location, value):
+    if target is not 'B':
+        du._secured_data[target][location] = value
+    else:
+        du._secured_data[target][0][location] = value
 
 
 def run1(configure):
@@ -28,10 +37,7 @@ def run1(configure):
     du.lock_current_data()
     for idx, value in enumerate(value_range):
         du.refresh_data()
-        if parameter is not 'B':
-            du._secured_data[parameter][location] = value
-        else:
-            du._secured_data[parameter][0][location] = value
+        assign(du, parameter, location, value)
         du.recover_data_unit()
         metric[idx] = tb.mse(du.get('y'), y_true)
 
@@ -49,7 +55,6 @@ def run1(configure):
     stored_data['x_label'] = x_label
     tb.save_data(stored_data_path, stored_data)
     print('Results saved as ' + stored_data_path)
-
 
 
 def run2(configure):
@@ -90,14 +95,8 @@ def run2(configure):
         print('current processing r = ' + str(r))
         for c_idx, c in enumerate(c_range):
             du.refresh_data()
-            if para_names[0] is not 'B':
-                du._secured_data[para_names[0]][locations[0]] = r
-            else:
-                du._secured_data[para_names[0]][0][locations[0]] = r
-            if para_names[1] is not 'B':
-                du._secured_data[para_names[1]][locations[1]] = c
-            else:
-                du._secured_data[para_names[1]][0][locations[1]] = c
+            assign(du, para_names[0], locations[0], r)
+            assign(du, para_names[1], locations[1], c)
             du.recover_data_unit()
             metric[a_idx, c_idx] = tb.mse(du.get('y'), y_true)
     # show result
@@ -127,20 +126,36 @@ def run2(configure):
     tb.save_data(stored_data_path, stored_data)
     print('Results saved as ' + stored_data_path)
 
+
+def reproduce(data_path):
+    data = tb.load_data(data_path)
+    X, Y = np.meshgrid(data['c_range'], data['r_range'])
+    plt.figure()
+    CS = plt.contour(X, Y, data['metric'])
+    plt.clabel(CS, inline=1, fontsize=10)
+    plt.title('MSE contour map')
+    plt.annotate(data['annotate_text'],
+                 xy=data['annotate_xy'],
+                 xytext=data['annotate_xytext'],
+                 arrowprops=dict(facecolor='black', shrink=0.05), )
+    plt.plot(data['annotate_xy'][0], data['annotate_xy'][1], 'bo')
+    plt.xlabel(data['x_label'])
+    plt.ylabel(data['y_label'])
+
+
 # confirm working directory
 tb.cdr("/../", if_print=True)
 # load in template data_unite
 template = tb.load_template("DCM_RNN/resources/template0.pkl")
 y_true = template.get('y')
 
-
+# evaluate one parameter
 for r in range(3):
     for c in range(3):
         run1(('A', (r, c)))
 
 
-
-
+# evaluate two parameters
 run2([('A', (1, 0)), ('A', (0, 0))])
 run2([('A', (1, 0)), ('A', (0, 1))])
 run2([('A', (1, 0)), ('A', (0, 2))])
@@ -163,6 +178,118 @@ run2([('A', (1, 0)), ('B', (2, 0))])
 run2([('A', (1, 0)), ('B', (2, 1))])
 run2([('A', (1, 0)), ('B', (2, 2))])
 run2([('A', (1, 0)), ('C', (2, 0))])
+
+
+# evaluate 3 parameters, [('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0))]
+data_path = "experiments/experiment-cost_landscape/a10b10mse.pkl"
+reproduce(data_path)
+data = tb.load_data(data_path)
+metric = data['metric']
+r_range = data['r_range']
+c_range = data['c_range']
+imgplot = plt.imshow(metric)
+X, Y = np.meshgrid(c_range, r_range)
+rs = Y[metric < 0.001]
+cs = X[metric < 0.001]
+zs = np.zeros(len(rs))
+temp = np.stack([rs, cs, zs], axis=1)
+
+data_path = "experiments/experiment-cost_landscape/a10c10mse.pkl"
+reproduce(data_path)
+data = tb.load_data(data_path)
+metric = data['metric']
+r_range = data['r_range']
+c_range = data['c_range']
+imgplot = plt.imshow(metric)
+X, Y = np.meshgrid(c_range, r_range)
+rs = np.concatenate((rs, Y[metric < 0.001]))
+cs = np.concatenate((cs, np.zeros(len(Y[metric < 0.001]))))
+zs = np.concatenate((zs, X[metric < 0.001]))
+
+data = np.stack([rs, cs, zs], axis=1)
+
+# fit a plan (three coefficients)
+A = np.c_[data[:, 0], data[:, 1], np.ones(data.shape[0])]
+C, _, _, _ = sp.linalg.lstsq(A, data[:, 2])  # coefficients
+
+
+# evaluate it on grid
+X, Y = np.meshgrid(np.arange(0.6, 1., 0.05), np.arange(-0.2, 0.2, 0.05))
+Z = C[0] * X + C[1] * Y + C[2]
+
+
+# plot points and fitted surface
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+ax.plot_surface(X, Y, Z, rstride=1, cstride=1, alpha=0.2)
+ax.scatter(data[:, 0], data[:, 1], data[:, 2], c='r', s=50)
+plt.xlabel('X')
+plt.ylabel('Y')
+ax.set_zlabel('Z')
+ax.axis('equal')
+ax.axis('tight')
+plt.show()
+
+
+# evaluate cost on the plane
+du = tb.DataUnit()
+du.load_parameter_core(template.collect_parameter_core())
+du.lock_current_data()
+metric = np.zeros(X.shape)
+for r in range(X.shape[0]):
+    for c in range(X.shape[1]):
+        print("current processing: " + str(X(r)))
+        du.refresh_data()
+        du._secured_data['A'][1, 0] = X[r, c]
+        du._secured_data['B'][0][1, 0] = Y[r, c]
+        du._secured_data['C'][1, 0] = Z[r, c]
+        du.recover_data_unit()
+        metric[r, c] = tb.mse(du.get('y'), y_true)
+
+ # show result
+annotate_text = "  Global\nminimum\n  (" + str(0.8) + ", " + str(0.0) + ")"
+annotate_xy = (0.8, 0)
+annotate_xytext = (0.8, 0.05)
+plt.figure()
+CS = plt.contour(X, Y, metric)
+plt.clabel(CS, inline=1, fontsize=10)
+plt.title('MSE contour map')
+plt.annotate(annotate_text, xy=annotate_xy, xytext=annotate_xytext,
+             arrowprops=dict(facecolor='black', shrink=0.05), )
+plt.plot(annotate_xy[0], annotate_xy[1], 'bo')
+plt.xlabel('A[2, 1]')
+plt.ylabel('B[2, 1]')
+
+
+# compare to random diffusion [('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0))]
+N = 100
+rs = np.random.uniform(0.6, 1, N)
+cs = np.random.uniform(-0.2, 0.2, N)
+zs = np.random.uniform(-0.2, 0.2, N)
+
+# evaluate cost in the cube
+du = tb.DataUnit()
+du.load_parameter_core(template.collect_parameter_core())
+du.lock_current_data()
+metric = np.zeros(N)
+
+for n in range(N):
+    print("current processing: " + str(rs[n]))
+    du.refresh_data()
+    du._secured_data['A'][1, 0] = rs[n]
+    du._secured_data['B'][0][1, 0] = cs[n]
+    du._secured_data['C'][1, 0] = zs[n]
+    du.recover_data_unit()
+    metric[n] = tb.mse(du.get('y'), y_true)
+
+
+plt.plot(metric)
+mean = np.array([0.8, 0.0, 0.0])
+cov = np.array([[1.0, 0.0, 0.0], [0.0, 0.04, 0.0], [0.8, 0.0, 1.0]])
+data = np.random.multivariate_normal(mean, cov, 50)
+
+
+
 
 
 

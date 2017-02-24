@@ -63,5 +63,3 @@ rMSE = du.compare(ys + noise, y_truth)
 index = sorted(range(len(rMSE_A)), key=lambda k: rMSE_A[k])
 plt.plot(np.array(rMSE_A)[index], np.array(rMSE)[index])
 
-
-
