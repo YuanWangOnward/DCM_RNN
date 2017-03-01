@@ -22,7 +22,3 @@ def reproduce(data_path):
 # confirm working directory
 tb.cdr("/../", if_print=True)
 
-
-data_path = "experiments/experiment-cost_landscape/a10a22mse.pkl"
-reproduce(data_path)
-

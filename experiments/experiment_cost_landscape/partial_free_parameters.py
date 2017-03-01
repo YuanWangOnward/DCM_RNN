@@ -1,12 +1,16 @@
 # manipulate two parameters to see how fMRI signal changes
 
 import DCM_RNN.toolboxes as tb
+from experiments.experiment_cost_landscape.load_and_replot import reproduce
 import numpy as np
 import matplotlib.pyplot as plt
 import importlib
 import scipy as sp
 import matplotlib.image as mpimg
+import itertools
+
 importlib.reload(tb)
+
 
 
 def assign(du, target, location, value):
@@ -14,6 +18,13 @@ def assign(du, target, location, value):
         du._secured_data[target][location] = value
     else:
         du._secured_data[target][0][location] = value
+
+def get(du, target, location):
+    if target is not 'B':
+        value = du._secured_data[target][location]
+    else:
+        value = du._secured_data[target][0][location]
+    return value
 
 
 def run1(configure):
@@ -30,7 +41,7 @@ def run1(configure):
     file_name = parameter + str(location[0]) + str(location[1])
     file_name = file_name.lower()
     x_label = parameter + str(location)
-    stored_data_path = "experiments/experiment-cost_landscape/" + file_name + "mse.pkl"
+    stored_data_path = "experiments/experiment_cost_landscape/" + file_name + "mse.pkl"
 
     # computing
     metric = np.zeros(len(value_range))
@@ -82,7 +93,7 @@ def run2(configure):
     annotate_xytext = (true_values[1], true_values[0] + 0.05)
     x_label = configure[1][0] + str(configure[1][1])
     y_label = configure[0][0] + str(configure[0][1])
-    stored_data_path = "experiments/experiment-cost_landscape/" + file_name + "mse.pkl"
+    stored_data_path = "experiments/experiment_cost_landscape/" + file_name + "mse.pkl"
 
     # transfer
     r_range = value_ranges[0]
@@ -127,20 +138,51 @@ def run2(configure):
     print('Results saved as ' + stored_data_path)
 
 
-def reproduce(data_path):
-    data = tb.load_data(data_path)
-    X, Y = np.meshgrid(data['c_range'], data['r_range'])
-    plt.figure()
-    CS = plt.contour(X, Y, data['metric'])
-    plt.clabel(CS, inline=1, fontsize=10)
-    plt.title('MSE contour map')
-    plt.annotate(data['annotate_text'],
-                 xy=data['annotate_xy'],
-                 xytext=data['annotate_xytext'],
-                 arrowprops=dict(facecolor='black', shrink=0.05), )
-    plt.plot(data['annotate_xy'][0], data['annotate_xy'][1], 'bo')
-    plt.xlabel(data['x_label'])
-    plt.ylabel(data['y_label'])
+def run_n(configure):
+    # configure
+    du = tb.DataUnit()
+    du.load_parameter_core(template.collect_parameter_core())
+    true_values = [None] * len(configure)
+    value_ranges = [None] * len(configure)
+    para_names = [None] * len(configure)
+    locations = [None] * len(configure)
+    file_name = ''
+    for idx, value in enumerate(configure):
+        parameter = value[0]
+        element_index = value[1]
+        para_names[idx] = parameter
+        locations[idx] = element_index
+        true_values[idx] = get(du, parameter, element_index)
+        value_ranges[idx] = np.linspace(true_values[idx] - 0.2, true_values[idx] + 0.2, 10)
+        file_name = file_name + parameter + str(element_index[0]) + str(element_index[1])
+    file_name = file_name.lower()
+    stored_data_path = "experiments/experiment_cost_landscape/" + file_name + "mse.pkl"
+
+    # computing
+    metric_size = [len(x) for x in value_ranges]
+    metric = np.zeros(metric_size)
+    du.lock_current_data()
+    for values in itertools.product(*[range(x) for x in metric_size]):
+        print(values)
+        du.refresh_data()
+        for idx, value in enumerate(values):
+            assign(du, para_names[idx], locations[idx], value_ranges[idx][value])
+        du.recover_data_unit()
+        metric[value] = tb.mse(du.get('y'), y_true)
+    du.refresh_data()
+
+    # store data
+    stored_data = {}
+    du.refresh_data()
+    stored_data['du'] = du
+    stored_data['true_values'] = true_values
+    stored_data['value_ranges'] = value_ranges
+    stored_data['para_names'] = para_names
+    stored_data['locations'] = locations
+    tb.save_data(stored_data_path, stored_data)
+    print('Results saved as ' + stored_data_path)
+    return metric
+
 
 
 # confirm working directory
@@ -148,6 +190,7 @@ tb.cdr("/../", if_print=True)
 # load in template data_unite
 template = tb.load_template("DCM_RNN/resources/template0.pkl")
 y_true = template.get('y')
+
 
 # evaluate one parameter
 for r in range(3):
@@ -180,8 +223,12 @@ run2([('A', (1, 0)), ('B', (2, 2))])
 run2([('A', (1, 0)), ('C', (2, 0))])
 
 
+# evaluate 3 parameters
+metric = run_n([('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0))])
+
+
 # evaluate 3 parameters, [('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0))]
-data_path = "experiments/experiment-cost_landscape/a10b10mse.pkl"
+data_path = "experiments/experiment_cost_landscape/a10b10mse.pkl"
 reproduce(data_path)
 data = tb.load_data(data_path)
 metric = data['metric']
@@ -194,7 +241,7 @@ cs = X[metric < 0.001]
 zs = np.zeros(len(rs))
 temp = np.stack([rs, cs, zs], axis=1)
 
-data_path = "experiments/experiment-cost_landscape/a10c10mse.pkl"
+data_path = "experiments/experiment_cost_landscape/a10c10mse.pkl"
 reproduce(data_path)
 data = tb.load_data(data_path)
 metric = data['metric']
@@ -262,7 +309,7 @@ plt.ylabel('B[2, 1]')
 
 
 # compare to random diffusion [('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0))]
-N = 100
+N = 1000
 rs = np.random.uniform(0.6, 1, N)
 cs = np.random.uniform(-0.2, 0.2, N)
 zs = np.random.uniform(-0.2, 0.2, N)
@@ -284,13 +331,25 @@ for n in range(N):
 
 
 plt.plot(metric)
-mean = np.array([0.8, 0.0, 0.0])
-cov = np.array([[1.0, 0.0, 0.0], [0.0, 0.04, 0.0], [0.8, 0.0, 1.0]])
-data = np.random.multivariate_normal(mean, cov, 50)
+plt.hist(metric, bins=1000)
 
 
+# check if points achieve small cost lie on the plane
+index = np.argsort(metric)
+index_filtered = index[metric[index] < 0.001]
+points = [[rs[n], cs[n], zs[n]] for n in index_filtered]
+points = np.array(points)
 
 
-
-
+# plot points and fitted surface
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+ax.plot_surface(X, Y, Z, rstride=1, cstride=1, alpha=0.2)
+ax.scatter(points[:, 0], points[:, 1], points[:, 2], c='r', s=50)
+plt.xlabel('X')
+plt.ylabel('Y')
+ax.set_zlabel('Z')
+ax.axis('equal')
+ax.axis('tight')
+plt.show()
 
