@@ -8,9 +8,7 @@ import importlib
 import scipy as sp
 import matplotlib.image as mpimg
 import itertools
-
 importlib.reload(tb)
-
 
 
 def assign(du, target, location, value):
@@ -18,6 +16,7 @@ def assign(du, target, location, value):
         du._secured_data[target][location] = value
     else:
         du._secured_data[target][0][location] = value
+
 
 def get(du, target, location):
     if target is not 'B':
