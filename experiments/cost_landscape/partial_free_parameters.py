@@ -1,7 +1,7 @@
 # manipulate two parameters to see how fMRI signal changes
 
 import DCM_RNN.toolboxes as tb
-from experiments.experiment_cost_landscape.load_and_replot import reproduce
+from experiments.cost_landscape.load_and_replot import reproduce
 import numpy as np
 import matplotlib.pyplot as plt
 import importlib
@@ -40,7 +40,7 @@ def run1(configure):
     file_name = parameter + str(location[0]) + str(location[1])
     file_name = file_name.lower()
     x_label = parameter + str(location)
-    stored_data_path = "experiments/experiment_cost_landscape/" + file_name + "mse.pkl"
+    stored_data_path = "experiments/cost_landscape/" + file_name + "mse.pkl"
 
     # computing
     metric = np.zeros(len(value_range))
@@ -92,7 +92,7 @@ def run2(configure):
     annotate_xytext = (true_values[1], true_values[0] + 0.05)
     x_label = configure[1][0] + str(configure[1][1])
     y_label = configure[0][0] + str(configure[0][1])
-    stored_data_path = "experiments/experiment_cost_landscape/" + file_name + "mse.pkl"
+    stored_data_path = "experiments/cost_landscape/" + file_name + "mse.pkl"
 
     # transfer
     r_range = value_ranges[0]
@@ -155,7 +155,7 @@ def run_n(configure):
         value_ranges[idx] = np.linspace(true_values[idx] - 0.2, true_values[idx] + 0.2, 10)
         file_name = file_name + parameter + str(element_index[0]) + str(element_index[1])
     file_name = file_name.lower()
-    stored_data_path = "experiments/experiment_cost_landscape/" + file_name + "mse.pkl"
+    stored_data_path = "experiments/cost_landscape/" + file_name + "mse.pkl"
 
     # computing
     metric_size = [len(x) for x in value_ranges]
@@ -227,7 +227,7 @@ metric = run_n([('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0))])
 
 
 # evaluate 3 parameters, [('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0))]
-data_path = "experiments/experiment_cost_landscape/a10b10mse.pkl"
+data_path = "experiments/cost_landscape/a10b10mse.pkl"
 reproduce(data_path)
 data = tb.load_data(data_path)
 metric = data['metric']
@@ -240,7 +240,7 @@ cs = X[metric < 0.001]
 zs = np.zeros(len(rs))
 temp = np.stack([rs, cs, zs], axis=1)
 
-data_path = "experiments/experiment_cost_landscape/a10c10mse.pkl"
+data_path = "experiments/cost_landscape/a10c10mse.pkl"
 reproduce(data_path)
 data = tb.load_data(data_path)
 metric = data['metric']

@@ -1,17 +1,19 @@
 # This module contains the tensorflow model for DCM-RNN.
 import tensorflow as tf
 import numpy as np
+from DCM_RNN.toolboxes import Initialization
 
 
-class DcmRnn:
+class DcmRnn(Initialization):
     def __init__(self, n_recurrent_step=None,
                  variable_scope_name_x=None,
                  variable_scope_name_h=None):
+        Initialization.__init__(self)
         self.n_recurrent_step = n_recurrent_step or 12
         self.variable_scope_name_x = variable_scope_name_x or 'rnn_cell_x'
         self.variable_scope_name_h = variable_scope_name_h or 'rnn_cell_h'
-        self.set_up_hyperparameter_values()
 
+        self.set_up_hyperparameter_values()
         self.trainable_flags_h = {'alpha': True,
                                   'E0': True,
                                   'k': True,
@@ -35,6 +37,7 @@ class DcmRnn:
         needed_parameters = {'n_node', 'n_stimuli', 't_delta'}
         for para in needed_parameters:
             deliverables[para] = du.get(para)
+        self.load_parameters(deliverables)
         return deliverables
 
     def load_parameters(self, parameter_package):
@@ -59,6 +62,7 @@ class DcmRnn:
             for idx_r, region_label in enumerate(list(initial_values.index)):
                 for para in initial_values.columns:
                     tf.get_variable(para + '_r' + str(idx_r),
+                                    dtype=tf.float32,
                                     initializer=initial_values[para][region_label],
                                     trainable=self.trainable_flags_h[para])
 
@@ -137,23 +141,28 @@ class DcmRnn:
         :param x_state:
         :return:
         """
-        x_state = x_state or self.x_state_predicted
+        if x_state is None:
+            x_state = self.x_state_predicted
 
         self.h_state_initial = [
-            tf.get_variable('h_state_initial_r' + str(n), shape=[4, 1],
-                            initializer=self.get_random_h_state_initial(),
-                            trainable=True) for n in range(self.n_region)]
+            tf.get_variable(
+                'h_state_initial_r' + str(n),
+                dtype=tf.float32,
+                initializer=self.set_initial_hemodynamic_state_as_inactivated(1).reshape((4, 1)).astype(np.float32),
+                trainable=True)
+            for n in range(self.n_region)]
         # format: h_state_predicted[time][region]
         self.h_state_predicted = [[] for _ in range(self.n_recurrent_step)]
         self.h_state_final = []
 
         for n in range(self.n_region):
-            self.h_state_predicted[0][n].append(self.h_state_initial[n])
+            self.h_state_predicted[0].append(self.h_state_initial[n])
 
             for i in range(1, self.n_recurrent_step):
                 self.h_state_predicted[i].append(
                     self.add_one_cell_h(self.h_state_predicted[i - 1][n],
                                         x_state[i - 1][n], n))
+
             i = self.n_recurrent_step
             self.h_state_final.append(
                 self.add_one_cell_h(self.h_state_predicted[i - 1][n],
@@ -201,13 +210,52 @@ class DcmRnn:
             y_state_instance = tf.pack(y_state_instance)
             self.y_state_predicted.append(y_state_instance)
 
-    def build_an_initializer_graph(self, graph, parameter_package):
+    def build_an_initializer_graph(self):
         """
         Build a model to estimate neural states from functional signal
-        :param graph: a graph handle to draw tensorflow on
-        :param parameter_package: a dictionary containing parameters needed
-        :return: graph
+        :return:
         """
         # create variables
-        x_state = tf.placeholder(tf.float32, [self.n_node, self.n_recurrent_step], name='x_state')
+        x_state = tf.placeholder(tf.float32, [self.n_region, self.n_recurrent_step], name='x_state')
+        initial_values_h = self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
+        self.create_shared_variables_h(initial_values_h)
         self.add_hemodynamic_layer(x_state)
+
+
+        '''
+        initial_values = self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
+        n_region, n_para = initial_values.shape
+        with tf.variable_scope(self.variable_scope_name_h):
+            for idx_r, region_label in enumerate(list(initial_values.index)):
+                for para in initial_values.columns:
+                    temp = tf.get_variable(para + '_r' + str(idx_r),
+                                           initializer=initial_values[para][region_label],
+                                           trainable=self.trainable_flags_h[para])
+                    temp = tf.cast(para, dtype=tf.float32)
+                    print(para + ' ' + str(temp.dtype))
+
+                    # self.add_hemodynamic_layer(x_state)
+        self.h_state_initial = [
+            tf.get_variable('h_state_initial_r' + str(n),
+                            initializer=self.set_initial_hemodynamic_state_as_inactivated(1).reshape((4, 1)).astype(
+                                np.float32),
+                            trainable=True) for n in range(self.n_region)]
+        # format: h_state_predicted[time][region]
+        self.h_state_predicted = [[] for _ in range(self.n_recurrent_step)]
+        self.h_state_final = []
+
+        for n in range(self.n_region):
+            self.h_state_predicted[0].append(self.h_state_initial[n])
+
+            for i in range(1, self.n_recurrent_step):
+                self.h_state_predicted[i].append(
+                    self.add_one_cell_h(self.h_state_predicted[i - 1][n],
+                                        x_state[i - 1][n], n))
+
+            i = self.n_recurrent_step
+            self.h_state_final.append(
+                self.add_one_cell_h(self.h_state_predicted[i - 1][n],
+                                    x_state[i - 1][n], n))
+
+        '''
+

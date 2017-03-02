@@ -27,7 +27,8 @@ class TestDcmRnn(TestCase):
         self.dr.create_shared_variables_h(initial_values)
 
     def test_build_an_initializer_graph(self):
-        # self.fail()
-        pass
+        self.dr.collect_parameters(self.du)
+        self.dr.build_an_initializer_graph()
+
 
 
