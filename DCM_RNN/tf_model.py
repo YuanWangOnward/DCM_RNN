@@ -134,10 +134,6 @@ class DcmRnn:
 
     def add_hemodynamic_layer(self, x_state=None):
         """
-        Hemodynamic_layer has two possible initials.
-        One is the true initial value for the whole signal sequence, which should be trainable.
-        One is the initial value for one particular signal segment, which is preferred to stay un-changed.
-        It's switched at optimization ops.
         :param x_state:
         :return:
         """
@@ -147,24 +143,63 @@ class DcmRnn:
             tf.get_variable('h_state_initial_r' + str(n), shape=[4, 1],
                             initializer=self.get_random_h_state_initial(),
                             trainable=True) for n in range(self.n_region)]
-
-        # format: h_state_predicted[region][time]
-        self.h_state_predicted = [[] for _ in range(self.n_region)]
+        # format: h_state_predicted[time][region]
+        self.h_state_predicted = [[] for _ in range(self.n_recurrent_step)]
         self.h_state_final = []
 
         for n in range(self.n_region):
-            self.h_state_predicted[n].append(self.h_state_initial[n])
+            self.h_state_predicted[0][n].append(self.h_state_initial[n])
 
-            for i in range(0, self.n_recurrent_step):
-                if i is 0:
-                    self.h_state_predicted[n].append(
-                        self.add_one_cell_h(self.h_state_initial[n],
-                                            x_state[i][n], n))
-                else:
-                    self.h_state_predicted[n].append(
-                        self.add_one_cell_h(self.h_state_predicted[n][i - 1],
-                                            x_state[i][n], n))
-            self.h_state_final.append(self.h_state_predicted[n][-1])
+            for i in range(1, self.n_recurrent_step):
+                self.h_state_predicted[i].append(
+                    self.add_one_cell_h(self.h_state_predicted[i - 1][n],
+                                        x_state[i - 1][n], n))
+            i = self.n_recurrent_step
+            self.h_state_final.append(
+                self.add_one_cell_h(self.h_state_predicted[i - 1][n],
+                                    x_state[i - 1][n], n))
+
+    def phi_o(self, h_state_current):
+        """
+        Used to map hemodynamic states into higher dimension to calculate fMRI signal
+        :param h_state_current:
+        :return:
+        """
+        o_state_augmented = [h_state_current[i + 2] for i in range(2)]
+        tmp = tf.div(o_state_augmented[1], o_state_augmented[0])
+        o_state_augmented.append(tmp)
+        return o_state_augmented
+
+    def output_mapping(self, h_state_current, i_region):
+        with tf.variable_scope(self.variable_scope_name_h, reuse=True):
+            E0 = tf.get_variable('E0_r' + str(i_region))
+            epsilon = tf.get_variable('epsilon_r' + str(i_region))
+            V0 = tf.get_variable('V0_r' + str(i_region))
+            TE = tf.get_variable('TE_r' + str(i_region))
+            r0 = tf.get_variable('r0_r' + str(i_region))
+            theta0 = tf.get_variable('theta0_r' + str(i_region))
+            k1 = 4.3 * theta0 * E0 * TE
+            k2 = epsilon * r0 * E0 * TE
+            k3 = 1 - epsilon
+
+            o_state_augmented = self.phi_o(h_state_current)
+
+            y = V0 * k1 * (1 - o_state_augmented[1]) \
+                + V0 * k2 * (1 - o_state_augmented[2]) \
+                + V0 * k3 * (1 - o_state_augmented[0])
+
+            return y
+
+    def add_output_layer(self, h_state_predicted=None):
+        h_state_predicted = h_state_predicted or self.h_state_predicted
+        self.y_state_predicted = []
+
+        for i in range(0, self.n_recurrent_step):
+            y_state_instance = []
+            for n in range(self.n_region):
+                y_state_instance.append(self.output_mapping(h_state_predicted[i][n], n))
+            y_state_instance = tf.pack(y_state_instance)
+            self.y_state_predicted.append(y_state_instance)
 
     def build_an_initializer_graph(self, graph, parameter_package):
         """
@@ -174,6 +209,5 @@ class DcmRnn:
         :return: graph
         """
         # create variables
-
-
-        pass
+        x_state = tf.placeholder(tf.float32, [self.n_node, self.n_recurrent_step], name='x_state')
+        self.add_hemodynamic_layer(x_state)
