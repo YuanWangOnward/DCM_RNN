@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import math as mth
 
 
-class DataUnit_tests(unittest.TestCase):
+class DataUnitTests(unittest.TestCase):
     def setUp(self):
         self.du = toolboxes.DataUnit()
         self.dut = toolboxes.DataUnit()

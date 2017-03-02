@@ -24,7 +24,6 @@ class TestDcmRnn(TestCase):
 
     def test_create_shared_variables_h(self):
         initial_values = self.du.get('hemodynamic_parameter')
-        print(initial_values)
         self.dr.create_shared_variables_h(initial_values)
 
     def test_build_an_initializer_graph(self):

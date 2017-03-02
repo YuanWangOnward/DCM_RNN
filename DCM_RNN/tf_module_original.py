@@ -279,7 +279,8 @@ class DCM_RNN:
     def add_hemodynamic_layer(self):
         n_region = self.n_region
         self.h_state_initial = [
-            tf.get_variable('h_state_initial_r' + str(n), shape=[4, 1], initializer=self.get_random_h_state_initial(),
+            tf.get_variable('h_state_initial_r' + str(n), shape=[4, 1],
+                            initializer=self.get_random_h_state_initial(),
                             trainable=False) \
             for n in range(n_region)]
 
