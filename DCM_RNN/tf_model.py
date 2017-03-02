@@ -2,6 +2,7 @@
 import tensorflow as tf
 import numpy as np
 
+
 class DcmRnn:
     def __init__(self, n_recurrent_step=None,
                  variable_scope_name_x=None,
@@ -58,8 +59,13 @@ class DcmRnn:
             for idx_r, region_label in enumerate(list(initial_values.index)):
                 for para in initial_values.columns:
                     tf.get_variable(para + '_r' + str(idx_r),
-                                      initializer=initial_values[para][region_label],
-                                      trainable=self.trainable_flags_h[para])
+                                    initializer=initial_values[para][region_label],
+                                    trainable=self.trainable_flags_h[para])
+
+    def create_placeholders(self):
+        input_u = tf.placeholder(tf.float32, [self.n_stimuli, self.n_recurrent_step], name='input_u')
+        input_y_true = tf.placeholder(tf.float32, [self.n_region, self.n_recurrent_step], name='input_y_true')
+        return [input_u, input_y_true]
 
     def phi_h(self, h_state_current, alpha, E0):
         """
@@ -88,7 +94,7 @@ class DcmRnn:
         Here x_state_current is r scalar for r particular region
         :param h_state_current:
         :param x_state_current:
-        :param i_region:
+        :param i_region: index of brain region
         :return:
         """
         with tf.variable_scope(self.variable_scope_name_h, reuse=True):
@@ -126,6 +132,39 @@ class DcmRnn:
             h_state_next = tf.reshape(h_state_next, [4, 1])
             return h_state_next
 
+    def add_hemodynamic_layer(self, x_state=None):
+        """
+        Hemodynamic_layer has two possible initials.
+        One is the true initial value for the whole signal sequence, which should be trainable.
+        One is the initial value for one particular signal segment, which is preferred to stay un-changed.
+        It's switched at optimization ops.
+        :param x_state:
+        :return:
+        """
+        x_state = x_state or self.x_state_predicted
+
+        self.h_state_initial = [
+            tf.get_variable('h_state_initial_r' + str(n), shape=[4, 1],
+                            initializer=self.get_random_h_state_initial(),
+                            trainable=True) for n in range(self.n_region)]
+
+        # format: h_state_predicted[region][time]
+        self.h_state_predicted = [[] for _ in range(self.n_region)]
+        self.h_state_final = []
+
+        for n in range(self.n_region):
+            self.h_state_predicted[n].append(self.h_state_initial[n])
+
+            for i in range(0, self.n_recurrent_step):
+                if i is 0:
+                    self.h_state_predicted[n].append(
+                        self.add_one_cell_h(self.h_state_initial[n],
+                                            x_state[i][n], n))
+                else:
+                    self.h_state_predicted[n].append(
+                        self.add_one_cell_h(self.h_state_predicted[n][i - 1],
+                                            x_state[i][n], n))
+            self.h_state_final.append(self.h_state_predicted[n][-1])
 
     def build_an_initializer_graph(self, graph, parameter_package):
         """
