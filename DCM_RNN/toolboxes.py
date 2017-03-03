@@ -15,7 +15,6 @@ import subprocess
 import pickle
 import copy
 
-
 def cdr(relative_path, if_print=False):
     file_path = os.path.dirname(os.path.realpath(__file__))
     os.chdir(file_path + relative_path)

@@ -4,6 +4,16 @@ import numpy as np
 from DCM_RNN.toolboxes import Initialization
 
 
+def reset_interactive_sesssion(isess):
+    try:
+        isess
+    except:
+        isess = tf.InteractiveSession()
+    else:
+        isess.close()
+        isess = tf.InteractiveSession()
+
+
 class DcmRnn(Initialization):
     def __init__(self, n_recurrent_step=None,
                  variable_scope_name_x=None,
@@ -85,9 +95,9 @@ class DcmRnn(Initialization):
         for i in range(4):
             h_state_augmented.append(h_state_current[i])
         h_state_augmented.append(tf.pow(h_state_current[2], tf.div(1., alpha)))
-        h_state_augmented.append(tf.mul(tf.div(h_state_current[3], h_state_current[2]), h_state_augmented[4]))
+        h_state_augmented.append(tf.multiply(tf.div(h_state_current[3], h_state_current[2]), h_state_augmented[4]))
         tmp = tf.sub(1., tf.pow(tf.sub(1., E0), tf.div(1., h_state_current[1])))
-        tmp = tf.mul(tf.div(tmp, E0), h_state_current[1])
+        tmp = tf.multiply(tf.div(tmp, E0), h_state_current[1])
         h_state_augmented.append(tmp)
         return h_state_augmented
 
@@ -113,13 +123,13 @@ class DcmRnn(Initialization):
             h_state_augmented = self.phi_h(h_state_current, alpha, E0)
             h_state_next = []
             # s
-            tmp1 = tf.mul(t_delta, x_state_current)
-            tmp2 = tf.mul(tf.sub(tf.mul(t_delta, k), 1.), h_state_augmented[0])
-            tmp3 = tf.mul(t_delta, tf.mul(gamma, tf.sub(h_state_augmented[1], 1.)))
+            tmp1 = tf.multiply(t_delta, x_state_current)
+            tmp2 = tf.multiply(tf.sub(tf.multiply(t_delta, k), 1.), h_state_augmented[0])
+            tmp3 = tf.multiply(t_delta, tf.multiply(gamma, tf.sub(h_state_augmented[1], 1.)))
             tmp = tf.sub(tmp1, tf.add(tmp2, tmp3))
             h_state_next.append(tf.reshape(tmp, [1, 1]))
             # f
-            tmp = tf.add(h_state_augmented[1], tf.mul(t_delta, h_state_augmented[0]))
+            tmp = tf.add(h_state_augmented[1], tf.multiply(t_delta, h_state_augmented[0]))
             h_state_next.append(tf.reshape(tmp, [1, 1]))
             # v
             tmp = t_delta * h_state_augmented[1] / tao \
@@ -216,9 +226,10 @@ class DcmRnn(Initialization):
         :return:
         """
         # create variables
-        x_state = tf.placeholder(tf.float32, [self.n_region, self.n_recurrent_step], name='x_state')
+        x_state = tf.placeholder(tf.float32, [self.n_recurrent_step, self.n_region], name='x_state')
         initial_values_h = self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
         self.create_shared_variables_h(initial_values_h)
         self.add_hemodynamic_layer(x_state)
+        self.add_output_layer()
 
 
