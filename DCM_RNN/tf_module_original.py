@@ -533,7 +533,6 @@ class Utilities:
         x_state_feed = x_state_initial or np.zeros((dr.n_region, 1))
         h_state_feed = h_state_initial or [np.array([0, 1, 1, 1], dtype=np.float32).reshape(4, 1) for _ in
                                            range(dr.n_region)]
-
         h_state_predicted = [[] for _ in range(3)]
 
         for i in range(len(dh.u_list)):

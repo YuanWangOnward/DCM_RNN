@@ -68,13 +68,22 @@ class DcmRnn(Initialization):
         :return:
         """
         n_region, n_para = initial_values.shape
+        hemodynamic_parameter = []
         with tf.variable_scope(self.variable_scope_name_h):
             for idx_r, region_label in enumerate(list(initial_values.index)):
+                temp_list = []
                 for para in initial_values.columns:
-                    tf.get_variable(para + '_r' + str(idx_r),
-                                    dtype=tf.float32,
-                                    initializer=initial_values[para][region_label],
-                                    trainable=self.trainable_flags_h[para])
+                    temp = tf.get_variable(para + '_r' + str(idx_r),
+                                           dtype=tf.float32,
+                                           initializer=initial_values[para][region_label],
+                                           trainable=self.trainable_flags_h[para])
+                    temp_list.append(temp)
+                temp_tensor = tf.stack(temp_list, 0)
+                hemodynamic_parameter.append(temp_tensor)
+            hemodynamic_parameter = tf.stack(hemodynamic_parameter, 1, 'hemodynamic_parameter')
+            hemodynamic_parameter = tf.transpose(hemodynamic_parameter)
+        self.hemodynamic_parameter = hemodynamic_parameter
+        return hemodynamic_parameter
 
     def create_placeholders(self):
         input_u = tf.placeholder(tf.float32, [self.n_stimuli, self.n_recurrent_step], name='input_u')
@@ -89,14 +98,12 @@ class DcmRnn(Initialization):
         :param E0:
         :return:
         """
-        # used to map hemodynamic states into higher dimension
-        # for hemodynamic states evolvement
         h_state_augmented = []
         for i in range(4):
             h_state_augmented.append(h_state_current[i])
         h_state_augmented.append(tf.pow(h_state_current[2], tf.div(1., alpha)))
         h_state_augmented.append(tf.multiply(tf.div(h_state_current[3], h_state_current[2]), h_state_augmented[4]))
-        tmp = tf.sub(1., tf.pow(tf.sub(1., E0), tf.div(1., h_state_current[1])))
+        tmp = tf.subtract(1., tf.pow(tf.subtract(1., E0), tf.div(1., h_state_current[1])))
         tmp = tf.multiply(tf.div(tmp, E0), h_state_current[1])
         h_state_augmented.append(tmp)
         return h_state_augmented
@@ -123,27 +130,26 @@ class DcmRnn(Initialization):
             h_state_augmented = self.phi_h(h_state_current, alpha, E0)
             h_state_next = []
             # s
-            tmp1 = tf.multiply(t_delta, x_state_current)
-            tmp2 = tf.multiply(tf.sub(tf.multiply(t_delta, k), 1.), h_state_augmented[0])
-            tmp3 = tf.multiply(t_delta, tf.multiply(gamma, tf.sub(h_state_augmented[1], 1.)))
-            tmp = tf.sub(tmp1, tf.add(tmp2, tmp3))
-            h_state_next.append(tf.reshape(tmp, [1, 1]))
+            tmp1 = tf.multiply(t_delta, x_h_coupling * x_state_current)
+            tmp2 = tf.multiply(tf.subtract(tf.multiply(t_delta, k), 1.), h_state_augmented[0])
+            tmp3 = tf.multiply(t_delta, tf.multiply(gamma, tf.subtract(h_state_augmented[1], 1.)))
+            tmp = tf.subtract(tmp1, tf.add(tmp2, tmp3))
+            h_state_next.append(tmp)
             # f
             tmp = tf.add(h_state_augmented[1], tf.multiply(t_delta, h_state_augmented[0]))
-            h_state_next.append(tf.reshape(tmp, [1, 1]))
+            h_state_next.append(tmp)
             # v
             tmp = t_delta * h_state_augmented[1] / tao \
                   - t_delta / tao * h_state_augmented[4] \
                   + h_state_augmented[2]
-            h_state_next.append(tf.reshape(tmp, [1, 1]))
+            h_state_next.append(tmp)
             # q
             tmp = h_state_augmented[3] \
                   + t_delta / tao * h_state_augmented[6] \
                   - t_delta / tao * h_state_augmented[5]
-            h_state_next.append(tf.reshape(tmp, [1, 1]))
+            h_state_next.append(tmp)
             # concantenate into a tensor
-            h_state_next = tf.concat(0, h_state_next)
-            h_state_next = tf.reshape(h_state_next, [4, 1])
+            h_state_next = tf.stack(h_state_next, 0)
             return h_state_next
 
     def add_hemodynamic_layer(self, x_state=None):
@@ -154,29 +160,28 @@ class DcmRnn(Initialization):
         if x_state is None:
             x_state = self.x_state_predicted
 
-        self.h_state_initial = [
-            tf.get_variable(
-                'h_state_initial_r' + str(n),
-                dtype=tf.float32,
-                initializer=self.set_initial_hemodynamic_state_as_inactivated(1).reshape((4, 1)).astype(np.float32),
-                trainable=True)
-            for n in range(self.n_region)]
-        # format: h_state_predicted[time][region]
-        self.h_state_predicted = [[] for _ in range(self.n_recurrent_step)]
-        self.h_state_final = []
+        self.h_state_initial = \
+            tf.get_variable('h_state_initial',
+                            initializer=self.set_initial_hemodynamic_state_as_inactivated(
+                                self.n_region).astype(np.float32),
+                            trainable=True)
 
+        # format: h_state_predicted[time][region][4]
+        self.h_state_predicted = []
+        self.h_state_predicted.append(self.h_state_initial)
+        for i in range(1, self.n_recurrent_step):
+            h_temp = []
+            for n in range(self.n_region):
+                h_temp.append(self.add_one_cell_h(self.h_state_predicted[i - 1][n, :], x_state[i - 1][n], n))
+            self.h_state_predicted.append(tf.stack(h_temp, 0))
+
+        i = self.n_recurrent_step
+        h_temp = []
         for n in range(self.n_region):
-            self.h_state_predicted[0].append(self.h_state_initial[n])
+            h_temp.append(self.add_one_cell_h(self.h_state_predicted[i - 1][n, :], x_state[i - 1][n], n))
+        self.h_state_final = tf.stack(h_temp, 0)
 
-            for i in range(1, self.n_recurrent_step):
-                self.h_state_predicted[i].append(
-                    self.add_one_cell_h(self.h_state_predicted[i - 1][n],
-                                        x_state[i - 1][n], n))
-
-            i = self.n_recurrent_step
-            self.h_state_final.append(
-                self.add_one_cell_h(self.h_state_predicted[i - 1][n],
-                                    x_state[i - 1][n], n))
+        self.h_state_predicted = tf.stack(self.h_state_predicted, 0)
 
     def phi_o(self, h_state_current):
         """
@@ -214,11 +219,12 @@ class DcmRnn(Initialization):
         self.y_state_predicted = []
 
         for i in range(0, self.n_recurrent_step):
-            y_state_instance = []
+            y_temp = []
             for n in range(self.n_region):
-                y_state_instance.append(self.output_mapping(h_state_predicted[i][n], n))
-            y_state_instance = tf.pack(y_state_instance)
-            self.y_state_predicted.append(y_state_instance)
+                y_temp.append(self.output_mapping(h_state_predicted[i, n, :], n))
+            y_temp = tf.stack(y_temp, 0)
+            self.y_state_predicted.append(y_temp)
+        self.y_state_predicted = tf.stack(self.y_state_predicted, 0)
 
     def build_an_initializer_graph(self):
         """
@@ -226,10 +232,9 @@ class DcmRnn(Initialization):
         :return:
         """
         # create variables
-        x_state = tf.placeholder(tf.float32, [self.n_recurrent_step, self.n_region], name='x_state')
-        initial_values_h = self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
-        self.create_shared_variables_h(initial_values_h)
-        self.add_hemodynamic_layer(x_state)
+        self.x_state = tf.placeholder(tf.float32, [self.n_recurrent_step, self.n_region], name='x_state')
+        self.initial_values_h = self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
+        self.create_shared_variables_h(self.initial_values_h)
+        self.add_hemodynamic_layer(self.x_state)
         self.add_output_layer()
-
-
+        return [self.x_state, ]

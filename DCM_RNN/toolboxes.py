@@ -106,6 +106,25 @@ class OrderedDict(collections.OrderedDict):
             return self.key_order.index(key)
 
 
+def split(data, n_segment, split_dimension=0):
+    """
+    Split a large array data into list of segments
+    :param data:
+    :param split_dimension:
+    :param n_segment: length of a segment
+    :return:
+    """
+    n_total = data.shape[split_dimension]
+
+    if n_total % n_segment == 0:
+        output = np.array_split(data, int(n_total / n_segment), split_dimension)
+    else:
+        n_truncated = np.floor(n_total / n_segment) * n_segment
+        data_truncated = data[:n_truncated]
+        output = np.array_split(data_truncated, int(n_truncated / n_segment), split_dimension)
+    return output
+
+
 class Initialization:
     def __init__(self,
                  n_node_low=None, n_node_high=None,
