@@ -238,3 +238,25 @@ class DcmRnn(Initialization):
         self.add_hemodynamic_layer(self.x_state)
         self.add_output_layer()
         return [self.x_state, ]
+
+    def run_initializer_graph(self, sess, h_state_initial, data_x):
+        """
+        Run forward the initializer graph
+        :param sess:
+        :param h_state_initial:
+        :param data_x: a list of neural activity signal segment
+        :return: [y_predicted, h_state_predicted]
+        """
+        h_state_predicted = []
+        y_predicted = []
+        h_state_initial_segment = h_state_initial
+        for x_segment in data_x:
+            y_segment, h_segment, h_state_final = \
+                sess.run([self.y_state_predicted, self.h_state_predicted, self.h_state_final],
+                         feed_dict={self.x_state: x_segment, self.h_state_initial: h_state_initial_segment})
+            h_state_initial_segment = h_state_final
+            h_state_predicted.append(h_segment)
+            y_predicted.append(y_segment)
+        h_state_predicted = np.concatenate(h_state_predicted)
+        y_predicted = np.concatenate(y_predicted)
+        return [y_predicted, h_state_predicted]
