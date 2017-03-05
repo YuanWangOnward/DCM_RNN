@@ -18,64 +18,43 @@ du = tb.load_template(data_path)
 # build model
 dr = tfm.DcmRnn()
 dr.collect_parameters(du)
-dr.build_an_initializer_graph()
-isess = tf.InteractiveSession()
-isess.run(tf.global_variables_initializer())
+# for initializer graph, hemodynamic parameters are set non-trainable
+for key in dr.trainable_flags_h.keys():
+    dr.trainable_flags_h[key] = False
+dr.build_an_initializer_graph(hemodynamic_parameter_initial=None)
+
 
 # prepare data
-data = {'x': tb.split(du.get('x'), dr.n_recurrent_step)}
+data = {}
+data['y'] = tb.split(du.get('y'), dr.n_recurrent_step)
+n_segments = len(data['y'])
+data['x_hat'] = [np.zeros([dr.n_recurrent_step, dr.n_region]) for _ in range(n_segments)]
 
-# run forward
-h_state_initial = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
+# training
+# Launch the graph
+TRAIN_EPOCHS = 1000
+DISPLAY_STEP = 10
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
 
-h_state_predicted = []
-y_predicted = []
-h_state_initial = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
-for x_segment in data['x']:
-    y_segment, h_segment, h_state_final = \
-        isess.run([dr.y_state_predicted, dr.h_state_predicted, dr.h_state_final],
-                  feed_dict={dr.x_state: x_segment, dr.h_state_initial: h_state_initial})
-    h_state_initial = h_state_final
-    h_state_predicted.append(h_segment)
-    y_predicted.append(y_segment)
-h_state_predicted = np.concatenate(h_state_predicted)
-y_predicted = np.concatenate(y_predicted)
+    # Fit all training data
+    for epoch in range(TRAIN_EPOCHS):
+        for idx in range(n_segments):
+            sess.run(dr.x_state_placeholder, feed_dict={dr.x_state_placeholder: data['x_hat'][idx]})
+            _, data['x_hat'][idx] = sess.run([dr.train, dr.x_state], feed_dict={dr.y_true: data['y'][idx]})
 
-# test
-np.testing.assert_array_almost_equal(
-    np.array(du.get('h'), dtype=np.float32),
-    np.array(h_state_predicted, dtype=np.float32))
+        #Display logs per epoch step
+        loss_total = 0
+        if epoch % DISPLAY_STEP == 0:
+            sess.run(dr.clear_loss_total)
+            for idx in range(n_segments):
+                sess.run(dr.x_state_placeholder, feed_dict={dr.x_state_placeholder: data['x_hat'][idx]})
+                sess.run(dr.loss, feed_dict={dr.y_true: data['y'][idx]})
+                loss_total = sess.run(dr.sum_loss)
+            summary = sess.run(dr.merged_summary)
+            dr.summary_writer.add_summary(summary, epoch)
+            print("Epoch:", '%04d' % (epoch+1), "loss=", "{:.9f}".format(loss_total))
 
-np.testing.assert_array_almost_equal(
-    np.array(du.get('y'), dtype=np.float32),
-    np.array(y_predicted, dtype=np.float32),
-    decimal=4)
+    print("Optimization Finished!")
 
 
-'''
-x_state = du.get('x')
-y_state_predicted, h_state_predicted = isess.run([dr.y_state_predicted,
-                                                  dr.h_state_predicted],
-                                                 feed_dict={dr.x_state: x_state[:dr.n_recurrent_step, :]})
-
-y_true = du.get('y')
-
-np.testing.assert_array_equal(np.array(du.get('hemodynamic_parameter'), dtype=np.float32),
-                              np.array(isess.run(dr.hemodynamic_parameter), dtype=np.float32))
-
-np.testing.assert_array_almost_equal(np.array(du.get('h')[:dr.n_recurrent_step, :, :], dtype=np.float32),
-                                     np.array(h_state_predicted, dtype=np.float32))
-
-y_predicted = []
-h_state_initial = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
-for x_segment in data['x']:
-    y_segment, h_state_final = isess.run([dr.y_state_predicted, dr.h_state_final],
-                                         feed_dict={dr.x_state: x_segment, dr.h_state_initial: h_state_initial})
-    h_state_initial = h_state_final
-    y_predicted.append(y_segment)
-
-y_predicted = np.concatenate(y_predicted)
-
-plt.plot(y_predicted - y_true)
-plt.plot(y_predicted)
-'''

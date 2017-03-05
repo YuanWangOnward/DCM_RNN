@@ -14,7 +14,6 @@ class TestDcmRnn(TestCase):
         self.du = tb.load_template(data_path)
         self.dr.collect_parameters(self.du)
 
-
     def test_collect_parameters(self):
         parameter_package = self.dr.collect_parameters(self.du)
 
@@ -28,10 +27,6 @@ class TestDcmRnn(TestCase):
     def test_create_shared_variables_h(self):
         initial_values = self.du.get('hemodynamic_parameter').astype(np.float32)
         self.dr.create_shared_variables_h(initial_values)
-
-    def test_build_an_initializer_graph(self):
-        self.dr.collect_parameters(self.du)
-        self.dr.build_an_initializer_graph()
 
     def test_initializer_graph_forward_pass(self):
         du = self.du
@@ -58,6 +53,8 @@ class TestDcmRnn(TestCase):
             np.array(du.get('y'), dtype=np.float32),
             np.array(y_predicted, dtype=np.float32),
             decimal=4)
+
+
 
 
 
