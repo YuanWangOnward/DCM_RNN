@@ -290,7 +290,7 @@ class DcmRnn(Initialization):
                 y_temp = tf.stack(y_temp, 0)
                 self.y_predicted.append(y_temp)
         with tf.variable_scope(self.variable_scope_name_y_stacked):
-            self.y_predicted = tf.stack(self.y_predicted, 0, name='y_predicted')
+            self.y_predicted_stacked = tf.stack(self.y_predicted, 0, name='y_predicted')
 
     def build_an_initializer_graph(self, hemodynamic_parameter_initial=None):
         """
@@ -308,7 +308,7 @@ class DcmRnn(Initialization):
                 tf.get_variable(name='x_state', dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region])
             self.x_state_placeholder = \
                 tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name='x_state_placeholder')
-            self.assign_x = tf.assign(self.x_state, self.x_state_placeholder)
+            self.assign_x = tf.assign(self.x_state, self.x_state_placeholder, name='assign_x_state')
             self.x_state_list = []
 
         for n in range(self.n_recurrent_step):
@@ -328,7 +328,7 @@ class DcmRnn(Initialization):
         with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
             self.loss_total = tf.get_variable('loss_total', initializer=0., trainable=False)
             # self.loss_total = self.loss_total + self.loss
-            self.sum_loss = tf.assign(self.loss_total, self.loss_total + self.loss, name='accumulate_loss')
+            self.sum_loss = tf.assign_add(self.loss_total, self.loss, name='accumulate_loss')
             self.clear_loss_total = tf.assign(self.loss_total, 0., name='clear_loss_total')
 
         # define optimiser
@@ -338,7 +338,6 @@ class DcmRnn(Initialization):
         self.variable_summaries(self.loss_total)
         self.merged_summary = tf.summary.merge_all()
         self.summary_writer = tf.summary.FileWriter(self.log_directory, tf.get_default_graph())
-
 
     def run_initializer_graph(self, sess, h_state_initial, data_x):
         """
@@ -361,7 +360,6 @@ class DcmRnn(Initialization):
         h_state_predicted = np.concatenate(h_state_predicted)
         y_predicted = np.concatenate(y_predicted)
         return [y_predicted, h_state_predicted]
-
 
 
     # unitilies
