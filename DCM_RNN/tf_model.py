@@ -34,7 +34,7 @@ class DcmRnn(Initialization):
                  log_directory=None):
         Initialization.__init__(self)
         self.n_recurrent_step = n_recurrent_step or 12
-        self.learning_rate = learning_rate or 0.01
+        self.learning_rate = learning_rate or 0.005
 
         self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
         self.variable_scope_name_x_initial = variable_scope_name_x_initial or 'cell_x_initial'
@@ -204,17 +204,12 @@ class DcmRnn(Initialization):
         if x_state is None:
             x_state = self.x_state_predicted
         if h_state_initial is None:
-            with tf.variable_scope(self.variable_scope_name_h):
-                self.h_state_initial = \
-                    tf.get_variable('h_state_initial',
-                                    initializer=self.set_initial_hemodynamic_state_as_inactivated(
-                                        self.n_region).astype(np.float32),
-                                    trainable=True)
+            h_state_initial = self.h_state_initial
 
         # format: h_state_predicted[time][region, 4]
         # format: h_state_predicted_stacked[time, region, 4]
         self.h_state_predicted = []
-        self.h_state_predicted.append(self.h_state_initial)
+        self.h_state_predicted.append(h_state_initial)
         for i in range(1, self.n_recurrent_step):
             with tf.variable_scope(self.variable_scope_name_h_parameter, reuse=True):
                 para_packages = []
@@ -315,11 +310,20 @@ class DcmRnn(Initialization):
             with tf.variable_scope(self.variable_scope_name_x):
                 self.x_state_list.append(self.x_state[n, :])
 
+        with tf.variable_scope(self.variable_scope_name_h):
+            self.h_state_initial_default = \
+                self.h_state_initial_default = \
+                self.set_initial_hemodynamic_state_as_inactivated(n_node=self.n_region).astype(np.float32)
+            self.h_state_initial = \
+                tf.get_variable('h_state_initial',
+                                initializer=self.h_state_initial_default,
+                                trainable=True)
+
 
         self.create_shared_variables_h(self.hemodynamic_parameter_initial)
 
         # build model
-        self.add_hemodynamic_layer(self.x_state_list)
+        self.add_hemodynamic_layer(self.x_state_list, self.h_state_initial)
         self.add_output_layer()
 
         # define loss
