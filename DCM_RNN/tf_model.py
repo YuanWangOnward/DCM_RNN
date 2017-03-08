@@ -69,6 +69,8 @@ class DcmRnn(Initialization):
                                   'x_h_coupling': False
                                   }
 
+        self.shift_x_h = 3
+
     def collect_parameters(self, du):
         """
         Collect needed parameters from a DataUnit instant.
@@ -99,7 +101,6 @@ class DcmRnn(Initialization):
         :param initial_values: a pandas.DataFrame, containing the initial values of hemodynamic variables
         :return:
         """
-        n_region, n_para = initial_values.shape
         hemodynamic_parameter = []
         with tf.variable_scope(self.variable_scope_name_h_parameter):
             for idx_r, region_label in enumerate(list(initial_values.index)):
@@ -150,7 +151,6 @@ class DcmRnn(Initialization):
         for para in self.hemo_parameter_keys:
             output[para] = tf.get_variable(para + '_r' + str(i_region))
         return output
-
 
     def add_one_cell_h(self, h_state_current, x_state_current, h_parameter):
         """
@@ -206,33 +206,38 @@ class DcmRnn(Initialization):
         if h_state_initial is None:
             h_state_initial = self.h_state_initial
 
-        # format: h_state_predicted[time][region, 4]
-        # format: h_state_predicted_stacked[time, region, 4]
+        # format: h_state_initial[self.shift_x_h][region, 4]
+        # format: h_state_predicted[self.n_recurrent_step][region, 4]
+        # format: h_state_predicted_stacked[self.n_recurrent_step, region, 4]
+        # h_state_initial is no longer a part of h_state_predicted
         self.h_state_predicted = []
-        self.h_state_predicted.append(h_state_initial)
-        for i in range(1, self.n_recurrent_step):
+        # self.h_state_predicted.append(h_state_initial)
+        for i in range(0, self.n_recurrent_step):
+            # load in shared parameters
             with tf.variable_scope(self.variable_scope_name_h_parameter, reuse=True):
                 para_packages = []
                 for i_region in range(self.n_region):
                     para_packages.append(self.get_h_para_tensor_for_one_region(i_region))
+            # do evolving calculation
             with tf.variable_scope(self.variable_scope_name_h, reuse=True):
-                h_temp = []
-                for i_region in range(self.n_region):
-                    h_temp.append(self.add_one_cell_h(
-                        self.h_state_predicted[i - 1][i_region, :], x_state[i - 1][i_region], para_packages[i_region]))
+                if i == 0:
+                    # need to read previous h states from h_state_initial
+                    h_temp = []
+                    for i_region in range(self.n_region):
+                        h_temp.append(self.add_one_cell_h(
+                            h_state_initial[i_region, :], x_state[i - 1][i_region], para_packages[i_region]))
+                else:
+                    # read h states from previous prediction
+                    h_temp = []
+                    for i_region in range(self.n_region):
+                        h_temp.append(self.add_one_cell_h(
+                            self.h_state_predicted[i - 1][i_region, :], x_state[i - 1][i_region],
+                            para_packages[i_region]))
                 self.h_state_predicted.append(tf.stack(h_temp, 0))
 
-        i = self.n_recurrent_step
-        with tf.variable_scope(self.variable_scope_name_h_parameter, reuse=True):
-            para_packages = []
-            for i_region in range(self.n_region):
-                para_packages.append(self.get_h_para_tensor_for_one_region(i_region))
-        with tf.variable_scope(self.variable_scope_name_h_final, reuse=True):
-            h_temp = []
-            for i_region in range(self.n_region):
-                h_temp.append(self.add_one_cell_h(
-                    self.h_state_predicted[i - 1][i_region, :], x_state[i - 1][i_region], para_packages[i_region]))
-            self.h_state_final = tf.stack(h_temp, 0)
+        # need to save the last predicted h state for next segment
+        with tf.variable_scope(self.variable_scope_name_h_final):
+            self.save_h_state_final = tf.assign(self.h_state_final, self.h_state_predicted[-1])
 
         with tf.variable_scope(self.variable_scope_name_h_stacked):
             self.h_state_predicted_stacked = tf.stack(self.h_state_predicted, 0)
@@ -297,30 +302,38 @@ class DcmRnn(Initialization):
                                              self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
 
         # create place holder and variables
+        # placeholder
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
+        # x layer state
         with tf.variable_scope(self.variable_scope_name_x):
             self.x_state = \
                 tf.get_variable(name='x_state', dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region])
             self.x_state_placeholder = \
-                tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name='x_state_placeholder')
+                tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region],
+                               name='x_state_placeholder')
             self.assign_x = tf.assign(self.x_state, self.x_state_placeholder, name='assign_x_state')
             self.x_state_list = []
-
         for n in range(self.n_recurrent_step):
             with tf.variable_scope(self.variable_scope_name_x):
                 self.x_state_list.append(self.x_state[n, :])
 
-        with tf.variable_scope(self.variable_scope_name_h):
+        # y layer parameter
+        self.create_shared_variables_h(self.hemodynamic_parameter_initial)
+
+        # y layer state
+        with tf.variable_scope(self.variable_scope_name_h_initial):
+            # no matter how much shift_x_h is, we only need to pass the h_state at the last time point
             self.h_state_initial_default = \
-                self.h_state_initial_default = \
                 self.set_initial_hemodynamic_state_as_inactivated(n_node=self.n_region).astype(np.float32)
             self.h_state_initial = \
                 tf.get_variable('h_state_initial',
                                 initializer=self.h_state_initial_default,
-                                trainable=True)
-
-
-        self.create_shared_variables_h(self.hemodynamic_parameter_initial)
+                                trainable=False)
+        with tf.variable_scope(self.variable_scope_name_h_final):
+            self.h_state_final = \
+                tf.get_variable('h_state_final',
+                                initializer=self.h_state_initial_default,
+                                trainable=False)
 
         # build model
         self.add_hemodynamic_layer(self.x_state_list, self.h_state_initial)
@@ -365,14 +378,13 @@ class DcmRnn(Initialization):
         y_predicted = np.concatenate(y_predicted)
         return [y_predicted, h_state_predicted]
 
-
     # unitilies
     def get_element_count(self, tensor):
         return np.prod(tensor.get_shape().as_list())
 
     def mse(self, tensor1, tensor2, name=None):
         with tf.variable_scope('MSE'):
-            temp = tf.reduce_sum((tf.reshape(tensor1, [-1]) - tf.reshape(tensor2, [-1]) ) ** 2)
+            temp = tf.reduce_sum((tf.reshape(tensor1, [-1]) - tf.reshape(tensor2, [-1])) ** 2)
             mse = temp / self.get_element_count(tensor1)
             if name is not None:
                 tf.identity(mse, name=name)
@@ -390,4 +402,3 @@ class DcmRnn(Initialization):
             tf.summary.scalar('max', tf.reduce_max(tensor))
             tf.summary.scalar('min', tf.reduce_min(tensor))
             tf.summary.histogram('histogram', tensor)
-

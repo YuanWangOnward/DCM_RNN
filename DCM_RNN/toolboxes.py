@@ -124,6 +124,35 @@ def split(data, n_segment, split_dimension=0):
         output = np.array_split(data_truncated, int(n_truncated / n_segment), split_dimension)
     return output
 
+def split_with_shift(data, n_segment, shift=0, split_dimension=0):
+    """
+    Split a large array data into list of segments, ignoring the beginning shift points
+    :param data:
+    :param n_segment:
+    :param shift:
+    :param split_dimension:
+    :return:
+    """
+    length = data.shape[split_dimension]
+    data_shifted = np.take(data, range(shift, length), split_dimension)
+    n_total = length - shift
+    if n_total % n_segment == 0:
+        output = np.array_split(data_shifted, int(n_total / n_segment), split_dimension)
+    else:
+        n_truncated = np.int64(np.floor(n_total / n_segment) * n_segment)
+        data_truncated = np.take(data_shifted, range(n_truncated), split_dimension)
+        output = np.array_split(data_truncated, int(n_truncated / n_segment), split_dimension)
+    return output
+
+def split_data_for_initializer_graph(x_data, y_data, n_segment, shift_x_h):
+    x_splits = split_with_shift(x_data, n_segment)
+    y_splits = split_with_shift(y_data, n_segment, shift_x_h)
+    n_segments = min(len(x_splits), len(y_splits))
+    x_splits = x_splits[:n_segments]
+    y_splits = y_splits[:n_segments]
+    return [x_splits, y_splits]
+
+
 
 class Initialization:
     def __init__(self,

@@ -38,19 +38,26 @@ class TestDcmRnn(TestCase):
         isess.run(tf.global_variables_initializer())
 
         # prepare data
-        data = tb.split(du.get('x'), dr.n_recurrent_step)
-        h_state_initial = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
+        data = {'x': tb.split_data_for_initializer_graph(
+                    du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_h)[0],
+                'y': tb.split_data_for_initializer_graph(
+                    du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_h)[1],
+                'h': tb.split_with_shift(du.get('h'), dr.n_recurrent_step, dr.shift_x_h)}
+
+        h_state_initial = du.get('h')[2, :, :]
+        # dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
 
         # run forward
-        y_predicted, h_state_predicted = dr.run_initializer_graph(isess, h_state_initial, data)
+        y_predicted, h_state_predicted = dr.run_initializer_graph(isess, h_state_initial, data['x'])
 
         # test
+
         np.testing.assert_array_almost_equal(
-            np.array(du.get('h'), dtype=np.float32),
+            np.array(np.concatenate(data['h']), dtype=np.float32),
             np.array(h_state_predicted, dtype=np.float32))
 
         np.testing.assert_array_almost_equal(
-            np.array(du.get('y'), dtype=np.float32),
+            np.array(np.concatenate(data['y']), dtype=np.float32),
             np.array(y_predicted, dtype=np.float32),
             decimal=4)
 
