@@ -78,6 +78,7 @@ class DcmRnn(Initialization):
                                   }
 
         self.shift_x_y = 3
+        self.shift_data = self.n_recurrent_step
 
     def collect_parameters(self, du):
         """
@@ -231,7 +232,7 @@ class DcmRnn(Initialization):
             # do evolving calculation
             with tf.variable_scope(self.variable_scope_name_h):
                 if i == 0:
-                    self.h_whole = [tf.identity(self.h_state_initial)]
+                    self.h_whole = [self.h_state_initial]
                 else:
                     h_temp = []
                     for i_region in range(self.n_region):
@@ -244,7 +245,7 @@ class DcmRnn(Initialization):
         self.h_prelude = self.h_whole[: self.shift_x_y]
         self.h_state_predicted = self.h_whole[self.shift_x_y: self.shift_x_y + self.n_recurrent_step]
         self.h_monitor = self.h_whole[:self.n_recurrent_step]
-        self.h_connector = self.h_whole[self.n_recurrent_step]
+        self.h_connector = self.h_whole[self.shift_data]
 
         with tf.variable_scope(self.variable_scope_name_h_stacked):
             self.h_state_predicted_stacked = tf.stack(self.h_state_predicted, 0, name='h_predicted_stack')
@@ -371,21 +372,21 @@ class DcmRnn(Initialization):
         :param sess:
         :param h_state_initial:
         :param data_x: a list of neural activity signal segment
-        :return: [y_predicted, h_state_predicted]
+        :return: [y_predicted, h_state_monitor]
         """
-        h_state_predicted = []
+        h_state_monitor = []
         y_predicted = []
         h_state_initial_segment = h_state_initial
         for x_segment in data_x:
-            y_segment, h_segment, h_state_final = \
-                sess.run([self.y_predicted_stacked, self.h_state_predicted_stacked, self.h_state_connector],
+            y_segment, h_segment, h_connector = \
+                sess.run([self.y_predicted_stacked, self.h_state_monitor_stacked, self.h_connector],
                          feed_dict={self.x_state_stacked: x_segment, self.h_state_initial: h_state_initial_segment})
-            h_state_initial_segment = h_state_final
-            h_state_predicted.append(h_segment)
+            h_state_initial_segment = h_connector
+            h_state_monitor.append(h_segment)
             y_predicted.append(y_segment)
-        h_state_predicted = np.concatenate(h_state_predicted)
+        h_state_monitor = np.concatenate(h_state_monitor)
         y_predicted = np.concatenate(y_predicted)
-        return [y_predicted, h_state_predicted]
+        return [y_predicted, h_state_monitor]
 
     # unitilies
     def get_element_count(self, tensor):

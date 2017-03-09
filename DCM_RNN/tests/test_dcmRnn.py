@@ -42,10 +42,9 @@ class TestDcmRnn(TestCase):
                     du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_y)[0],
                 'y': tb.split_data_for_initializer_graph(
                     du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_y)[1],
-                'h': tb.split_with_shift(du.get('h'), dr.n_recurrent_step, dr.shift_x_y)}
+                'h': tb.split_with_shift(du.get('h'), dr.n_recurrent_step, 0)}
 
-        h_state_initial = du.get('h')[2, :, :]
-        # dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
+        h_state_initial = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
 
         # run forward
         y_predicted, h_state_predicted = dr.run_initializer_graph(isess, h_state_initial, data['x'])
@@ -53,8 +52,10 @@ class TestDcmRnn(TestCase):
         # test
 
         np.testing.assert_array_almost_equal(
-            np.array(np.concatenate(data['h']), dtype=np.float32),
+            np.array(np.concatenate(data['h'][:-1]), dtype=np.float32),
             np.array(h_state_predicted, dtype=np.float32))
+
+
 
         np.testing.assert_array_almost_equal(
             np.array(np.concatenate(data['y']), dtype=np.float32),
