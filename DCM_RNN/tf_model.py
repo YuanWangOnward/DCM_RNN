@@ -38,7 +38,7 @@ class DcmRnn(Initialization):
                  variable_scope_name_loss=None,
                  log_directory=None):
         Initialization.__init__(self)
-        self.n_recurrent_step = n_recurrent_step or 12
+        self.n_recurrent_step = n_recurrent_step or 8
         self.learning_rate = learning_rate or 0.005
 
         self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
@@ -204,7 +204,7 @@ class DcmRnn(Initialization):
         h_state_next = tf.stack(h_state_next, 0)
         return h_state_next
 
-    def add_hemodynamic_layer(self, x_state_extended=None, h_state_initial=None):
+    def add_hemodynamic_layer(self, x_extended=None, h_state_initial=None):
         """
         Conceptually, hemodynamic layer consists of five parts:
         # format: h_state_initial[region, 4]
@@ -212,19 +212,19 @@ class DcmRnn(Initialization):
         # format: h_state_predicted[self.n_recurrent_step][region, 4]
         # format: h_connector[region, 4]
         # format: h_state_predicted_stacked[self.n_recurrent_step, region, 4]
-        :param x_state_extended:
+        :param x_extended:
         :param h_state_initial:
         :return:
         """
-        if x_state_extended is None:
-            x_state_extended = self.x_state_extended
+        if x_extended is None:
+            x_extended = self.x_extended
         if h_state_initial is None:
             h_state_initial = self.h_state_initial
 
         # caluculate a large y layer with extended x state and then slicing to each parts
         with tf.variable_scope("h_dummy"):
             h_dummy = [h_state_initial]
-        for i in range(len(x_state_extended)):
+        for i in range(len(x_extended)):
             # load in shared parameters
             with tf.variable_scope(self.variable_scope_name_h_parameter, reuse=True):
                 para_packages = []
@@ -235,7 +235,7 @@ class DcmRnn(Initialization):
                 h_temp = []
                 for i_region in range(self.n_region):
                     h_temp.append(self.add_one_cell_h(
-                        h_dummy[i - 1][i_region, :], x_state_extended[i - 1][i_region],
+                        h_dummy[i - 1][i_region, :], x_extended[i - 1][i_region],
                         para_packages[i_region]))
                 h_dummy.append(tf.stack(h_temp, 0))
 
@@ -251,7 +251,7 @@ class DcmRnn(Initialization):
                 self.h_state_predicted.append(h_dummy[i])
 
         with tf.variable_scope(self.variable_scope_name_h_connector):
-            self.h_state_connector = h_dummy[self.n_recurrent_step]
+            self.assign_h_connector = tf.assign(self.h_state_connector, h_dummy[self.n_recurrent_step])
 
         with tf.variable_scope(self.variable_scope_name_h_stacked):
             self.h_state_predicted_stacked = tf.stack(self.h_state_predicted, 0)
@@ -331,9 +331,10 @@ class DcmRnn(Initialization):
         self.x_trailing = []
         for n in range(self.shift_x_y):
             with tf.variable_scope(self.variable_scope_name_x_trailing):
-                self.x_trailing.append(
-                    tf.get_variable('x_trailing_' + str(n),
-                                    initializer=np.zeros(self.n_region, dtype=np.float32)))
+                self.x_trailing.append(tf.constant(np.zeros(self.n_region, dtype=np.float32),
+                                                   dtype=np.float32,
+                                                   name='x_trailing_' + str(n)))
+
         self.x_extended = []
         for n in range(self.n_recurrent_step + self.shift_x_y):
             with tf.variable_scope(self.variable_scope_name_x_extended):
@@ -353,11 +354,14 @@ class DcmRnn(Initialization):
                 tf.get_variable('h_state_initial',
                                 initializer=self.h_state_initial_default,
                                 trainable=False)
+
         with tf.variable_scope(self.variable_scope_name_h_connector):
             self.h_state_connector = \
                 tf.get_variable('h_state_connector',
                                 initializer=self.h_state_initial_default,
                                 trainable=False)
+
+
         # build model
         self.add_hemodynamic_layer(self.x_extended, self.h_state_initial)
         self.add_output_layer(self.h_state_predicted)

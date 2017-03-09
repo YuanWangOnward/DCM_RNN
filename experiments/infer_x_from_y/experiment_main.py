@@ -38,7 +38,7 @@ data['x_hat'] = [np.zeros([dr.n_recurrent_step, dr.n_region]) for _ in range(n_s
 # training
 # Launch the graph
 
-TRAIN_EPOCHS = 10
+TRAIN_EPOCHS = 20
 DISPLAY_STEP = 1
 isess = tf.InteractiveSession()
 sess = isess
