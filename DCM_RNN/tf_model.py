@@ -21,13 +21,18 @@ class DcmRnn(Initialization):
                  variable_scope_name_x_parameter=None,
                  variable_scope_name_x_initial=None,
                  variable_scope_name_x=None,
-                 variable_scope_name_x_final=None,
+                 variable_scope_name_x_trailing=None,
+                 variable_scope_name_x_extended=None,
+                 variable_scope_name_x_connector=None,
                  variable_scope_name_x_stacked=None,
+
                  variable_scope_name_h_parameter=None,
                  variable_scope_name_h_initial=None,
+                 variable_scope_name_h_prelude=None,
                  variable_scope_name_h=None,
                  variable_scope_name_h_final=None,
                  variable_scope_name_h_stacked=None,
+
                  variable_scope_name_y=None,
                  variable_scope_name_y_stacked=None,
                  variable_scope_name_loss=None,
@@ -39,13 +44,16 @@ class DcmRnn(Initialization):
         self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
         self.variable_scope_name_x_initial = variable_scope_name_x_initial or 'cell_x_initial'
         self.variable_scope_name_x = variable_scope_name_x or 'cell_x'
-        self.variable_scope_name_x_final = variable_scope_name_x_final or 'cell_x_final'
+        self.variable_scope_name_x_trailing = variable_scope_name_x_trailing or 'cell_x_trailing'
+        self.variable_scope_name_x_connector = variable_scope_name_x_connector or 'cell_x_connector'
+        self.variable_scope_name_x_extended = variable_scope_name_x_extended or 'cell_x_extended'
         self.variable_scope_name_x_stacked = variable_scope_name_x_stacked or 'x_stacked'
 
         self.variable_scope_name_h_parameter = variable_scope_name_h_parameter or 'para_h'
         self.variable_scope_name_h_initial = variable_scope_name_h_initial or 'cell_h_initial'
+        self.variable_scope_name_h_prelude = variable_scope_name_h_prelude or 'cell_h_prelude'
         self.variable_scope_name_h = variable_scope_name_h or 'cell_h'
-        self.variable_scope_name_h_final = variable_scope_name_h_final or 'cell_h_final'
+        self.variable_scope_name_h_connector = variable_scope_name_h_final or 'cell_h_connector'
         self.variable_scope_name_h_stacked = variable_scope_name_h_stacked or 'h_stacked'
 
         self.variable_scope_name_y = variable_scope_name_y or 'cell_y'
@@ -69,7 +77,7 @@ class DcmRnn(Initialization):
                                   'x_h_coupling': False
                                   }
 
-        self.shift_x_h = 3
+        self.shift_x_y = 3
 
     def collect_parameters(self, du):
         """
@@ -196,48 +204,54 @@ class DcmRnn(Initialization):
         h_state_next = tf.stack(h_state_next, 0)
         return h_state_next
 
-    def add_hemodynamic_layer(self, x_state=None, h_state_initial=None):
+    def add_hemodynamic_layer(self, x_state_extended=None, h_state_initial=None):
         """
-        :param x_state:
+        Conceptually, hemodynamic layer consists of five parts:
+        # format: h_state_initial[region, 4]
+        # format: h_prelude[self.shift_x_y][region, 4]
+        # format: h_state_predicted[self.n_recurrent_step][region, 4]
+        # format: h_connector[region, 4]
+        # format: h_state_predicted_stacked[self.n_recurrent_step, region, 4]
+        :param x_state_extended:
+        :param h_state_initial:
         :return:
         """
-        if x_state is None:
-            x_state = self.x_state_predicted
+        if x_state_extended is None:
+            x_state_extended = self.x_state_extended
         if h_state_initial is None:
             h_state_initial = self.h_state_initial
 
-        # format: h_state_initial[self.shift_x_h][region, 4]
-        # format: h_state_predicted[self.n_recurrent_step][region, 4]
-        # format: h_state_predicted_stacked[self.n_recurrent_step, region, 4]
-        # h_state_initial is no longer a part of h_state_predicted
-        self.h_state_predicted = []
-        # self.h_state_predicted.append(h_state_initial)
-        for i in range(0, self.n_recurrent_step):
+        # caluculate a large y layer with extended x state and then slicing to each parts
+        with tf.variable_scope("h_dummy"):
+            h_dummy = [h_state_initial]
+        for i in range(len(x_state_extended)):
             # load in shared parameters
             with tf.variable_scope(self.variable_scope_name_h_parameter, reuse=True):
                 para_packages = []
                 for i_region in range(self.n_region):
                     para_packages.append(self.get_h_para_tensor_for_one_region(i_region))
             # do evolving calculation
-            with tf.variable_scope(self.variable_scope_name_h, reuse=True):
-                if i == 0:
-                    # need to read previous h states from h_state_initial
-                    h_temp = []
-                    for i_region in range(self.n_region):
-                        h_temp.append(self.add_one_cell_h(
-                            h_state_initial[i_region, :], x_state[i - 1][i_region], para_packages[i_region]))
-                else:
-                    # read h states from previous prediction
-                    h_temp = []
-                    for i_region in range(self.n_region):
-                        h_temp.append(self.add_one_cell_h(
-                            self.h_state_predicted[i - 1][i_region, :], x_state[i - 1][i_region],
-                            para_packages[i_region]))
-                self.h_state_predicted.append(tf.stack(h_temp, 0))
+            with tf.variable_scope("h_dummy"):
+                h_temp = []
+                for i_region in range(self.n_region):
+                    h_temp.append(self.add_one_cell_h(
+                        h_dummy[i - 1][i_region, :], x_state_extended[i - 1][i_region],
+                        para_packages[i_region]))
+                h_dummy.append(tf.stack(h_temp, 0))
 
-        # need to save the last predicted h state for next segment
-        with tf.variable_scope(self.variable_scope_name_h_final):
-            self.save_h_state_final = tf.assign(self.h_state_final, self.h_state_predicted[-1])
+        # cut the h dummy into different parts
+        self.h_prelude = []
+        for i in range(self.shift_x_y):
+            with tf.variable_scope(self.variable_scope_name_h_prelude):
+                self.h_prelude.append(h_dummy[i])
+
+        self.h_state_predicted = []
+        for i in range(self.shift_x_y, self.shift_x_y + self.n_recurrent_step):
+            with tf.variable_scope(self.variable_scope_name_h):
+                self.h_state_predicted.append(h_dummy[i])
+
+        with tf.variable_scope(self.variable_scope_name_h_connector):
+            self.h_state_connector = h_dummy[self.n_recurrent_step]
 
         with tf.variable_scope(self.variable_scope_name_h_stacked):
             self.h_state_predicted_stacked = tf.stack(self.h_state_predicted, 0)
@@ -301,47 +315,57 @@ class DcmRnn(Initialization):
         self.hemodynamic_parameter_initial = hemodynamic_parameter_initial or \
                                              self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
 
-        # create place holder and variables
-        # placeholder
-        self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
         # x layer state
-        with tf.variable_scope(self.variable_scope_name_x):
-            self.x_state = \
-                tf.get_variable(name='x_state', dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region])
-            self.x_state_placeholder = \
+        with tf.variable_scope(self.variable_scope_name_x_stacked):
+            self.x_state_stacked = \
+                tf.get_variable(name='x_state_stacked', dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region])
+            self.x_state_stacked_placeholder = \
                 tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region],
-                               name='x_state_placeholder')
-            self.assign_x = tf.assign(self.x_state, self.x_state_placeholder, name='assign_x_state')
-            self.x_state_list = []
+                               name='x_state_stacked_placeholder')
+            self.assign_x_state_stacked = \
+                tf.assign(self.x_state_stacked, self.x_state_stacked_placeholder, name='assign_x_state_stacked')
+        self.x_state = []
         for n in range(self.n_recurrent_step):
             with tf.variable_scope(self.variable_scope_name_x):
-                self.x_state_list.append(self.x_state[n, :])
+                self.x_state.append(self.x_state_stacked[n, :])
+        self.x_trailing = []
+        for n in range(self.shift_x_y):
+            with tf.variable_scope(self.variable_scope_name_x_trailing):
+                self.x_trailing.append(
+                    tf.get_variable('x_trailing_' + str(n),
+                                    initializer=np.zeros(self.n_region, dtype=np.float32)))
+        self.x_extended = []
+        for n in range(self.n_recurrent_step + self.shift_x_y):
+            with tf.variable_scope(self.variable_scope_name_x_extended):
+                if n < self.n_recurrent_step:
+                    self.x_extended.append(self.x_state[n])
+                else:
+                    self.x_extended.append(self.x_trailing[n - self.n_recurrent_step])
 
         # y layer parameter
-        self.create_shared_variables_h(self.hemodynamic_parameter_initial)
-
-        # y layer state
+        self.create_shared_variables_h(self.hemodynamic_parameter_initial)  # name_scope inside
+        # y layer state: initial(port in), and connector(port out)
         with tf.variable_scope(self.variable_scope_name_h_initial):
-            # no matter how much shift_x_h is, we only need to pass the h_state at the last time point
+            # no matter how much shift_x_y is, we only need h_state of one time point as the connector
             self.h_state_initial_default = \
                 self.set_initial_hemodynamic_state_as_inactivated(n_node=self.n_region).astype(np.float32)
             self.h_state_initial = \
                 tf.get_variable('h_state_initial',
                                 initializer=self.h_state_initial_default,
                                 trainable=False)
-        with tf.variable_scope(self.variable_scope_name_h_final):
-            self.h_state_final = \
-                tf.get_variable('h_state_final',
+        with tf.variable_scope(self.variable_scope_name_h_connector):
+            self.h_state_connector = \
+                tf.get_variable('h_state_connector',
                                 initializer=self.h_state_initial_default,
                                 trainable=False)
-
         # build model
-        self.add_hemodynamic_layer(self.x_state_list, self.h_state_initial)
-        self.add_output_layer()
+        self.add_hemodynamic_layer(self.x_extended, self.h_state_initial)
+        self.add_output_layer(self.h_state_predicted)
 
         # define loss
+        self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
-            self.loss = self.mse(self.y_true, self.y_predicted, "loss")
+            self.loss = self.mse(self.y_true, self.y_predicted_stacked, "loss")
         with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
             self.loss_total = tf.get_variable('loss_total', initializer=0., trainable=False)
             # self.loss_total = self.loss_total + self.loss
@@ -369,8 +393,8 @@ class DcmRnn(Initialization):
         h_state_initial_segment = h_state_initial
         for x_segment in data_x:
             y_segment, h_segment, h_state_final = \
-                sess.run([self.y_predicted_stacked, self.h_state_predicted_stacked, self.h_state_final],
-                         feed_dict={self.x_state: x_segment, self.h_state_initial: h_state_initial_segment})
+                sess.run([self.y_predicted_stacked, self.h_state_predicted_stacked, self.h_state_connector],
+                         feed_dict={self.x_state_stacked: x_segment, self.h_state_initial: h_state_initial_segment})
             h_state_initial_segment = h_state_final
             h_state_predicted.append(h_segment)
             y_predicted.append(y_segment)

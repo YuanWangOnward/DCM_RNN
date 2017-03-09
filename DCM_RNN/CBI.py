@@ -79,8 +79,8 @@ class configure_a_scanner:
             tmp3 = np.matmul(sub.Wxu, u[:, i - 1])
             x_state[:, 0, i] = tmp1 + tmp2 + tmp3
             '''
-		    x_state[:,0,i]=np.matmul(sub.Wxx,x_state[:,0,i-1])+\
-		    np.matmul(sub.Wxxu,x_state[:,0,i-1]*u[i-1])+\
+		    x_state_stacked[:,0,i]=np.matmul(sub.Wxx,x_state_stacked[:,0,i-1])+\
+		    np.matmul(sub.Wxxu,x_state_stacked[:,0,i-1]*u[i-1])+\
 		    sub.Wxu*u[i-1]
 		    '''
         output = x_state[:]

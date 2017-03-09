@@ -39,10 +39,10 @@ class TestDcmRnn(TestCase):
 
         # prepare data
         data = {'x': tb.split_data_for_initializer_graph(
-                    du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_h)[0],
+                    du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_y)[0],
                 'y': tb.split_data_for_initializer_graph(
-                    du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_h)[1],
-                'h': tb.split_with_shift(du.get('h'), dr.n_recurrent_step, dr.shift_x_h)}
+                    du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_y)[1],
+                'h': tb.split_with_shift(du.get('h'), dr.n_recurrent_step, dr.shift_x_y)}
 
         h_state_initial = du.get('h')[2, :, :]
         # dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
