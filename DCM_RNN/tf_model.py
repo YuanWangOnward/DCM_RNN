@@ -39,7 +39,7 @@ class DcmRnn(Initialization):
                  log_directory=None):
         Initialization.__init__(self)
         self.n_recurrent_step = n_recurrent_step or 8
-        self.learning_rate = learning_rate or 0.005
+        self.learning_rate = learning_rate or 0.001
 
         self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
         self.variable_scope_name_x_initial = variable_scope_name_x_initial or 'cell_x_initial'
@@ -221,40 +221,34 @@ class DcmRnn(Initialization):
         if h_state_initial is None:
             h_state_initial = self.h_state_initial
 
-        # caluculate a large y layer with extended x state and then slicing to each parts
-        with tf.variable_scope("h_dummy"):
-            h_dummy = [h_state_initial]
-        for i in range(len(x_extended)):
+        # calculate a large y layer with extended x state and then slicing to each parts
+        for i in range(0, len(x_extended)):
             # load in shared parameters
             with tf.variable_scope(self.variable_scope_name_h_parameter, reuse=True):
                 para_packages = []
                 for i_region in range(self.n_region):
                     para_packages.append(self.get_h_para_tensor_for_one_region(i_region))
             # do evolving calculation
-            with tf.variable_scope("h_dummy"):
-                h_temp = []
-                for i_region in range(self.n_region):
-                    h_temp.append(self.add_one_cell_h(
-                        h_dummy[i - 1][i_region, :], x_extended[i - 1][i_region],
-                        para_packages[i_region]))
-                h_dummy.append(tf.stack(h_temp, 0))
-
-        # cut the h dummy into different parts
-        self.h_prelude = []
-        for i in range(self.shift_x_y):
-            with tf.variable_scope(self.variable_scope_name_h_prelude):
-                self.h_prelude.append(h_dummy[i])
-
-        self.h_state_predicted = []
-        for i in range(self.shift_x_y, self.shift_x_y + self.n_recurrent_step):
             with tf.variable_scope(self.variable_scope_name_h):
-                self.h_state_predicted.append(h_dummy[i])
+                if i == 0:
+                    self.h_whole = [tf.identity(self.h_state_initial)]
+                else:
+                    h_temp = []
+                    for i_region in range(self.n_region):
+                        h_temp.append(self.add_one_cell_h(
+                            self.h_whole[i - 1][i_region, :], x_extended[i - 1][i_region],
+                            para_packages[i_region]))
+                    self.h_whole.append(tf.stack(h_temp, 0))
 
-        with tf.variable_scope(self.variable_scope_name_h_connector):
-            self.assign_h_connector = tf.assign(self.h_state_connector, h_dummy[self.n_recurrent_step])
+        # label h whole into different parts
+        self.h_prelude = self.h_whole[: self.shift_x_y]
+        self.h_state_predicted = self.h_whole[self.shift_x_y: self.shift_x_y + self.n_recurrent_step]
+        self.h_monitor = self.h_whole[:self.n_recurrent_step]
+        self.h_connector = self.h_whole[self.n_recurrent_step]
 
         with tf.variable_scope(self.variable_scope_name_h_stacked):
-            self.h_state_predicted_stacked = tf.stack(self.h_state_predicted, 0)
+            self.h_state_predicted_stacked = tf.stack(self.h_state_predicted, 0, name='h_predicted_stack')
+            self.h_state_monitor_stacked = tf.stack(self.h_monitor, 0, name='h_monitor_stack')
 
     def phi_o(self, h_state_current):
         """
@@ -304,7 +298,7 @@ class DcmRnn(Initialization):
                 y_temp = tf.stack(y_temp, 0)
                 self.y_predicted.append(y_temp)
         with tf.variable_scope(self.variable_scope_name_y_stacked):
-            self.y_predicted_stacked = tf.stack(self.y_predicted, 0, name='y_predicted')
+            self.y_predicted_stacked = tf.stack(self.y_predicted, 0, name='y_predicted_stack')
 
     def build_an_initializer_graph(self, hemodynamic_parameter_initial=None):
         """
@@ -334,14 +328,8 @@ class DcmRnn(Initialization):
                 self.x_trailing.append(tf.constant(np.zeros(self.n_region, dtype=np.float32),
                                                    dtype=np.float32,
                                                    name='x_trailing_' + str(n)))
-
-        self.x_extended = []
-        for n in range(self.n_recurrent_step + self.shift_x_y):
-            with tf.variable_scope(self.variable_scope_name_x_extended):
-                if n < self.n_recurrent_step:
-                    self.x_extended.append(self.x_state[n])
-                else:
-                    self.x_extended.append(self.x_trailing[n - self.n_recurrent_step])
+        self.x_extended = self.x_state
+        self.x_extended.extend(self.x_trailing)
 
         # y layer parameter
         self.create_shared_variables_h(self.hemodynamic_parameter_initial)  # name_scope inside
@@ -354,13 +342,6 @@ class DcmRnn(Initialization):
                 tf.get_variable('h_state_initial',
                                 initializer=self.h_state_initial_default,
                                 trainable=False)
-
-        with tf.variable_scope(self.variable_scope_name_h_connector):
-            self.h_state_connector = \
-                tf.get_variable('h_state_connector',
-                                initializer=self.h_state_initial_default,
-                                trainable=False)
-
 
         # build model
         self.add_hemodynamic_layer(self.x_extended, self.h_state_initial)

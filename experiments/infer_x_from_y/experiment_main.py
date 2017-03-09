@@ -38,8 +38,8 @@ data['x_hat'] = [np.zeros([dr.n_recurrent_step, dr.n_region]) for _ in range(n_s
 # training
 # Launch the graph
 
-TRAIN_EPOCHS = 20
-DISPLAY_STEP = 1
+TRAIN_EPOCHS = 100
+DISPLAY_STEP = 10
 isess = tf.InteractiveSession()
 sess = isess
 
@@ -70,7 +70,7 @@ with tf.Session() as sess:
             sess.run(tf.assign(dr.h_state_initial, h_state_initial))
 
             _, data['x_hat'][idx], _ = sess.run(
-                [dr.train, dr.x_state_stacked, dr.h_state_connector],
+                [dr.train, dr.x_state_stacked, dr.h_connector],
                 feed_dict={dr.y_true: data['y_true'][idx]})
 
         # Display logs per epoch step
@@ -82,7 +82,7 @@ with tf.Session() as sess:
                 sess.run(dr.assign_x_state_stacked, feed_dict={dr.x_state_stacked_placeholder: data['x_hat'][idx]})
                 sess.run(tf.assign(dr.h_state_initial, h_state_initial))
                 loss_total, h_state_initial = sess.run(
-                    [dr.sum_loss, dr.h_state_connector],
+                    [dr.sum_loss, dr.h_connector],
                     feed_dict={dr.y_true: data['y_true'][idx]})
 
             summary = sess.run(dr.merged_summary)
@@ -91,11 +91,17 @@ with tf.Session() as sess:
             print("Epoch:", '%04d' % (epoch + 1), "y_total_loss=", "{:.9f}".format(loss_total))
             print("Epoch:", '%04d' % (epoch + 1),
                   "x_total_loss=", "{:.9f}".format(tb.mse(x_hat_temp, du.get('x')[:n_time_point_testing, :])))
+            '''
             plt.figure()
             plt.plot(x_hat_temp[:n_time_point_testing, :])
             plt.plot(du.get('x')[:n_time_point_testing, :])
+            '''
+
 
     print("Optimization Finished!")
+    plt.figure()
+    plt.plot(x_hat_temp[:n_time_point_testing, :])
+    plt.plot(du.get('x')[:n_time_point_testing, :])
 
 '''
 plt.plot(x_hat_temp[:n_time_point_testing, :])
