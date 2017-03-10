@@ -38,8 +38,8 @@ class DcmRnn(Initialization):
                  variable_scope_name_loss=None,
                  log_directory=None):
         Initialization.__init__(self)
-        self.n_recurrent_step = n_recurrent_step or 8
-        self.learning_rate = learning_rate or 0.001
+        self.n_recurrent_step = n_recurrent_step or 12
+        self.learning_rate = learning_rate or 0.005
 
         self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
         self.variable_scope_name_x_initial = variable_scope_name_x_initial or 'cell_x_initial'
@@ -208,7 +208,7 @@ class DcmRnn(Initialization):
     def add_hemodynamic_layer(self, x_extended=None, h_state_initial=None):
         """
         Conceptually, hemodynamic layer consists of five parts:
-        # format: h_state_initial[region, 4]
+        # format: h_initial_segment[region, 4]
         # format: h_prelude[self.shift_x_y][region, 4]
         # format: h_state_predicted[self.n_recurrent_step][region, 4]
         # format: h_connector[region, 4]
@@ -340,7 +340,7 @@ class DcmRnn(Initialization):
             self.h_state_initial_default = \
                 self.set_initial_hemodynamic_state_as_inactivated(n_node=self.n_region).astype(np.float32)
             self.h_state_initial = \
-                tf.get_variable('h_state_initial',
+                tf.get_variable('h_initial_segment',
                                 initializer=self.h_state_initial_default,
                                 trainable=False)
 
