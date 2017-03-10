@@ -106,29 +106,12 @@ class OrderedDict(collections.OrderedDict):
             return self.key_order.index(key)
 
 
-def split(data, n_segment, split_dimension=0):
+def split(data, n_segment, n_step=None, shift=0, split_dimension=0):
     """
-    Split a large array data into list of segments
-    :param data:
-    :param split_dimension:
-    :param n_segment: length of a segment
-    :return:
-    """
-    n_total = data.shape[split_dimension]
-
-    if n_total % n_segment == 0:
-        output = np.array_split(data, int(n_total / n_segment), split_dimension)
-    else:
-        n_truncated = np.floor(n_total / n_segment) * n_segment
-        data_truncated = data[:n_truncated]
-        output = np.array_split(data_truncated, int(n_truncated / n_segment), split_dimension)
-    return output
-
-def split_advanced(data, n_segment, shift=0, split_dimension=0, n_step=None):
-    """
-    Split a large array data into list of segments, ignoring the beginning shift points
+    Split a large array data into list of segments with step size n_step, ignoring the beginning shift points
     :param data:
     :param n_segment:
+    :param n_step:
     :param shift:
     :param split_dimension:
     :param n_step:
@@ -137,23 +120,45 @@ def split_advanced(data, n_segment, shift=0, split_dimension=0, n_step=None):
     n_step = n_step or n_segment
     length = data.shape[split_dimension]
     data_shifted = np.take(data, range(shift, length), split_dimension)
-    n_total = length - shift
-    if n_total % n_segment == 0:
-        output = np.array_split(data_shifted, int(n_total / n_segment), split_dimension)
-    else:
-        n_truncated = np.int64(np.floor(n_total / n_segment) * n_segment)
-        data_truncated = np.take(data_shifted, range(n_truncated), split_dimension)
-        output = np.array_split(data_truncated, int(n_truncated / n_segment), split_dimension)
+    length_after_shift = length - shift
+    output = []
+    for i in range(0, length_after_shift - n_segment + 1, n_step):
+        assert i + n_segment <= length_after_shift
+        output.append(np.take(data_shifted, range(i, i + n_segment), split_dimension))
     return output
 
+
+def merge(data_list, n_segment, n_step=None, merge_dimension=0):
+    """
+    :param data_list:
+    :param n_segment:
+    :param n_step:
+    :param split_dimension:
+    :return:
+    """
+    n_step = n_step or n_segment
+    shape_output = list(data_list[0].shape)
+    shape_output[merge_dimension] = (len(data_list) - 1) * n_step + n_segment
+    output = np.zeros(shape_output)
+    average_template = np.zeros(output.shape)
+    fancy_index = [slice(None)] * output.ndim
+    for i in range(len(data_list)):
+        start_point = i * n_step
+        end_point = start_point + n_segment
+        fancy_index[merge_dimension] = range(start_point, end_point)
+        output[fancy_index] = data_list[i]
+        average_template[fancy_index] += 1.
+    output = output / average_template
+    return output
+
+
 def split_data_for_initializer_graph(x_data, y_data, n_segment, shift_x_h):
-    x_splits = split_advanced(x_data, n_segment)
-    y_splits = split_advanced(y_data, n_segment, shift_x_h)
+    x_splits = split(x_data, n_segment)
+    y_splits = split(y_data, n_segment, shift=shift_x_h)
     n_segments = min(len(x_splits), len(y_splits))
     x_splits = x_splits[:n_segments]
     y_splits = y_splits[:n_segments]
     return [x_splits, y_splits]
-
 
 
 class Initialization:

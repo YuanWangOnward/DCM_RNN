@@ -130,7 +130,6 @@ with tf.Session() as sess:
     plt.plot(du.get('x')[:dr.shift_data + dr.n_recurrent_step, :])
 
 
-
 sess = tf.InteractiveSession()
 sess.run(tf.global_variables_initializer())
 h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
