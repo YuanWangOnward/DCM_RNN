@@ -124,15 +124,17 @@ def split(data, n_segment, split_dimension=0):
         output = np.array_split(data_truncated, int(n_truncated / n_segment), split_dimension)
     return output
 
-def split_with_shift(data, n_segment, shift=0, split_dimension=0):
+def split_advanced(data, n_segment, shift=0, split_dimension=0, n_step=None):
     """
     Split a large array data into list of segments, ignoring the beginning shift points
     :param data:
     :param n_segment:
     :param shift:
     :param split_dimension:
+    :param n_step:
     :return:
     """
+    n_step = n_step or n_segment
     length = data.shape[split_dimension]
     data_shifted = np.take(data, range(shift, length), split_dimension)
     n_total = length - shift
@@ -145,8 +147,8 @@ def split_with_shift(data, n_segment, shift=0, split_dimension=0):
     return output
 
 def split_data_for_initializer_graph(x_data, y_data, n_segment, shift_x_h):
-    x_splits = split_with_shift(x_data, n_segment)
-    y_splits = split_with_shift(y_data, n_segment, shift_x_h)
+    x_splits = split_advanced(x_data, n_segment)
+    y_splits = split_advanced(y_data, n_segment, shift_x_h)
     n_segments = min(len(x_splits), len(y_splits))
     x_splits = x_splits[:n_segments]
     y_splits = y_splits[:n_segments]

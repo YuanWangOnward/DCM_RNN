@@ -40,6 +40,8 @@ class DcmRnn(Initialization):
         Initialization.__init__(self)
         self.n_recurrent_step = n_recurrent_step or 12
         self.learning_rate = learning_rate or 0.005
+        self.shift_x_y = 3
+        self.shift_data = 4
 
         self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
         self.variable_scope_name_x_initial = variable_scope_name_x_initial or 'cell_x_initial'
@@ -77,8 +79,7 @@ class DcmRnn(Initialization):
                                   'x_h_coupling': False
                                   }
 
-        self.shift_x_y = 3
-        self.shift_data = self.n_recurrent_step
+
 
     def collect_parameters(self, du):
         """

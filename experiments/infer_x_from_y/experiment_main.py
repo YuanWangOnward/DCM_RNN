@@ -25,11 +25,16 @@ for key in dr.trainable_flags_h.keys():
 dr.build_an_initializer_graph(hemodynamic_parameter_initial=None)
 
 # prepare data
+'''
 data = {'x': tb.split_data_for_initializer_graph(
             du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_y)[0],
         'y_true': tb.split_data_for_initializer_graph(
             du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_y)[1],
         }
+'''
+data = {'x': [du.get('x')[: dr.n_recurrent_step], du.get('x')[dr.shift_data: dr.shift_data + dr.n_recurrent_step]],
+        'y_true': [du.get('y')[3: 3 + dr.n_recurrent_step],
+                   du.get('y')[3 + dr.shift_data: 3 + dr.shift_data + dr.n_recurrent_step]]}
 
 # n_segments = len(data['y_true'])
 n_segments = 2
@@ -39,7 +44,7 @@ data['x_hat'] = [np.zeros([dr.n_recurrent_step, dr.n_region]) for _ in range(n_s
 # training
 # Launch the graph
 
-TRAIN_EPOCHS = 20
+TRAIN_EPOCHS = 50
 DISPLAY_STEP = 1
 isess = tf.InteractiveSession()
 sess = isess
@@ -115,8 +120,15 @@ with tf.Session() as sess:
 
     print("Optimization Finished!")
     plt.figure()
-    plt.plot(x_hat_temp[:n_time_point_testing, :])
-    plt.plot(du.get('x')[:n_time_point_testing, :])
+    #plt.plot(x_hat_temp[:n_time_point_testing, :])
+    #plt.plot(du.get('x')[:n_time_point_testing, :])
+    temp = np.zeros((dr.shift_data + dr.n_recurrent_step, dr.n_region))
+    temp[:dr.n_recurrent_step, :] = data['x_hat'][0].copy()
+    temp[dr.shift_data:, :] += data['x_hat'][1].copy()
+    temp[dr.shift_data: dr.n_recurrent_step, :] = temp[dr.shift_data: dr.n_recurrent_step, :] / 2.
+    plt.plot(temp)
+    plt.plot(du.get('x')[:dr.shift_data + dr.n_recurrent_step, :])
+
 
 
 sess = tf.InteractiveSession()
@@ -143,4 +155,6 @@ plt.title('y_true')
 plt.figure()
 plt.plot(y_predicted)
 plt.title('y_predicted')
+
+
 
