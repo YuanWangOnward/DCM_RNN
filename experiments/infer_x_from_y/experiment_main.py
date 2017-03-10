@@ -25,19 +25,12 @@ for key in dr.trainable_flags_h.keys():
 dr.build_an_initializer_graph(hemodynamic_parameter_initial=None)
 
 # prepare data
-'''
-data = {'x': tb.split_data_for_initializer_graph(
-            du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_y)[0],
-        'y_true': tb.split_data_for_initializer_graph(
-            du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_y)[1],
-        }
-'''
-data = {'x': [du.get('x')[: dr.n_recurrent_step], du.get('x')[dr.shift_data: dr.shift_data + dr.n_recurrent_step]],
-        'y_true': [du.get('y')[3: 3 + dr.n_recurrent_step],
-                   du.get('y')[3 + dr.shift_data: 3 + dr.shift_data + dr.n_recurrent_step]]}
+data = {}
+data['x_true'], data['y_true'] = tb.split_data_for_initializer_graph(
+    du.get('x'), du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift_x_h=dr.shift_x_y)
 
 # n_segments = len(data['y_true'])
-n_segments = 2
+n_segments = 1
 n_time_point_testing = n_segments * dr.n_recurrent_step
 data['x_hat'] = [np.zeros([dr.n_recurrent_step, dr.n_region]) for _ in range(n_segments)]
 
@@ -122,6 +115,7 @@ with tf.Session() as sess:
     plt.figure()
     #plt.plot(x_hat_temp[:n_time_point_testing, :])
     #plt.plot(du.get('x')[:n_time_point_testing, :])
+    x_hat = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     temp = np.zeros((dr.shift_data + dr.n_recurrent_step, dr.n_region))
     temp[:dr.n_recurrent_step, :] = data['x_hat'][0].copy()
     temp[dr.shift_data:, :] += data['x_hat'][1].copy()
@@ -136,11 +130,11 @@ h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_
 
 
 temp = data['x_hat'][0].copy()
-temp = data['x'][0].copy()
-temp[-1, :] = data['x'][0][-1, :].copy()
+temp = data['x_true'][0].copy()
+temp[-1, :] = data['x_true'][0][-1, :].copy()
 
 y_predicted = dr.run_initializer_graph(sess, h_initial_segment, data['x_hat'])[0]
-y_true = dr.run_initializer_graph(sess, h_initial_segment, data['x'][: n_segments])[0]
+y_true = dr.run_initializer_graph(sess, h_initial_segment, data['x_true'][: n_segments])[0]
 
 
 print(tb.mse(y_true, y_predicted))

@@ -56,4 +56,13 @@ class TestToolboxUtilities(TestCase):
         merged = tb.merge(splits, n_segment=n_segment, n_step=n_step, merge_dimension=split_dimension)
         np.testing.assert_array_equal(data, merged)
 
+        n_segment = 4
+        n_step = 2
+        shift = 0
+        split_dimension = 0
+        data = np.random.rand(16)
+        splits = tb.split(data, n_segment=n_segment, n_step=n_step, shift=shift, split_dimension=split_dimension)
+        merged = tb.merge(splits, n_segment=n_segment, n_step=n_step, merge_dimension=split_dimension)
+        np.testing.assert_array_equal(data, merged)
+
 

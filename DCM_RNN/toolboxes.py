@@ -146,15 +146,15 @@ def merge(data_list, n_segment, n_step=None, merge_dimension=0):
         start_point = i * n_step
         end_point = start_point + n_segment
         fancy_index[merge_dimension] = range(start_point, end_point)
-        output[fancy_index] = data_list[i]
+        output[fancy_index] += data_list[i]
         average_template[fancy_index] += 1.
     output = output / average_template
     return output
 
 
-def split_data_for_initializer_graph(x_data, y_data, n_segment, shift_x_h):
-    x_splits = split(x_data, n_segment)
-    y_splits = split(y_data, n_segment, shift=shift_x_h)
+def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_h):
+    x_splits = split(x_data, n_segment, n_step=n_step)
+    y_splits = split(y_data, n_segment, n_step=n_step, shift=shift_x_h)
     n_segments = min(len(x_splits), len(y_splits))
     x_splits = x_splits[:n_segments]
     y_splits = y_splits[:n_segments]
