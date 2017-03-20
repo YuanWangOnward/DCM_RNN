@@ -374,7 +374,7 @@ class DcmRnn(Initialization):
         :param sess:
         :param h_state_initial:
         :param data_x: a list of neural activity signal segment
-        :return: [y_predicted, h_state_monitor]
+        :return: [y_hat, h_state_monitor]
         """
         h_state_monitor = []
         y_predicted = []

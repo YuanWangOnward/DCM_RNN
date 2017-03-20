@@ -6,9 +6,17 @@ import os
 import matplotlib.pyplot as plt
 import importlib
 import copy
+import pickle
+import datetime
 
 importlib.reload(tfm)
 importlib.reload(tb)
+
+# global setting
+MAX_EPOCHS = 50
+CHECK_STEPS = 5
+STOP_THRESHOLD = 1e-3
+IF_SHOW_FMRI_SIGNAL = False
 
 # load in data
 current_dir = os.getcwd()
@@ -39,11 +47,7 @@ data['y_true'] = data['y_true'][:n_segments]
 data['x_hat'] = [np.zeros([dr.n_recurrent_step, dr.n_region]) for _ in range(n_segments)]
 
 # training
-TRAIN_EPOCHS = 50
-DISPLAY_STEP = 5
-STOP_THRESHOLD = 1e-3
 x_hat_previous = copy.deepcopy(data['x_hat'])
-
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
 
@@ -69,7 +73,7 @@ with tf.Session() as sess:
     plt.plot(du.get('x')[:n_time_point_testing, :])
 
     # Fit all training data
-    for epoch in range(TRAIN_EPOCHS):
+    for epoch in range(MAX_EPOCHS):
         h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
         for idx in range(n_segments):
             # assign proper data
@@ -83,7 +87,7 @@ with tf.Session() as sess:
         # Display logs per epoch step
         # loss_total = 0
         h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
-        if epoch % DISPLAY_STEP == 0:
+        if epoch % CHECK_STEPS == 0:
             sess.run(dr.clear_loss_total)
             for idx in range(n_segments):
                 # assign proper value
@@ -100,7 +104,7 @@ with tf.Session() as sess:
             print("Epoch:", '%04d' % (epoch + 1),
                   "x_total_loss=", "{:.9f}".format(tb.mse(x_hat_temp, du.get('x')[:n_time_point_testing, :])))
 
-        # check stop criterion
+            # check stop criterion
             relative_change = tb.rmse(np.concatenate(x_hat_previous), np.concatenate(data['x_hat']))
             if relative_change < STOP_THRESHOLD:
                 print('Relative change: ' + str(relative_change))
@@ -109,44 +113,53 @@ with tf.Session() as sess:
             else:
                 x_hat_previous = copy.deepcopy(data['x_hat'])
 
-
     print("Optimization Finished!")
     plt.figure()
-    #plt.plot(x_hat_temp[:n_time_point_testing, :])
-    #plt.plot(du.get('x')[:n_time_point_testing, :])
+    # plt.plot(x_hat_temp[:n_time_point_testing, :])
+    # plt.plot(du.get('x')[:n_time_point_testing, :])
     x_hat = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     x_true = tb.merge(data['x_true'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     plt.plot(x_hat)
     plt.plot(x_true)
-
-
-
 
 # show predicted fMRI signal
 h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    y_predicted = dr.run_initializer_graph(sess, h_initial_segment, data['x_hat'][: n_segments])[0]
+    y_hat = dr.run_initializer_graph(sess, h_initial_segment, data['x_hat'][: n_segments])[0]
     y_true = dr.run_initializer_graph(sess, h_initial_segment, data['x_true'][: n_segments])[0]
 
-y_predicted = tb.merge(y_predicted, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+y_hat = tb.merge(y_hat, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
 y_true = tb.merge(y_true, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
 
-print(tb.rmse(y_true, y_predicted))
+if IF_SHOW_FMRI_SIGNAL:
+    plt.figure()
+    plt.subplot(1, 3, 1)
+    plt.plot(y_true)
+    plt.title('y_true')
+    plt.subplot(1, 3, 2)
+    plt.plot(y_hat)
+    plt.title('y_hat')
+    plt.subplot(1, 3, 3)
+    plt.plot(y_true - y_hat)
+    plt.title('error, rmse=' + str(tb.rmse(y_true, y_hat)))
 
-plt.figure()
-plt.plot(y_true - y_predicted)
+# save result
+data_saved = {}
+data_saved['MAX_EPOCHS'] = MAX_EPOCHS
+data_saved['CHECK_STEPS'] = CHECK_STEPS
+data_saved['STOP_THRESHOLD'] = STOP_THRESHOLD
+data_saved['du'] = du
+data_saved['dr'] = dr
+data_saved['epoch'] = epoch
 
-plt.figure()
-plt.plot(y_true)
-plt.title('y_true')
-plt.figure()
-plt.plot(y_predicted)
-plt.title('y_predicted')
+data_saved['n_segments'] = n_segments
+data_saved['x_hat'] = x_hat
+data_saved['x_true'] = x_true
+data_saved['y_hat'] = y_hat
+data_saved['y_true'] = y_true
 
-
-
-
-
-
+dt = datetime.datetime.now()
+file_name = "%04d%02d%02d%02d%02d%02d.pkl" % (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+pickle.dump(data_saved, open(file_name, "wb"))
