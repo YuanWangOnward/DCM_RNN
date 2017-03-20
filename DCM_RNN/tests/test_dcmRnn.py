@@ -30,8 +30,7 @@ class TestDcmRnn(TestCase):
         initial_values = self.du.get('hemodynamic_parameter').astype(np.float32)
         self.dr.create_shared_variables_h(initial_values)
 
-    '''
-        def test_initializer_graph_forward_pass(self):
+    def test_initializer_graph_forward_pass(self):
         du = self.du
         dr = self.dr
 
@@ -41,10 +40,11 @@ class TestDcmRnn(TestCase):
         isess.run(tf.global_variables_initializer())
 
         # prepare data
+        # split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_h):
         data = {'x': tb.split_data_for_initializer_graph(
-                    du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_y)[0],
+                    du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)[0],
                 'y': tb.split_data_for_initializer_graph(
-                    du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_x_y)[1],
+                    du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)[1],
                 'h': tb.split(du.get('h'), dr.n_recurrent_step, 0)}
 
         h_state_initial = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
@@ -52,16 +52,19 @@ class TestDcmRnn(TestCase):
         # run forward
         y_predicted, h_state_predicted = dr.run_initializer_graph(isess, h_state_initial, data['x'])
 
-        # test
-        np.testing.assert_array_almost_equal(
-            np.array(np.concatenate(data['h'][:-1]), dtype=np.float32),
-            np.array(h_state_predicted, dtype=np.float32))
+        # merge results
+        y_predicted = tb.merge(y_predicted, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
 
+        # test
+        '''
         np.testing.assert_array_almost_equal(
-            np.array(np.concatenate(data['y']), dtype=np.float32),
+            np.array(du.get('h'), dtype=np.float32),
+            np.array(h_state_predicted, dtype=np.float32))
+        '''
+        np.testing.assert_array_almost_equal(
+            np.array(du.get('y')[dr.shift_x_y: dr.shift_x_y + y_predicted.shape[0], :], dtype=np.float32),
             np.array(y_predicted, dtype=np.float32),
             decimal=4)
-    '''
 
 
     def test_mse(self):

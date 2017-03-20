@@ -152,9 +152,9 @@ def merge(data_list, n_segment, n_step=None, merge_dimension=0):
     return output
 
 
-def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_h):
+def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_y):
     x_splits = split(x_data, n_segment, n_step=n_step)
-    y_splits = split(y_data, n_segment, n_step=n_step, shift=shift_x_h)
+    y_splits = split(y_data, n_segment, n_step=n_step, shift=shift_x_y)
     n_segments = min(len(x_splits), len(y_splits))
     x_splits = x_splits[:n_segments]
     y_splits = y_splits[:n_segments]

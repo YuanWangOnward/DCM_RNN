@@ -2,6 +2,7 @@
 import tensorflow as tf
 import numpy as np
 from DCM_RNN.toolboxes import Initialization
+import DCM_RNN.toolboxes as tb
 
 
 def reset_interactive_sesssion(isess):
@@ -385,8 +386,7 @@ class DcmRnn(Initialization):
             h_state_initial_segment = h_connector
             h_state_monitor.append(h_segment)
             y_predicted.append(y_segment)
-        h_state_monitor = np.concatenate(h_state_monitor)
-        y_predicted = np.concatenate(y_predicted)
+
         return [y_predicted, h_state_monitor]
 
     # unitilies

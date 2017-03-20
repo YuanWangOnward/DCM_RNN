@@ -44,6 +44,15 @@ class TestToolboxUtilities(TestCase):
         np.testing.assert_array_equal(splits[1], np.take(data, range(2, 6), split_dimension))
         np.testing.assert_array_equal(splits[2], np.take(data, range(4, 8), split_dimension))
 
+        n_segment = 4
+        n_step = 2
+        shift = 2
+        split_dimension = 1
+        data = np.random.rand(40, 8, 40)
+        splits = tb.split(data, n_segment=n_segment, n_step=n_step, shift=shift, split_dimension=split_dimension)
+        np.testing.assert_array_equal(splits[0], np.take(data, range(2, 6), split_dimension))
+        np.testing.assert_array_equal(splits[1], np.take(data, range(4, 8), split_dimension))
+
 
 
     def test_merge(self):
@@ -64,5 +73,25 @@ class TestToolboxUtilities(TestCase):
         splits = tb.split(data, n_segment=n_segment, n_step=n_step, shift=shift, split_dimension=split_dimension)
         merged = tb.merge(splits, n_segment=n_segment, n_step=n_step, merge_dimension=split_dimension)
         np.testing.assert_array_equal(data, merged)
+
+        n_segment = 4
+        n_step = 2
+        shift = 2
+        split_dimension = 1
+        data = np.random.rand(40, 8, 40)
+        splits = tb.split(data, n_segment=n_segment, n_step=n_step, shift=shift, split_dimension=split_dimension)
+        merged = tb.merge(splits, n_segment=n_segment, n_step=n_step, merge_dimension=split_dimension)
+        np.testing.assert_array_equal(np.take(data, range(shift, 8), split_dimension), merged)
+
+        n_segment = 4
+        n_step = 2
+        shift = 3
+        split_dimension = 0
+        data = np.random.rand(40, 8, 40)
+        splits = tb.split(data, n_segment=n_segment, n_step=n_step, shift=shift, split_dimension=split_dimension)
+        merged = tb.merge(splits, n_segment=n_segment, n_step=n_step, merge_dimension=split_dimension)
+        np.testing.assert_array_equal(
+            np.take(data, range(shift, shift + merged.shape[split_dimension]), split_dimension), merged)
+
 
 
