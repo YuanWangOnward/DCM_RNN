@@ -4,13 +4,13 @@ import DCM_RNN.toolboxes as tb
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-import importlib
+# import importlib
 import copy
 import pickle
 import datetime
 
-importlib.reload(tfm)
-importlib.reload(tb)
+# importlib.reload(tfm)
+# importlib.reload(tb)
 
 # global setting
 MAX_EPOCHS = 50
