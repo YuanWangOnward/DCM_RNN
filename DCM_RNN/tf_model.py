@@ -40,7 +40,7 @@ class DcmRnn(Initialization):
                  log_directory=None):
         Initialization.__init__(self)
         self.n_recurrent_step = n_recurrent_step or 12
-        self.learning_rate = learning_rate or 0.005
+        self.learning_rate = learning_rate or 0.01
         self.shift_x_y = 3
         self.shift_data = 2
 
@@ -79,8 +79,6 @@ class DcmRnn(Initialization):
                                   'theta0': False,
                                   'x_h_coupling': False
                                   }
-
-
 
     def collect_parameters(self, du):
         """
@@ -354,10 +352,11 @@ class DcmRnn(Initialization):
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
             self.loss = self.mse(self.y_true, self.y_predicted_stacked, "loss")
+            self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
+            self.loss_combined = self.loss + 0 * self.loss_smooth
         with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
             self.loss_total = tf.get_variable('loss_total', initializer=0., trainable=False)
-            # self.loss_total = self.loss_total + self.loss
-            self.sum_loss = tf.assign_add(self.loss_total, self.loss, name='accumulate_loss')
+            self.sum_loss = tf.assign_add(self.loss_total, self.loss_combined, name='accumulate_loss')
             self.clear_loss_total = tf.assign(self.loss_total, 0., name='clear_loss_total')
 
         # define optimiser

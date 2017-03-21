@@ -8,7 +8,7 @@ if current_dir.split('/')[-1] == "DCM-RNN":
     os.chdir(current_dir + '/experiments/infer_x_from_y')
 
 
-file_name = "20170320121002.pkl"
+file_name = "20170321071406.pkl"
 data = pickle.load(open(file_name, "rb"))
 
 x_hat = data['x_hat']
