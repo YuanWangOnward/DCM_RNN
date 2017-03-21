@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #PBS -l nodes=1:ppn=2
-#PBS -l walltime=12:00:00
+#PBS -l walltime=1:00:00
 #PBS -l mem=8GB
 #PBS -N infer_x_from_y_
 #PBS -M yw1225@nyu.edu
