@@ -4,3 +4,6 @@ DCM_RNN/__pycache__/
 .ipynb_checkpoints/
 __pycache__/
 .idea/
+*/infer_x_from_y/logs
+*.pkl
+

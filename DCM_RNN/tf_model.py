@@ -40,7 +40,7 @@ class DcmRnn(Initialization):
                  log_directory=None):
         Initialization.__init__(self)
         self.n_recurrent_step = n_recurrent_step or 12
-        self.learning_rate = learning_rate or 0.01
+        self.learning_rate = learning_rate or 0.005
         self.shift_x_y = 3
         self.shift_data = 2
 

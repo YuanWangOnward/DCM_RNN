@@ -13,11 +13,11 @@ import datetime
 # importlib.reload(tb)
 
 # global setting
-MAX_EPOCHS = 50
-CHECK_STEPS = 1
+MAX_EPOCHS = 500
+CHECK_STEPS = 50
 STOP_THRESHOLD = 1e-3
 IF_SHOW_FMRI_SIGNAL = False
-IF_SAVE_IN_TRAIN = False
+IF_SAVE_IN_TRAIN = True
 
 # load in data
 current_dir = os.getcwd()
@@ -43,7 +43,7 @@ data['x_hat'] = tb.split(0.25 * np.ones(du.get('x').shape) * np.mean(du.get('y')
                          n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
 
 # take partial data for test
-n_segments = 8
+n_segments = 32
 n_time_point_testing = dr.n_recurrent_step + (n_segments - 1) * dr.shift_data
 data['x_true'] = data['x_true'][:n_segments]
 data['y_true'] = data['y_true'][:n_segments]
@@ -93,8 +93,8 @@ with tf.Session() as sess:
             data['x_hat'][idx], h_initial_segment = sess.run([dr.x_state_stacked, dr.h_connector])
 
         # merge and re-split estimated x
-        x_hat_temp = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-        data['x_hat'] = tb.split(x_hat_temp, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+        # x_hat_temp = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+        # data['x_hat'] = tb.split(x_hat_temp, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
 
         # Display logs per epoch step
         # loss_total = 0
@@ -147,13 +147,12 @@ with tf.Session() as sess:
                 break
             else:
                 x_hat_previous = copy.deepcopy(data['x_hat'])
-
-    print("Optimization Finished!")
-    x_hat = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-    x_true = du.get('x')[:n_time_point_testing, :]
-    plt.figure()
-    plt.plot(x_true)
-    plt.plot(x_hat, '--')
+print("Optimization Finished!")
+x_hat = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+x_true = du.get('x')[:n_time_point_testing, :]
+plt.figure()
+plt.plot(x_true)
+plt.plot(x_hat, '--')
 
 # show predicted fMRI signal
 h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
