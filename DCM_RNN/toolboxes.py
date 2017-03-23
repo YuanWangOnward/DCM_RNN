@@ -127,6 +127,29 @@ def split(data, n_segment, n_step=None, shift=0, split_dimension=0):
         output.append(np.take(data_shifted, range(i, i + n_segment), split_dimension))
     return output
 
+def split_index(data_shape, n_segment, n_step=None, shift=0, split_dimension=0):
+    """
+    Return a fancy index list so that corresponding segment can be manipulated easily
+    :param data_shape:
+    :param n_segment:
+    :param n_step:
+    :param shift:
+    :param plit_dimension:
+    :return:
+    """
+    n_step = n_step or n_segment
+    length = data_shape[split_dimension]
+
+    output = []
+    for i in range(shift, length - n_segment + 1, n_step):
+        assert i + n_segment <= length
+        fancy_index = [slice(None)] * len(data_shape)
+        start_point = i
+        end_point = i + n_segment
+        fancy_index[split_dimension] = range(start_point, end_point)
+        output.append(fancy_index)
+    return output
+
 
 def merge(data_list, n_segment, n_step=None, merge_dimension=0):
     """
@@ -159,6 +182,27 @@ def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_
     x_splits = x_splits[:n_segments]
     y_splits = y_splits[:n_segments]
     return [x_splits, y_splits]
+
+
+class ArrayWrapper:
+    """
+    Allow easy and fast access to np.array segment with simple index
+    """
+    def __init__(self,  array, n_segment, n_step=None, shift=0, split_dimension=0):
+        self.data = array
+        self.n_segment = n_segment
+        self.n_step = n_step or n_segment
+        self.shift = shift
+        self.split_dimension = split_dimension
+
+        self.indices = split_index(self.data.shape, self.n_segment, self.n_step, self.shift, self.split_dimension)
+
+    def set(self, index, data):
+        self.data[self.indices[index]] = data
+
+    def get(self, index):
+        return self.data[self.indices[index]]
+
 
 
 class Initialization:

@@ -19,6 +19,8 @@ class DcmRnn(Initialization):
     def __init__(self,
                  n_recurrent_step=None,
                  learning_rate=None,
+                 stop_threshold=None,
+
                  variable_scope_name_x_parameter=None,
                  variable_scope_name_x_initial=None,
                  variable_scope_name_x=None,
@@ -41,6 +43,7 @@ class DcmRnn(Initialization):
         Initialization.__init__(self)
         self.n_recurrent_step = n_recurrent_step or 12
         self.learning_rate = learning_rate or 0.01
+        self.stop_threshold = stop_threshold or 1e-3
         self.shift_x_y = 3
         self.shift_data = 2
 
@@ -414,3 +417,5 @@ class DcmRnn(Initialization):
             tf.summary.scalar('max', tf.reduce_max(tensor))
             tf.summary.scalar('min', tf.reduce_min(tensor))
             tf.summary.histogram('histogram', tensor)
+
+

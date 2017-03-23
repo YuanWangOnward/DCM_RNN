@@ -53,8 +53,6 @@ class TestToolboxUtilities(TestCase):
         np.testing.assert_array_equal(splits[0], np.take(data, range(2, 6), split_dimension))
         np.testing.assert_array_equal(splits[1], np.take(data, range(4, 8), split_dimension))
 
-
-
     def test_merge(self):
         n_segment = 4
         n_step = 4
@@ -92,6 +90,47 @@ class TestToolboxUtilities(TestCase):
         merged = tb.merge(splits, n_segment=n_segment, n_step=n_step, merge_dimension=split_dimension)
         np.testing.assert_array_equal(
             np.take(data, range(shift, shift + merged.shape[split_dimension]), split_dimension), merged)
+
+    def test_split_index(self):
+        # split_index(data_shape, n_segment, n_step=None, shift=0, split_dimension=0)
+        array = np.ones((2, 8, 10))
+        indices = tb.split_index(array.shape, n_segment=2)
+        array[indices[0]] = 0
+        array_true = np.ones((2, 8, 10))
+        array_true[0: 2, :, :] = 0
+        np.testing.assert_array_equal(array, array_true)
+
+
+        array = np.ones((8, 8, 10))
+        indices = tb.split_index(array.shape, n_segment=2, n_step=1)
+        array[indices[0]] = 0
+        array[indices[1]] = 2
+        array_true = np.ones((8, 8, 10))
+        array_true[0: 2, :] = 0
+        array_true[1: 3, :] = 2
+        np.testing.assert_array_equal(array, array_true)
+
+        array = np.ones((8, 8, 10))
+        indices = tb.split_index(array.shape, n_segment=2, n_step=1, split_dimension=1)
+        array[indices[0]] = 0
+        array[indices[1]] = 2
+        array_true = np.ones((8, 8, 10))
+        array_true[:, 0: 2, :] = 0
+        array_true[:, 1: 3, :] = 2
+        np.testing.assert_array_equal(array, array_true)
+
+        array = np.ones((8, 8, 10))
+        indices = tb.split_index(array.shape, n_segment=4, n_step=2, shift=1, split_dimension=1)
+        array[indices[0]] = 0
+        array[indices[1]] = 2
+        array_true = np.ones((8, 8, 10))
+        array_true[:, 1: 5, :] = 0
+        array_true[:, 3: 7, :] = 2
+        np.testing.assert_array_equal(array, array_true)
+
+
+
+
 
 
 
