@@ -5,7 +5,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 # import importlib
-import copy
+# import copy
 import pickle
 import datetime
 
@@ -13,12 +13,14 @@ import datetime
 # importlib.reload(tb)
 
 # global setting
-MAX_EPOCHS = 500
-CHECK_STEPS = 50
+MAX_EPOCHS = 100
+CHECK_STEPS = 1
 STOP_THRESHOLD = 1e-3
 IF_SHOW_FMRI_SIGNAL = False
-IF_SAVE_IN_TRAIN = True
-
+IF_SAVE_IN_TRAIN = False
+IF_IMAGE_LOG = True
+IMAGE_LOG_DIR = './image_logs/'
+IMAGE_LOG_PREFIX = 'node1_segment128_learningRate0p01_'
 # load in data
 current_dir = os.getcwd()
 print('working directory is ' + current_dir)
@@ -30,6 +32,8 @@ du = tb.load_template(data_path)
 # build model
 dr = tfm.DcmRnn()
 dr.collect_parameters(du)
+## simplify to one node
+dr.n_region = 1
 # for initializer graph, hemodynamic parameters are set non-trainable
 for key in dr.trainable_flags_h.keys():
     dr.trainable_flags_h[key] = False
@@ -43,14 +47,21 @@ data['x_hat'] = tb.split(0.25 * np.ones(du.get('x').shape) * np.mean(du.get('y')
                          n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
 
 # take partial data for test
-n_segments = 32
+n_segments = 128
 n_time_point_testing = dr.n_recurrent_step + (n_segments - 1) * dr.shift_data
 data['x_true'] = data['x_true'][:n_segments]
 data['y_true'] = data['y_true'][:n_segments]
 data['x_hat'] = data['x_hat'][:n_segments]
+# simplify into one node
+data['x_true'] = [array[:, 0].reshape(dr.n_recurrent_step, 1) for array in data['x_true']]
+data['y_true'] = [array[:, 0].reshape(dr.n_recurrent_step, 1) for array in data['y_true']]
+data['x_hat'] = [array[:, 0].reshape(dr.n_recurrent_step, 1) for array in data['x_hat']]
 
 # training
-x_hat_previous = copy.deepcopy(data['x_hat'])
+# x_hat_previous = copy.deepcopy(data['x_hat'])
+x_hat_previous = data['x_hat'].copy()
+x_total_loss = np.zeros(MAX_EPOCHS)
+y_total_loss = np.zeros(MAX_EPOCHS)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
 
@@ -70,7 +81,8 @@ with tf.Session() as sess:
     dr.summary_writer.add_summary(summary, epoch)
 
     x_hat_temp = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-    x_true_temp = du.get('x')[:n_time_point_testing, :]
+    x_true_temp = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+    # x_true_temp = du.get('x')[:n_time_point_testing, :]
     plt.figure()
     plt.plot(x_hat_temp)
     plt.plot(x_true_temp)
@@ -112,9 +124,47 @@ with tf.Session() as sess:
             summary = sess.run(dr.merged_summary)
             dr.summary_writer.add_summary(summary, epoch + 1)
             x_hat_temp = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-            x_true_temp = du.get('x')[:n_time_point_testing, :]
+            x_true_temp = tb.merge(data['x_true'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+            y_total_loss[epoch] = loss_total
+            x_total_loss[epoch] = tb.mse(x_hat_temp, x_true_temp)
             print("Epoch:", '%04d' % epoch, "y_total_loss=", "{:.9f}".format(loss_total))
             print("Epoch:", '%04d' % epoch, "x_total_loss=", "{:.9f}".format(tb.mse(x_hat_temp, x_true_temp)))
+
+            # image logs
+            if IF_IMAGE_LOG:
+                h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(
+                    np.float32)
+                sess.run(tf.global_variables_initializer())
+                y_hat = dr.run_initializer_graph(sess, h_initial_segment, data['x_hat'][: n_segments])[0]
+                y_true = dr.run_initializer_graph(sess, h_initial_segment, data['x_true'][: n_segments])[0]
+                y_hat = tb.merge(y_hat, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+                y_true = tb.merge(y_true, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+                y_true_train = tb.merge(data['y_true'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+
+                # plt.clf()
+                fig = plt.figure(figsize=(15, 5))
+                plt.subplot(1, 3, 1)
+                plt.plot(x_true_temp)
+                plt.plot(x_hat_temp, '--')
+                plt.title('x true and hat Epoch = ' + str(epoch))
+
+                plt.subplot(1, 3, 2)
+                plt.plot(y_true_train)
+                plt.plot(y_true)
+                plt.plot(y_hat, '--')
+                plt.title('y true and hat Epoch = ' + str(epoch))
+
+                plt.subplot(1, 3, 3)
+                plt.plot()
+                plt.plot(y_total_loss)
+                plt.plot(x_total_loss, '--')
+                plt.title('y and x total loss')
+                plt.tight_layout()
+
+
+                plot_file_name = IMAGE_LOG_DIR + IMAGE_LOG_PREFIX + str(epoch) + '.png'
+                plt.savefig(plot_file_name)
+                plt.close()
 
             # save result
             if IF_SAVE_IN_TRAIN:
@@ -146,17 +196,17 @@ with tf.Session() as sess:
                 print('Stop criterion met, stop training')
                 break
             else:
-                x_hat_previous = copy.deepcopy(data['x_hat'])
+                # x_hat_previous = copy.deepcopy(data['x_hat'])
+                x_hat_previous = data['x_hat'].copy()
 print("Optimization Finished!")
 x_hat = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-x_true = du.get('x')[:n_time_point_testing, :]
+x_true = tb.merge(data['x_true'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
 plt.figure()
 plt.plot(x_true)
 plt.plot(x_hat, '--')
 
 # show predicted fMRI signal
 h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
-
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     y_hat = dr.run_initializer_graph(sess, h_initial_segment, data['x_hat'][: n_segments])[0]

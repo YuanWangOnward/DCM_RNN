@@ -40,7 +40,7 @@ class DcmRnn(Initialization):
                  log_directory=None):
         Initialization.__init__(self)
         self.n_recurrent_step = n_recurrent_step or 12
-        self.learning_rate = learning_rate or 0.005
+        self.learning_rate = learning_rate or 0.01
         self.shift_x_y = 3
         self.shift_data = 2
 
@@ -361,6 +361,7 @@ class DcmRnn(Initialization):
 
         # define optimiser
         self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
+        # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
 
         # define summarizer
         self.variable_summaries(self.loss_total)
