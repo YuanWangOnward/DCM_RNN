@@ -377,17 +377,18 @@ class DcmRnn(Initialization):
         :return: [y_hat, h_state_monitor]
         """
         h_state_monitor = []
+        h_state_connector = []
         y_predicted = []
         h_state_initial_segment = h_state_initial
         for x_segment in data_x:
+            h_state_connector.append(h_state_initial_segment)
             y_segment, h_segment, h_connector = \
                 sess.run([self.y_predicted_stacked, self.h_state_monitor_stacked, self.h_connector],
                          feed_dict={self.x_state_stacked: x_segment, self.h_state_initial: h_state_initial_segment})
             h_state_initial_segment = h_connector
             h_state_monitor.append(h_segment)
             y_predicted.append(y_segment)
-
-        return [y_predicted, h_state_monitor]
+        return [y_predicted, h_state_monitor, h_state_connector]
 
     # unitilies
     def get_element_count(self, tensor):
