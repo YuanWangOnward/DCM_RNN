@@ -200,8 +200,11 @@ class ArrayWrapper:
     def set(self, index, data):
         self.data[self.indices[index]] = data
 
-    def get(self, index):
-        return self.data[self.indices[index]]
+    def get(self, index=None):
+        if index == None:
+            return self.data
+        else:
+            return self.data[self.indices[index]]
 
 
 
