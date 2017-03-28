@@ -480,7 +480,7 @@ class DCM_RNN:
     def process_gradients(self):
         parameter_profile = self.parameter_profile
         variable_names = self.names_in_graph
-        # self.processed_grads_and_vars = [(gv[0]*self.masks.gradient[self.names[idx]], gv[1]) for idx,gv in enumerate(self.grads_and_vars)]
+        # self.processed_grads_and_vars = [(gv[0]*self.masks.gradient[self.names[i_partition]], gv[1]) for i_partition,gv in enumerate(self.grads_and_vars)]
         self.processed_grads_and_vars = [(gv[0] * self.parameter_profile[variable_names[idx]]['mask_gradient'], gv[1])
                                          for idx, gv in enumerate(self.grads_and_vars)]
 

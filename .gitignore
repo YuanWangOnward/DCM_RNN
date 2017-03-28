@@ -7,4 +7,5 @@ __pycache__/
 */infer_x_from_y/logs
 *.pkl
 */infer_x_from_y/image_logs
-
+DCM_RNN/tests/logs
+DCM_RNN/resources/logs
