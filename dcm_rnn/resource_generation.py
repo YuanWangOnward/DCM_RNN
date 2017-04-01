@@ -1,4 +1,4 @@
-# This code is to generate template data.
+# This code is to generate resource data.
 
 import os
 import pickle

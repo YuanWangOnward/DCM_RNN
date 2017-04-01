@@ -19,7 +19,6 @@ file_path = os.path.dirname(os.path.realpath(__file__))
 os.chdir(file_path + "/data")
 print('working directory is ' + os.getcwd())
 
-
 for current_base_number in range(0, TOTAL_BASE_NUMBER):
     current_base_name = 'DB' + str(current_base_number)
     current_data = []
