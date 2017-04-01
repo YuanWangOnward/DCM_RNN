@@ -6,22 +6,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import time
-from PIL import Image
 
 from DCM_RNN import toolboxes
+
+
 importlib.reload(toolboxes)
 
+TOTAL_BASE_NUMBER = 1
+SAMPLE_PER_BASE = 2
 
 file_path = os.path.dirname(os.path.realpath(__file__))
-os.chdir(file_path + "/../data")
+os.chdir(file_path + "/data")
 print('working directory is ' + os.getcwd())
 
 
-for current_base_number in range(3, 4):
+for current_base_number in range(0, TOTAL_BASE_NUMBER):
     current_base_name = 'DB' + str(current_base_number)
     current_data = []
 
-    while len(current_data) < 500:
+    while len(current_data) < SAMPLE_PER_BASE:
         # new and setting
         du = toolboxes.DataUnit()
         du._secured_data['if_random_node_number'] = True
@@ -38,6 +41,9 @@ for current_base_number in range(3, 4):
         du_core = du.collect_parameter_core()
         current_data.append(du_core)
         print('Number of current cores base ' + str(len(current_data)))
+
+    # sort cores
+    current_data = sorted(current_data, key=lambda x: x.get('n_node'))
 
     # save cores
     print('Number of current cores base ' + str(len(current_data)))
