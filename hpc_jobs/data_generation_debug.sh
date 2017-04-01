@@ -11,17 +11,15 @@
 module purge
 module load python3/intel/3.5.3
 
-
 RUNDIR=$SCRATCH/data_generation/run-${SLURM_JOB_ID/.*}
-mkdir $RUNDIR
+mkdir -p $RUNDIR
 cd $RUNDIR
 
 # now start the Stata job:
-mkdir $RUNDIR/DCM_RNN
-cp ~/projects/DCM_RNN $RUNDIR/DCM_RNN
+mkdir -p $RUNDIR/DCM_RNN
+cp -a ~/projects/DCM_RNN $RUNDIR
 cd $RUNDIR/DCM_RNN
 python3 dcm_rnn/data_generation.py
-
 
 
 # leave a blank line at the end

@@ -6,21 +6,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import time
+from multiprocessing import Pool
 
-from dcm_rnn import toolboxes
-
+# import differently according to interpreter, local or HPC
+import sys
+if sys.executable == "/Users/yuanwang/anaconda/envs/tensorFlow/bin/python":
+    from dcm_rnn import toolboxes
+else:
+    import toolboxes
 
 importlib.reload(toolboxes)
 
-TOTAL_BASE_NUMBER = 1
-SAMPLE_PER_BASE = 2
 
-file_path = os.path.dirname(os.path.realpath(__file__))
-os.chdir(file_path + "/data")
-print('working directory is ' + os.getcwd())
-
-for current_base_number in range(0, TOTAL_BASE_NUMBER):
-    current_base_name = 'DB' + str(current_base_number)
+def build_a_base(current_base_number):
+    data_path = OUTPUT_DIR + '/DB' + str(current_base_number) + '.pkl'
     current_data = []
 
     while len(current_data) < SAMPLE_PER_BASE:
@@ -46,9 +45,33 @@ for current_base_number in range(0, TOTAL_BASE_NUMBER):
 
     # save cores
     print('Number of current cores base ' + str(len(current_data)))
-    data_path = current_base_name + '.pkl'
     with open(data_path, 'wb') as f:
         pickle.dump(current_data, f)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-o", "--output", help="output directory")
+    args = parser.parse_args()
+    if args.output:
+        print("Output directory is " + args.output)
+        OUTPUT_DIR = args.output
+    else:
+        current_dir = os.getcwd()
+        if current_dir.split('/')[-1] == "DCM_RNN":
+            OUTPUT_DIR = current_dir + '/data'
+        elif current_dir.split('/')[-1] == "dcm_rnn":
+            OUTPUT_DIR = current_dir + '/../data'
+        else:
+            raise ValueError("Cannot find default output directory. \
+                Specify it or run this script in package root directory")
+        print("Output directory is " + OUTPUT_DIR)
+
+    TOTAL_BASE_NUMBER = 10
+    SAMPLE_PER_BASE = 500
+    pool = Pool(os.cpu_count())
+    pool.map(build_a_base, range(TOTAL_BASE_NUMBER))
 
 
 '''
