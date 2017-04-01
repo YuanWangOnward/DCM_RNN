@@ -1,4 +1,4 @@
-import DCM_RNN.toolboxes as tb
+import dcm_rnn.toolboxes as tb
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -40,7 +40,7 @@ def random_walks(array, step_size, n_step, n_trail):
 tb.cdr("/../", if_print=True)
 
 
-template = tb.load_template("DCM_RNN/resources/template0.pkl")
+template = tb.load_template("dcm_rnn/resources/template0.pkl")
 A_truth = template.get('A')
 y_truth = template.get('y')
 std = np.sqrt(np.var(y_truth.flatten()))

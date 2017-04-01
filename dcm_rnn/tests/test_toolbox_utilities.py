@@ -1,6 +1,6 @@
 from unittest import TestCase
 import numpy as np
-import DCM_RNN.toolboxes as tb
+import dcm_rnn.toolboxes as tb
 
 class TestToolboxUtilities(TestCase):
     def test_split(self):

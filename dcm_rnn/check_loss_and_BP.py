@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import population
 
-from DCM_RNN import CBI
+from dcm_rnn import CBI
 
 importlib.reload(CBI)
 importlib.reload(population)

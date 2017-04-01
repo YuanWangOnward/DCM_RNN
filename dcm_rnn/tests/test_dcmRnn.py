@@ -1,9 +1,9 @@
 from unittest import TestCase
 import tensorflow as tf
-from DCM_RNN import toolboxes as tb
-from DCM_RNN.tf_model import DcmRnn
+from dcm_rnn import toolboxes as tb
+from dcm_rnn.tf_model import DcmRnn
 import numpy as np
-import DCM_RNN.tf_model as tfm
+import dcm_rnn.tf_model as tfm
 import tensorflow as tf
 import numpy as np
 

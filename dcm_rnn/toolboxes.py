@@ -646,9 +646,9 @@ class Initialization:
 
     def calculate_dcm_rnn_x_matrices(self, A, B, C, t_delta):
         """
-        Calculate matrices used in DCM_RNN for neural activity evolving.
+        Calculate matrices used in dcm_rnn for neural activity evolving.
         In DCM, neural level equation x'=Ax+\sigma(xBu)+Cu.
-        In DCM_RNN, neural level equation x_t+1 = Wxx * x_t + \sigma(x_t * Wxxu * u) + Wxu * u
+        In dcm_rnn, neural level equation x_t+1 = Wxx * x_t + \sigma(x_t * Wxxu * u) + Wxu * u
         :param A:
         :param B:
         :param C:
@@ -663,7 +663,7 @@ class Initialization:
 
     def calculate_dcm_rnn_h_matrices(self, hemodynamic_parameter, t_delta):
         """
-        Calculate matrices used in DCM_RNN for hemodynamic evolving.
+        Calculate matrices used in dcm_rnn for hemodynamic evolving.
         :param hemodynamic_parameter: pd.dataframe
         :param t_delta: time interval for approximate differential equations in second
         :return: {'Whh': [Whh], 'Whx': [Whx], 'bh': [bh], 'Wo': [Wo], 'bo': [bo]}
@@ -792,7 +792,7 @@ class ParameterGraph:
 
             'Wxx': ['A', 't_delta'],
             'Wxxu': ['B', 't_delta'],
-            'Wxu': ['C', 't_delta'],  # 'C' matrix equivalence in DCM_RNN model
+            'Wxu': ['C', 't_delta'],  # 'C' matrix equivalence in dcm_rnn model
 
             'Whh': ['hemodynamic_parameter', 't_delta'],
             'Whx': ['hemodynamic_parameter', 't_delta'],
@@ -1672,7 +1672,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def get_dcm_rnn_x_matrices(self):
         """
-        Return connection matrices of neural equation in DCM_RNN
+        Return connection matrices of neural equation in dcm_rnn
         :return: [Wxx, Wxxu, Wxu]
         """
         assert 'Wxx' in self._secured_data.keys()

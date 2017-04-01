@@ -1,8 +1,8 @@
 # This module contains the tensorflow model for DCM-RNN.
 import tensorflow as tf
 import numpy as np
-from DCM_RNN.toolboxes import Initialization
-import DCM_RNN.toolboxes as tb
+from dcm_rnn.toolboxes import Initialization
+import dcm_rnn.toolboxes as tb
 
 
 def reset_interactive_sesssion(isess):

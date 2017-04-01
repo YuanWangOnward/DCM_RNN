@@ -1,6 +1,6 @@
 import pickle
 import matplotlib.pyplot as plt
-import DCM_RNN.toolboxes as tb
+import dcm_rnn.toolboxes as tb
 import os
 
 current_dir = os.getcwd()

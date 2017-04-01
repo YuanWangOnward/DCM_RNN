@@ -3,7 +3,7 @@
 import os
 import pickle
 import numpy as np
-from DCM_RNN import toolboxes
+from dcm_rnn import toolboxes
 import matplotlib.pyplot as plt
 
 IF_CHECK_RESULT = True
@@ -67,7 +67,7 @@ if IF_CHECK_RESULT:
         plt.plot(x_axis, value)
 
 # save
-data_path = 'DCM_RNN/resources/template0' + '.pkl'
+data_path = 'dcm_rnn/resources/template0' + '.pkl'
 with open(data_path, 'wb') as f:
     pickle.dump(du, f)
 
@@ -117,7 +117,7 @@ if IF_CHECK_RESULT:
         plt.plot(x_axis, value)
 
 # save
-data_path = 'DCM_RNN/resources/template1' + '.pkl'
+data_path = 'dcm_rnn/resources/template1' + '.pkl'
 with open(data_path, 'wb') as f:
     pickle.dump(du, f)
 

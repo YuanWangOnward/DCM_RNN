@@ -1,11 +1,11 @@
 
 data/
-DCM_RNN/__pycache__/
+dcm_rnn/__pycache__/
 .ipynb_checkpoints/
 __pycache__/
 .idea/
 */infer_x_from_y/logs
 *.pkl
 */infer_x_from_y/image_logs
-DCM_RNN/tests/logs
-DCM_RNN/resources/logs
+dcm_rnn/tests/logs
+dcm_rnn/resources/logs

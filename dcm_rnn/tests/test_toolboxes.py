@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
-from DCM_RNN import toolboxes
+from dcm_rnn import toolboxes
 import random
-from DCM_RNN.toolboxes import OrderedDict
+from dcm_rnn.toolboxes import OrderedDict
 import pandas as pd
 import scipy as sp
 import scipy.stats

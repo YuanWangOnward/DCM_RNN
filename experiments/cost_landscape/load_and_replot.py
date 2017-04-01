@@ -1,4 +1,4 @@
-import DCM_RNN.toolboxes as tb
+import dcm_rnn.toolboxes as tb
 import numpy as np
 import matplotlib.pyplot as plt
 import importlib

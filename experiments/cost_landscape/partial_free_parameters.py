@@ -1,6 +1,6 @@
 # manipulate two parameters to see how fMRI signal changes
 
-import DCM_RNN.toolboxes as tb
+import dcm_rnn.toolboxes as tb
 from experiments.cost_landscape.load_and_replot import reproduce
 import numpy as np
 import matplotlib.pyplot as plt
@@ -187,7 +187,7 @@ def run_n(configure):
 # confirm working directory
 tb.cdr("/../", if_print=True)
 # load in template data_unite
-template = tb.load_template("DCM_RNN/resources/template0.pkl")
+template = tb.load_template("dcm_rnn/resources/template0.pkl")
 y_true = template.get('y')
 
 

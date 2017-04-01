@@ -2,7 +2,7 @@ import importlib
 import numpy as np
 import pickle
 
-from DCM_RNN import toolboxes
+from dcm_rnn import toolboxes
 importlib.reload(toolboxes)
 
 

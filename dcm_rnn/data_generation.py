@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pickle
 import time
 
-from DCM_RNN import toolboxes
+from dcm_rnn import toolboxes
 
 
 importlib.reload(toolboxes)

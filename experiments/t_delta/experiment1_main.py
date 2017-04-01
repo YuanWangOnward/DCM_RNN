@@ -5,10 +5,10 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 
-from DCM_RNN import toolboxes
+from dcm_rnn import toolboxes
 
 importlib.reload(toolboxes)
-from DCM_RNN import database_toolboxes as dbt
+from dcm_rnn import database_toolboxes as dbt
 importlib.reload(dbt)
 dbo = dbt.Operations()
 
