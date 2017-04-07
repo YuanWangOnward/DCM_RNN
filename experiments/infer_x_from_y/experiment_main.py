@@ -96,6 +96,9 @@ def calculate_log_data():
 
 
 def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
+    if not os.path.exists(image_log_dir):
+        os.makedirs(image_log_dir)
+
     log_file_name_prefix = get_log_prefix(extra_prefix)
 
     x_hat = tb.merge(x_hat_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
@@ -149,7 +152,7 @@ LOG_EXTRA_PREFIX = 'Estimation3_'
 # load in data
 current_dir = os.getcwd()
 print('working directory is ' + current_dir)
-if current_dir.split('/')[-1] == "DCM_RNN":
+if current_dir.split('/')[-1] == "dcm_rnn":
     os.chdir(current_dir + '/experiments/infer_x_from_y')
 data_path = "../../dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)

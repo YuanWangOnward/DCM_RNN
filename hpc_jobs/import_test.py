@@ -1,8 +1,8 @@
 
 
 # import tensorflow as tf
-# import DCM_RNN.tf_model as tfm
-# import DCM_RNN.toolboxes as tb
+# import dcm_rnn.tf_model as tfm
+# import dcm_rnn.tb as tb
 # import numpy as np
 import os
 import matplotlib.pyplot as plt

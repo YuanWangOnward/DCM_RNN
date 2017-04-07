@@ -49,24 +49,25 @@ def build_a_base(current_base_number):
         pickle.dump(current_data, f)
 
 
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--output", help="output directory")
-    args = parser.parse_args()
-    if args.output:
-        print("Output directory is " + args.output)
-        OUTPUT_DIR = args.output
-    else:
-        current_dir = os.getcwd()
-        if current_dir.split('/')[-1] == "DCM_RNN":
-            OUTPUT_DIR = current_dir + '/data'
-        elif current_dir.split('/')[-1] == "dcm_rnn":
-            OUTPUT_DIR = current_dir + '/../data'
+    if __name__ == '__main__':
+        import argparse
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-o", "--output", help="output directory")
+        args = parser.parse_args()
+        if args.output:
+            print("Output directory is " + args.output)
+            OUTPUT_DIR = args.output
         else:
-            raise ValueError("Cannot find default output directory. \
-                Specify it or run this script in package root directory")
-        print("Output directory is " + OUTPUT_DIR)
+            current_dir = os.getcwd()
+            if current_dir.split('/')[-1] == "dcm_rnn":
+                OUTPUT_DIR = current_dir + '/data'
+            elif current_dir.split('/')[-1] == "dcm_rnn":
+                OUTPUT_DIR = current_dir + '/../data'
+            else:
+                raise ValueError("Cannot find default output directory. \
+                    Specify it or run this script in package root directory")
+            print("Output directory is " + OUTPUT_DIR)
 
     TOTAL_BASE_NUMBER = 10
     SAMPLE_PER_BASE = 500
@@ -87,7 +88,7 @@ with open(data_path, 'rb') as f:
 
 for i in range(0, 20):
     plt.figure()
-    du = toolboxes.DataUnit()
+    du = tb.DataUnit()
     du.load_parameter_core(para_core_loaded[i])
     du.recover_data_unit()
     x_axis = np.arange(du._secured_data['n_time_point']) * du._secured_data['t_delta']

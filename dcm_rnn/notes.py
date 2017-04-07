@@ -29,9 +29,9 @@ category = {
 'A': 'neural',
 'B': 'neural',
 'C': 'neural',
-'Wxx': 'neural',  # 'A' matrix equivalence in DCM_RNN model
-'Wxxu': 'neural',  # 'B' matrices equivalence in DCM_RNN model
-'Wx': 'neural',  # 'C' matrix equivalence in DCM_RNN model
+'Wxx': 'neural',  # 'A' matrix equivalence in dcm_rnn model
+'Wxxu': 'neural',  # 'B' matrices equivalence in dcm_rnn model
+'Wx': 'neural',  # 'C' matrix equivalence in dcm_rnn model
 
 # one set for each region, all sets are placed in in r pandas.dataframe
 'alpha': 'hemodynamic',
@@ -135,12 +135,12 @@ para_forerunner = {
          'n_node',
          'n_stimuli',
          'initializer',
-         'B'],  # 'B' matrices equivalence in DCM_RNN model
+         'B'],  # 'B' matrices equivalence in dcm_rnn model
 'Wx': ['if_random_neural_parameter',
         'n_node',
         'n_stimuli',
         'initializer',
-        'C'],  # 'C' matrix equivalence in DCM_RNN model
+        'C'],  # 'C' matrix equivalence in dcm_rnn model
 
 'Whh': ['hemodynamic_parameter', 't_delta'],
 'Whx': ['hemodynamic_parameter', 't_delta'],

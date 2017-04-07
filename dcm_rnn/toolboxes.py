@@ -207,7 +207,6 @@ class ArrayWrapper:
             return self.data[self.indices[index]]
 
 
-
 class Initialization:
     def __init__(self,
                  n_node_low=None, n_node_high=None,
@@ -238,7 +237,7 @@ class Initialization:
         self.stimuli_node_ratio = stimuli_node_ratio or 1 / 3
         self.t_delta_low = t_delta_low or 0.05
         self.t_delta_high = t_delta_high or 0.5
-        self.scan_time_low = scan_time_low or 3 * 60  # in second
+        self.scan_time_low = scan_time_low or 5 * 60  # in second
         self.scan_time_high = scan_time_high or 10 * 60  # in second
 
         self.x_init_low = x_init_low or 0
