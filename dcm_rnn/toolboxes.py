@@ -1841,10 +1841,10 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
     def compare(self, arrays, ground_truth):
         """
-        Compare and calculate rMSE of each in arrays against ground_truth
+        Compare and calculate rMSEs of each in arrays against ground_truth
         :param arrays: r list of arrays of the same shape
         :param ground_truth: r array, used as ground truth
-        :return: r list of rMSE
+        :return: r list of rMSEs
         """
         rMSE = []
         ground_truth = ground_truth.flatten()
