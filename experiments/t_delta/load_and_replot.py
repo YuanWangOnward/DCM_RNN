@@ -1,6 +1,8 @@
 import os
 import pickle
 import numpy as np
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
 
@@ -52,30 +54,3 @@ if __name__ == '__main__':
     plt.show()
     plt.savefig(OUTPUT_DIR + 't_delta.png', bbox_inches='tight')
 
-
-
-
-
-'''
-
-# code left to show results
-for value in y_resampled:
-    plt.plot(value[:, 0])
-
-# load result
-
-data_path = os.getcwd() + '/../experiments/experiment1-t_delta/results' + str(i) + '.pkl'
-with open(data_path, 'rb') as f:
-    rMSEs = pickle.load(f)
-
-
-# plot histogram of rMSEs
-rMSEs = np.array(rMSEs)
-histogram = plt.figure()
-bins = np.linspace(0, 1, 100)
-for n in range(rMSEs.shape[1]):
-    temp = rMSEs[:, n]
-    temp = temp[~np.isnan(temp)]
-    plt.hist(temp, bins, alpha=0.5)
-plt.show()
-'''
