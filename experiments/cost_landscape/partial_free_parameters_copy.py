@@ -1,12 +1,10 @@
 # manipulate two parameters to see how fMRI signal changes
 import numpy as np
-import matplotlib
+import matplotlib.pyplot as plt
 import importlib
 import itertools
 import os
 import sys
-import pickle
-from multiprocessing import Pool
 
 
 def assign(du, target, location, value):
@@ -38,7 +36,7 @@ def run1(configure):
     file_name = parameter + str(location[0]) + str(location[1])
     file_name = file_name.lower()
     x_label = parameter + str(location)
-    stored_data_path = os.path.join(OUTPUT_DIR, file_name + "mse.pkl")
+    stored_data_path = "experiments/cost_landscape/" + file_name + "mse.pkl"
 
     # computing
     metric = np.zeros(len(value_range))
@@ -90,7 +88,7 @@ def run2(configure):
     annotate_xytext = (true_values[1], true_values[0] + 0.05)
     x_label = configure[1][0] + str(configure[1][1])
     y_label = configure[0][0] + str(configure[0][1])
-    stored_data_path = os.path.join(OUTPUT_DIR, file_name + "mse.pkl")
+    stored_data_path = "experiments/cost_landscape/" + file_name + "mse.pkl"
 
     # transfer
     r_range = value_ranges[0]
@@ -115,7 +113,7 @@ def run2(configure):
     plt.clabel(CS, inline=1, fontsize=10)
     plt.title('MSE contour map')
     plt.annotate(annotate_text, xy=annotate_xy, xytext=annotate_xytext,
-                 arrowprops=dict(facecolor='black', shrink=0.05))
+                 arrowprops=dict(facecolor='black', shrink=0.05), )
     plt.plot(annotate_xy[0], annotate_xy[1], 'bo')
     plt.xlabel(x_label)
     plt.ylabel(y_label)
@@ -153,7 +151,7 @@ def run_n(configure):
         value_ranges[idx] = np.linspace(true_values[idx] - 0.2, true_values[idx] + 0.2, 10)
         file_name = file_name + parameter + str(element_index[0]) + str(element_index[1])
     file_name = file_name.lower()
-    stored_data_path = os.path.join(OUTPUT_DIR, file_name + "mse.pkl")
+    stored_data_path = "experiments/cost_landscape/" + file_name + "mse.pkl"
 
     # computing
     metric_size = [len(x) for x in value_ranges]
@@ -179,6 +177,8 @@ def run_n(configure):
     tb.save_data(stored_data_path, stored_data)
     print('Results saved as ' + stored_data_path)
     return metric
+
+
 
 
 if __name__ == '__main__':
@@ -211,52 +211,14 @@ if __name__ == '__main__':
     if args.source:
         SOURCE_DIR = args.source
         if VERBOSE:
-            print("Source code directory: " + SOURCE_DIR)
+            print("Source code directory: " + OUTPUT_DIR)
     else:
         SOURCE_DIR = 'dcm_rnn'
         if VERBOSE:
-            print("Source code directory (default): " + SOURCE_DIR)
+            print("Source code directory (default): " + OUTPUT_DIR)
 
-    # choose matplotlib backend depending on interpreter used
-    if sys.executable == '/Users/yuanwang/anaconda/envs/tensorFlow/bin/python':
-        if VERBOSE:
-            print("It's a local run on Yuan's laptop. Matplotlib uses MacOSX backend")
-    else:
-        if VERBOSE:
-            print("It's NOT a local run on Yuan's laptop, Matplotlib uses AGG backend")
-        matplotlib.use('agg')
-    import matplotlib.pyplot as plt
 
-    sys.path.append(SOURCE_DIR)
-    import toolboxes as tb
-    from resource_generation import create_a_template
 
-    if not os.path.exists(OUTPUT_DIR):
-        os.mkdir(OUTPUT_DIR)
-
-    if VERBOSE:
-        print("Creating template DataUnit instance")
-    template = create_a_template(0)
-    y_true = template.get('y')
-
-    pool = Pool(os.cpu_count())
-
-    if VERBOSE:
-        print("Processing cost landscape, one free parameter")
-    iterable1 = itertools.product(range(template.get('A').shape[0]),
-                                  range(template.get('A').shape[1]))
-    iterable1 = itertools.product(['A'], list(iterable1))
-
-    with Pool(os.cpu_count()) as pool:
-        pool.map(run1, iterable1)
-        #print(pool.map(my_function, range(10)))
-    # pool.map(run1, list(iterable1))
-
-    # run2([('A', (1, 0)), ('A', (0, 0))])
-
-    #pool = Pool(os.cpu_count())
-
-    #pool.map(run, database_files)
 
 
     '''
@@ -271,11 +233,36 @@ if __name__ == '__main__':
     print('')
     '''
 
+
+    # to import module properly
+    sys.path.append(SOURCE_DIR)
+    # look for module
+    try:
+        file = 'dcm_rnn/toolboxes.py'
+        print('Checking file: ' + file)
+        print('If file exists: ' + str(os.path.exists(file)))
+        import dcm_rnn.toolboxes as tb
+
+        print('Import ' + file + ' successfully')
+    except ImportError:
+        try:
+            file = 'toolboxes.py'
+            print('Checking file: ' + file)
+            print('If file exists: ' + str(os.path.exists(file)))
+            import toolboxes as tb
+
+            print('Import ' + file + ' successfully')
+        except ImportError:
+            raise ValueError('Cannot import toolboxes')
+    importlib.reload(tb)
+
+
 '''
 # evaluate one parameter
 for r in range(3):
     for c in range(3):
         run1(('A', (r, c)))
+
 
 # evaluate two parameters
 run2([('A', (1, 0)), ('A', (0, 0))])
