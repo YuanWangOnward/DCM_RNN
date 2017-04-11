@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
-#SBATCH --time=60:00:00
+#SBATCH --time=120:00:00
 #SBATCH --mem=12GB
 #SBATCH --job-name=t_delta
 #SBATCH --mail-type=END
@@ -11,9 +11,10 @@
 module purge
 module load python3/intel/3.5.3
 
-RUNDIR=$SCRATCH/t_delta/run-${SLURM_JOB_ID/.*}
-DATADIR=$SCRATCH//data/DCM_RNN/generated
-OUTPUTDIR=$SCRATCH/DCM_RNN/t_delta/run-${SLURM_JOB_ID/.*}
+JOBNAME=t_delta
+RUNDIR=$SCRATCH/runs/$JOBNAME-${SLURM_JOB_ID/.*}
+DATADIR=$SCRATCH/data/DCM_RNN/generated
+OUTPUTDIR=$SCRATCH/results/DCM_RNN/t_delta/run-${SLURM_JOB_ID/.*}
 
 mkdir -p $RUNDIR
 mkdir -p $OUTPUTDIR

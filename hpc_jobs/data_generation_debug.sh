@@ -8,6 +8,7 @@
 #SBATCH --mail-user=yw1225@nyu.edu
 #SBATCH --output=slurm_%j.out
 
+
 module purge
 module load python3/intel/3.5.3
 

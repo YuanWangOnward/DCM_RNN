@@ -147,7 +147,7 @@ DATA_SHIFT = 32
 IF_NODE_MODE = True
 IF_IMAGE_LOG = True
 IF_DATA_LOG = False
-LOG_EXTRA_PREFIX = 'Estimation3_'
+LOG_EXTRA_PREFIX = 'Estimation3_smoothL1_0p1_'
 
 # load in data
 current_dir = os.getcwd()
