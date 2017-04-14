@@ -7,6 +7,7 @@ import os
 import sys
 import pickle
 from multiprocessing import Pool
+import random
 
 
 def assign(du, target, location, value):
@@ -22,6 +23,20 @@ def get(du, target, location):
     else:
         value = du._secured_data[target][0][location]
     return value
+
+
+def get_iteroator(template):
+    iterator = iter([])
+    for x in 'ABC':
+        if x in 'AC':
+            temp = itertools.product([x], itertools.product(range(template.get(x).shape[0]),
+                                                            range(template.get(x).shape[1])))
+        else:
+            temp = itertools.product([x], itertools.product(range(template.get(x)[0].shape[0]),
+                                                            range(template.get(x)[0].shape[1])))
+        iterator = itertools.chain(iterator, temp)
+    return iterator
+
 
 
 def run1(configure):
@@ -185,7 +200,6 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--verbose", action="store_true", help="increase output verbosity")
-    parser.add_argument("-i", "--input", help="input directory")
     parser.add_argument("-o", "--output", help="output directory")
     parser.add_argument("-s", "--source", help="source code directory")
     args = parser.parse_args()
@@ -194,12 +208,6 @@ if __name__ == '__main__':
         print("Verbose is turned on")
     else:
         VERBOSE = False
-    if args.input:
-        INPUT_DIR = args.input
-        if VERBOSE:
-            print("Input directory: " + INPUT_DIR)
-    else:
-        raise ValueError("Please specify the input directory which contains input data.")
     if args.output:
         OUTPUT_DIR = args.output
         if VERBOSE:
@@ -239,37 +247,40 @@ if __name__ == '__main__':
     template = create_a_template(0)
     y_true = template.get('y')
 
-    pool = Pool(os.cpu_count())
 
     if VERBOSE:
         print("Processing cost landscape, one free parameter")
-    iterable1 = itertools.product(range(template.get('A').shape[0]),
-                                  range(template.get('A').shape[1]))
-    iterable1 = itertools.product(['A'], list(iterable1))
-
-    with Pool(os.cpu_count()) as pool:
-        pool.map(run1, iterable1)
-        #print(pool.map(my_function, range(10)))
-    # pool.map(run1, list(iterable1))
-
-    # run2([('A', (1, 0)), ('A', (0, 0))])
-
-    #pool = Pool(os.cpu_count())
-
-    #pool.map(run, database_files)
+        print("Iterator: ")
+        iterator = get_iteroator(template)
+        # print(len(list(itertools.combinations(iterator, 1))))
+        with Pool(os.cpu_count()) as p:
+           p.map(run1, iterator)
 
 
-    '''
-    # confirm working directory
-    print(os.path.basename(__file__) + ' needs to run under project root directory')
-    working_directory = os.getcwd()
-    if os.path.split(working_directory)[1] != 'DCM_RNN':
-        raise ValueError(os.path.basename(__file__) +
-                         ' needs to run under the project root directory. \
-                         Or project root directory does not match hard coded name')
-    print('working path: ' + working_directory)
-    print('')
-    '''
+    if VERBOSE:
+        print("Processing cost landscape, two free parameter")
+        print("Iterator: ")
+        iterator = get_iteroator(template)
+        iterator = itertools.combinations(iterator, 2)
+        iterator = list(iterator)
+        random.shuffle(iterator)
+        # print(len(list(itertools.combinations(iterator, 2))))
+        with Pool(os.cpu_count()) as p:
+            p.map(run2, iterator)
+
+
+    if VERBOSE:
+        print("Processing cost landscape, three free parameter")
+        print("Iterator: ")
+        iterator = get_iteroator(template)
+        iterator = itertools.combinations(iterator, 3)
+        iterator = list(iterator)
+        random.shuffle(iterator)
+        iterator[0] = (('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0)))
+        for n in range(8):
+            iterator_temp = iterator[n * 16, (n + 1) * 16]
+            with Pool(os.cpu_count()) as p:
+                p.map(run_n, iterator_temp)
 
 '''
 # evaluate one parameter

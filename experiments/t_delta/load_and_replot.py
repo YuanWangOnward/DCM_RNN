@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 if __name__ == '__main__':
@@ -44,13 +45,20 @@ if __name__ == '__main__':
     print("There are " + str(len(rMSEs)) + " samples")
 
     rMSEs = np.array(rMSEs)
+
     print("rMSEs array shape: " + str(rMSEs.shape))
     histogram = plt.figure()
-    bins = np.linspace(0, 1, 100)
-    for n in range(rMSEs.shape[1]):
+    bins = np.linspace(0, 0.5, 100)
+    labels = ['15.625ms','31.25ms', '62.5ms', '125ms', '250ms', '500ms']
+    for n in range(1, rMSEs.shape[1]):
         temp = rMSEs[:, n]
         temp = temp[~np.isnan(temp)]
-        plt.hist(temp, bins, alpha=0.5)
+        temp = temp[~np.isinf(temp)]
+        plt.hist(temp, bins, normed=1, alpha=0.5, label=labels[n])
+        plt.xlabel('relative mean square error')
+        plt.ylabel('percentage (%)')
+        plt.legend()
+
     plt.show()
-    plt.savefig(OUTPUT_DIR + 't_delta.png', bbox_inches='tight')
+    plt.savefig(os.path.join(OUTPUT_DIR + 't_delta.png'), bbox_inches='tight')
 
