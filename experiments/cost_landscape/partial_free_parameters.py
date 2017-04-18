@@ -250,35 +250,32 @@ if __name__ == '__main__':
 
     if VERBOSE:
         print("Processing cost landscape, one free parameter")
-        print("Iterator: ")
         iterator = get_iteroator(template)
         # print(len(list(itertools.combinations(iterator, 1))))
-        with Pool(os.cpu_count()) as p:
-           p.map(run1, iterator)
+        # with Pool(os.cpu_count()) as p:
+        #    p.map(run1, iterator)
 
 
     if VERBOSE:
         print("Processing cost landscape, two free parameter")
-        print("Iterator: ")
         iterator = get_iteroator(template)
         iterator = itertools.combinations(iterator, 2)
         iterator = list(iterator)
         random.shuffle(iterator)
         # print(len(list(itertools.combinations(iterator, 2))))
-        with Pool(os.cpu_count()) as p:
-            p.map(run2, iterator)
+        # with Pool(os.cpu_count()) as p:
+        #     p.map(run2, iterator)
 
 
     if VERBOSE:
         print("Processing cost landscape, three free parameter")
-        print("Iterator: ")
         iterator = get_iteroator(template)
         iterator = itertools.combinations(iterator, 3)
         iterator = list(iterator)
         random.shuffle(iterator)
         iterator[0] = (('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0)))
         for n in range(8):
-            iterator_temp = iterator[n * 16, (n + 1) * 16]
+            iterator_temp = iterator[n * 16: (n + 1) * 16]
             with Pool(os.cpu_count()) as p:
                 p.map(run_n, iterator_temp)
 

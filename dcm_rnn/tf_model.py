@@ -357,7 +357,7 @@ class DcmRnn(Initialization):
             self.loss = self.mse(self.y_true, self.y_predicted_stacked, "loss")
             # self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
             self.loss_smooth = tf.reduce_sum(tf.abs(self.x_state_stacked[0:-1, :] - self.x_state_stacked[1:, :]))
-            self.loss_combined = self.loss + 0.1 * self.loss_smooth
+            self.loss_combined = self.loss + 0 * self.loss_smooth
         with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
             self.loss_total = tf.get_variable('loss_total', initializer=0., trainable=False)
             self.sum_loss = tf.assign_add(self.loss_total, self.loss_combined, name='accumulate_loss')

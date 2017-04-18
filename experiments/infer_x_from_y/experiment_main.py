@@ -135,19 +135,19 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
 def add_data_log(data_log_dir=None, extra_prefix=''):
     data_log_dir = data_log_dir or './data_logs/'
 
-
 # global setting
 MAX_EPOCHS = 8
 CHECK_STEPS = 1
 N_PARTITIONS = 16
 N_SEGMENTS = 1
-LEARNING_RATE = 0.02
-N_RECURRENT_STEP = 64
-DATA_SHIFT = 32
+LEARNING_RATE = 0.01
+N_RECURRENT_STEP = 128
+DATA_SHIFT = 16
 IF_NODE_MODE = True
 IF_IMAGE_LOG = True
 IF_DATA_LOG = False
-LOG_EXTRA_PREFIX = 'Estimation3_smoothL1_0p1_'
+LOG_EXTRA_PREFIX = 'Estimation3_'
+
 
 # load in data
 current_dir = os.getcwd()
