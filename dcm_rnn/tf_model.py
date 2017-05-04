@@ -21,10 +21,12 @@ class DcmRnn(Initialization):
                  learning_rate=None,
                  stop_threshold=None,
 
+                 variable_scope_name_u_stacked=None,
+
                  variable_scope_name_x_parameter=None,
                  variable_scope_name_x_initial=None,
                  variable_scope_name_x=None,
-                 variable_scope_name_x_trailing=None,
+                 variable_scope_name_x_tailing=None,
                  variable_scope_name_x_extended=None,
                  variable_scope_name_x_connector=None,
                  variable_scope_name_x_stacked=None,
@@ -45,21 +47,26 @@ class DcmRnn(Initialization):
         self.learning_rate = learning_rate or 0.01
         self.stop_threshold = stop_threshold or 1e-3
         self.shift_x_y = 3
-        self.shift_data = 2
+        self.shift_u_y = 4
+        self.shift_u_x = 1
+        self.shift_data = int(self.n_recurrent_step / 2)
+
+        self.variable_scope_name_u_stacked = variable_scope_name_u_stacked or 'u_stacked'
+        self.variable_scope_name_u = variable_scope_name_x or 'cell_u'
 
         self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
-        self.variable_scope_name_x_initial = variable_scope_name_x_initial or 'cell_x_initial'
+        # self.variable_scope_name_x_initial = variable_scope_name_x_initial or 'cell_x_initial'
         self.variable_scope_name_x = variable_scope_name_x or 'cell_x'
-        self.variable_scope_name_x_trailing = variable_scope_name_x_trailing or 'cell_x_trailing'
-        self.variable_scope_name_x_connector = variable_scope_name_x_connector or 'cell_x_connector'
-        self.variable_scope_name_x_extended = variable_scope_name_x_extended or 'cell_x_extended'
+        self.variable_scope_name_x_tailing = variable_scope_name_x_tailing or 'cell_x_tailing'
+        # self.variable_scope_name_x_connector = variable_scope_name_x_connector or 'cell_x_connector'
+        # self.variable_scope_name_x_extended = variable_scope_name_x_extended or 'cell_x_extended'
         self.variable_scope_name_x_stacked = variable_scope_name_x_stacked or 'x_stacked'
 
         self.variable_scope_name_h_parameter = variable_scope_name_h_parameter or 'para_h'
         self.variable_scope_name_h_initial = variable_scope_name_h_initial or 'cell_h_initial'
-        self.variable_scope_name_h_prelude = variable_scope_name_h_prelude or 'cell_h_prelude'
+        # self.variable_scope_name_h_prelude = variable_scope_name_h_prelude or 'cell_h_prelude'
         self.variable_scope_name_h = variable_scope_name_h or 'cell_h'
-        self.variable_scope_name_h_connector = variable_scope_name_h_final or 'cell_h_connector'
+        # self.variable_scope_name_h_connector = variable_scope_name_h_final or 'cell_h_connector'
         self.variable_scope_name_h_stacked = variable_scope_name_h_stacked or 'h_stacked'
 
         self.variable_scope_name_y = variable_scope_name_y or 'cell_y'
@@ -107,9 +114,30 @@ class DcmRnn(Initialization):
         hyperparameter_values[self.variable_scope_name_h_parameter] = {'gradient': 1., 'sparse': 0., 'prior': 1.}
         self.hyperparameter_values = hyperparameter_values
 
+    def create_shared_variables_x(self, neural_parameter_initial):
+        """
+        Create shared tensorflow variables (connectivity) for neural evolution. 
+        :param neural_parameter_initial: a list [A, [B's], C]
+        :return: 
+        """
+        self.A = neural_parameter_initial['A']
+        self.B = neural_parameter_initial['B']
+        self.C = neural_parameter_initial['C']
+
+        self.Wxx_init = np.array(self.A, dtype=np.float32) * self.t_delta + \
+                        np.eye(self.n_region, self.n_region, 0, dtype=np.float32)
+        self.Wxxu_init = [np.array(m, dtype=np.float32) * self.t_delta for m in self.B]
+        self.Wxu_init = np.array(self.C, dtype=np.float32).reshape(self.n_region, 1) * self.t_delta
+
+        with tf.variable_scope(self.variable_scope_name_x_parameter):
+            self.Wxx = tf.get_variable('Wxx', dtype=tf.float32, initializer=self.Wxx_init)
+            self.Wxxu = [tf.get_variable('Wxxu' + '_s' + str(n), dtype=tf.float32, initializer=self.Wxxu_init[n])
+                         for n in range(self.n_stimuli)]
+            self.Wxu = tf.get_variable('Wxu', dtype=tf.float32, initializer=self.Wxu_init)
+
     def create_shared_variables_h(self, initial_values):
         """
-        Create shared hemodynamic variables.
+        Create shared tensorflow variables for hemodynamic proecess.
         :param initial_values: a pandas.DataFrame, containing the initial values of hemodynamic variables
         :return:
         """
@@ -129,11 +157,6 @@ class DcmRnn(Initialization):
             hemodynamic_parameter = tf.transpose(hemodynamic_parameter)
         self.hemodynamic_parameter = hemodynamic_parameter
         return hemodynamic_parameter
-
-    def create_placeholders(self):
-        input_u = tf.placeholder(tf.float32, [self.n_stimuli, self.n_recurrent_step], name='input_u')
-        input_y_true = tf.placeholder(tf.float32, [self.n_region, self.n_recurrent_step], name='input_y_true')
-        return [input_u, input_y_true]
 
     def phi_h(self, h_state_current, alpha, E0):
         """
@@ -164,6 +187,35 @@ class DcmRnn(Initialization):
             output[para] = tf.get_variable(para + '_r' + str(i_region))
         return output
 
+    def add_one_cell_x(self, u_current, x_state_previous, x_parameter):
+        """
+        Model the evolving of neural activity x.
+        :param u_current: 
+        :param x_state_previous: 
+        :return: 
+        """
+        n_stimuli = self.n_stimuli
+        Wxx = x_parameter[0]
+        Wxxu = x_parameter[1]
+        Wxu = x_parameter[2]
+
+        if x_state_previous.get_shape().ndims == 1:
+            tmp1 = tf.matmul(Wxx, tf.expand_dims(x_state_previous, 1))
+        else:
+            tmp1 = tf.matmul(Wxx, x_state_previous)
+
+        if x_state_previous.get_shape().ndims == 1:
+            tmp2 = [tf.matmul(Wxxu[n] * u_current[n], x_state_previous) for n in range(n_stimuli)]
+        else:
+            tmp2 = [tf.matmul(Wxxu[n] * u_current[n], x_state_previous) for n in range(n_stimuli)]
+        tmp2 = tf.add_n(tmp2)
+        # print(u_current.get_shape().ndims)
+        if u_current.get_shape().ndims == 1:
+            tmp3 = Wxu * u_current
+        else:
+            tmp3 = tf.matmul(Wxu, u_current)
+        return tmp1 + tmp2 + tmp3
+
     def add_one_cell_h(self, h_state_current, x_state_current, h_parameter):
         """
         Model the evolving of hemodynamic states {s,f,v,q}
@@ -186,7 +238,7 @@ class DcmRnn(Initialization):
         h_state_augmented = self.phi_h(h_state_current, alpha, E0)
         h_state_next = []
         # s
-        tmp1 = tf.multiply(t_delta, x_h_coupling * x_state_current)
+        tmp1 = tf.multiply(t_delta, x_h_coupling * tf.squeeze(x_state_current))
         tmp2 = tf.multiply(tf.subtract(tf.multiply(t_delta, k), 1.), h_state_augmented[0])
         tmp3 = tf.multiply(t_delta, tf.multiply(gamma, tf.subtract(h_state_augmented[1], 1.)))
         tmp = tf.subtract(tmp1, tf.add(tmp2, tmp3))
@@ -207,6 +259,41 @@ class DcmRnn(Initialization):
         # concantenate into a tensor
         h_state_next = tf.stack(h_state_next, 0)
         return h_state_next
+
+    def add_neural_layer(self, u, x_state_initial=None):
+        """
+        
+        :param u: input stimuli 
+        :param x_state_initial: 
+        :return: 
+        """
+        if x_state_initial is None:
+            x_state_initial = self.x_state_initial
+        n_stimuli = self.n_stimuli
+
+        with tf.variable_scope(self.variable_scope_name_x_parameter, reuse=True):
+            Wxx = tf.get_variable("Wxx")
+            Wxxu = [tf.get_variable("Wxxu_s" + str(n)) for n in range(n_stimuli)]
+            Wxu = tf.get_variable("Wxu")
+        x_parameter = [Wxx, Wxxu, Wxu]
+
+        for i in range(len(u)):
+            with tf.variable_scope(self.variable_scope_name_x):
+                if i == 0:
+                    self.x_whole = [self.x_state_initial]
+                else:
+                    self.x_whole.append(self.add_one_cell_x(u[i - 1], self.x_whole[i - 1], x_parameter))
+
+        # label x whole into different parts
+        self.x_extended = self.x_whole[self.shift_u_x: len(u)]
+        self.x_state_predicted = self.x_whole[self.shift_u_x: self.shift_u_x + self.n_recurrent_step]
+        self.x_monitor = self.x_whole[:self.n_recurrent_step]
+        self.x_connector = self.x_whole[self.shift_data]
+
+        with tf.variable_scope(self.variable_scope_name_x_stacked):
+            self.x_extended_stacked = tf.stack(self.x_extended, 0, name='x_extended_stacked')
+            self.x_state_predicted_stacked = tf.stack(self.x_state_predicted, 0, name='x_predicted_stack')
+            self.x_state_monitor_stacked = tf.stack(self.x_monitor, 0, name='x_monitor_stack')
 
     def add_hemodynamic_layer(self, x_extended=None, h_state_initial=None):
         """
@@ -326,14 +413,14 @@ class DcmRnn(Initialization):
         for n in range(self.n_recurrent_step):
             with tf.variable_scope(self.variable_scope_name_x):
                 self.x_state.append(self.x_state_stacked[n, :])
-        self.x_trailing = []
+        self.x_tailing = []
         for n in range(self.shift_x_y):
-            with tf.variable_scope(self.variable_scope_name_x_trailing):
-                self.x_trailing.append(tf.constant(np.zeros(self.n_region, dtype=np.float32),
+            with tf.variable_scope(self.variable_scope_name_x_tailing):
+                self.x_tailing.append(tf.constant(np.zeros(self.n_region, dtype=np.float32),
                                                    dtype=np.float32,
-                                                   name='x_trailing_' + str(n)))
+                                                   name='x_tailing_' + str(n)))
         self.x_extended = self.x_state
-        self.x_extended.extend(self.x_trailing)
+        self.x_extended.extend(self.x_tailing)
 
         # y layer parameter
         self.create_shared_variables_h(self.hemodynamic_parameter_initial)  # name_scope inside
@@ -394,6 +481,68 @@ class DcmRnn(Initialization):
             y_predicted.append(y_segment)
         return [y_predicted, h_state_monitor, h_state_connector]
 
+    def check_parameter_consistency(self):
+        pass
+
+    def build_main_graph(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
+        """
+        The main graph of dcm_rnn, used to infer effective connectivity given fMRI signal and stimuli.
+        :param neural_parameter_initial: 
+        :param hemodynamic_parameter_initial: 
+        :return: 
+        """
+
+        self.neural_parameter_initial = neural_parameter_initial
+        self.hemodynamic_parameter_initial = hemodynamic_parameter_initial or \
+                                             self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
+
+        self.check_parameter_consistency()
+
+        # input stimuli u
+        with tf.variable_scope(self.variable_scope_name_u_stacked):
+            self.u_placeholder = \
+                tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_stimuli],
+                               name='u_placeholder')
+        self.u = []
+        for n in range(self.n_recurrent_step):
+            with tf.variable_scope(self.variable_scope_name_u):
+                self.u.append(self.u_placeholder[n, :])
+        self.u_tailing = []
+        for n in range(self.shift_u_y):
+            self.u_tailing.append(tf.constant(np.zeros(self.n_stimuli, dtype=np.float32),
+                                                  dtype=np.float32,
+                                                  name='u_tailing_' + str(n)))
+        self.u_extended = self.u
+        self.u_extended.extend(self.u_tailing)
+
+        # x layer
+        self.create_shared_variables_x(self.neural_parameter_initial)
+        self.x_state_initial_default = \
+            self.set_initial_neural_state_as_zeros(self.n_region).astype(np.float32)
+        self.x_state_initial = tf.get_variable('x_initial', initializer=self.x_state_initial_default, trainable=False)
+        self.add_neural_layer(self.u_extended, self.x_state_initial)
+
+        # h layer
+        self.create_shared_variables_h(self.hemodynamic_parameter_initial)  # name_scope inside
+        with tf.variable_scope(self.variable_scope_name_h_initial):
+            # no matter how much shift_x_y is, we only need h_state of one time point as the connector
+            self.h_state_initial_default = \
+                self.set_initial_hemodynamic_state_as_inactivated(n_node=self.n_region).astype(np.float32)
+            self.h_state_initial = \
+                tf.get_variable('h_initial_segment',
+                                initializer=self.h_state_initial_default,
+                                trainable=False)
+        self.add_hemodynamic_layer(self.x_extended, self.h_state_initial)
+
+        # output layer
+        self.add_output_layer(self.h_state_predicted)
+
+
+
+
+
+
+
     # unitilies
     def get_element_count(self, tensor):
         return np.prod(tensor.get_shape().as_list())
@@ -418,5 +567,3 @@ class DcmRnn(Initialization):
             tf.summary.scalar('max', tf.reduce_max(tensor))
             tf.summary.scalar('min', tf.reduce_min(tensor))
             tf.summary.histogram('histogram', tensor)
-
-

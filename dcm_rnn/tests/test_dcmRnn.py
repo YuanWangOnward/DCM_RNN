@@ -6,13 +6,15 @@ import numpy as np
 import dcm_rnn.tf_model as tfm
 import tensorflow as tf
 import numpy as np
+import os
 
 
 class TestDcmRnn(TestCase):
     def setUp(self):
         tf.reset_default_graph()
         self.dr = DcmRnn()
-        data_path = '../resources/template0.pkl'
+        print(os.getcwd())
+        data_path = 'dcm_rnn/resources/template0.pkl'
         self.du = tb.load_template(data_path)
         self.dr.collect_parameters(self.du)
 
