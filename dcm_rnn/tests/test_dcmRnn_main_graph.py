@@ -6,6 +6,7 @@ import numpy as np
 import dcm_rnn.tf_model as tfm
 import tensorflow as tf
 import os
+import random
 
 
 class TestDcmRnnMainGraph(TestCase):
@@ -40,50 +41,27 @@ class TestDcmRnnMainGraph(TestCase):
         isess = tf.InteractiveSession()
         isess.run(tf.global_variables_initializer())
 
-        i = 0
-        x_hat, h_hat, y_hat = isess.run([dr.x_monitor, dr.h_monitor, dr.y_predicted],
-                                        feed_dict={
-                                            dr.u_placeholder: data['u'][i],
-                                            dr.x_state_initial: data['x'][i][0, :],
-                                            dr.h_state_initial: data['h'][i][0, :, :],
-                                        })
-        np.testing.assert_array_almost_equal(
-            np.array(data['x'][i], dtype=np.float32),
-            np.array(x_hat, dtype=np.float32))
+        for i in [random.randint(16, len(data['y'])) for _ in range(16)]:
 
-'''
-        h_state_monitor = []
-        h_state_connector = []
-        y_predicted = []
-        h_state_initial_segment = h_state_initial
-        for x_segment in data_x:
-            h_state_connector.append(h_state_initial_segment)
-            y_segment, h_segment, h_connector = \
-                sess.run([self.y_predicted_stacked, self.h_state_monitor_stacked, self.h_connector],
-                         feed_dict={self.x_state_stacked: x_segment, self.h_state_initial: h_state_initial_segment})
-            h_state_initial_segment = h_connector
-            h_state_monitor.append(h_segment)
-            y_predicted.append(y_segment)
-        return [y_predicted, h_state_monitor, h_state_connector]
+            x_hat, h_hat, y_hat = isess.run([dr.x_monitor, dr.h_monitor, dr.y_predicted],
+                                            feed_dict={
+                                                dr.u_placeholder: data['u'][i],
+                                                dr.x_state_initial: data['x'][i][0, :],
+                                                dr.h_state_initial: data['h'][i][0, :, :],
+                                            })
+            np.testing.assert_array_almost_equal(
+                np.array(data['x'][i], dtype=np.float32),
+                np.array(x_hat, dtype=np.float32))
 
+            np.testing.assert_array_almost_equal(
+                np.array(data['h'][i], dtype=np.float32),
+                np.array(h_hat, dtype=np.float32))
 
-        # run forward
-        y_predicted, h_state_predicted = dr.run_initializer_graph(isess, h_state_initial, data['x'])
-
-        # merge results
-        y_predicted = tb.merge(y_predicted, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-
-        # test
-        
-        np.testing.assert_array_almost_equal(
-            np.array(du.get('h'), dtype=np.float32),
-            np.array(h_state_predicted, dtype=np.float32))
-        
-        np.testing.assert_array_almost_equal(
-            np.array(du.get('y')[dr.shift_x_y: dr.shift_x_y + y_predicted.shape[0], :], dtype=np.float32),
-            np.array(y_predicted, dtype=np.float32),
-            decimal=4)
-'''
+            # print(np.array(data['y'][i], dtype=np.float32))
+            # print(np.array(y_hat, dtype=np.float32))
+            np.testing.assert_array_almost_equal(
+                np.array(data['y'][i], dtype=np.float32),
+                np.array(y_hat, dtype=np.float32),decimal=4)
 
 
 

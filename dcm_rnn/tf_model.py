@@ -205,16 +205,16 @@ class DcmRnn(Initialization):
             tmp1 = tf.matmul(Wxx, x_state_previous)
 
         if x_state_previous.get_shape().ndims == 1:
-            tmp2 = [tf.matmul(Wxxu[n] * u_current[n], x_state_previous) for n in range(n_stimuli)]
+            tmp2 = [tf.matmul(Wxxu[n] * u_current[n], tf.expand_dims(x_state_previous, 1)) for n in range(n_stimuli)]
         else:
             tmp2 = [tf.matmul(Wxxu[n] * u_current[n], x_state_previous) for n in range(n_stimuli)]
         tmp2 = tf.add_n(tmp2)
         # print(u_current.get_shape().ndims)
         if u_current.get_shape().ndims == 1:
-            tmp3 = Wxu * u_current
+            tmp3 = tf.matmul(Wxu, tf.expand_dims(u_current, 1))
         else:
             tmp3 = tf.matmul(Wxu, u_current)
-        return tmp1 + tmp2 + tmp3
+        return tf.squeeze(tmp1 + tmp2 + tmp3)
 
     def add_one_cell_h(self, h_state_current, x_state_current, h_parameter):
         """
