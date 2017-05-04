@@ -50,6 +50,7 @@ class DcmRnn(Initialization):
         self.shift_u_y = 4
         self.shift_u_x = 1
         self.shift_data = int(self.n_recurrent_step / 2)
+        self.if_add_optimiser = True    # turn off when do testing to save time
 
         self.variable_scope_name_u_stacked = variable_scope_name_u_stacked or 'u_stacked'
         self.variable_scope_name_u = variable_scope_name_x or 'cell_u'
@@ -549,15 +550,18 @@ class DcmRnn(Initialization):
                                              self.loss_weighting['sparsity'] * self.loss_sparsity,
                                              self.loss_weighting['prior'] * self.loss_prior],
                                             name='loss_total')
+        if self.if_add_optimiser:
+            # define optimiser
+            self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
 
-        '''
-            self.loss_smooth = tf.reduce_sum(tf.abs(self.x_state_stacked[0:-1, :] - self.x_state_stacked[1:, :]))
-            self.loss_combined = self.loss_prediction + 0 * self.loss_smooth
-        with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
-            self.loss_total = tf.get_variable('loss_total', initializer=0., trainable=False)
-            self.sum_loss = tf.assign_add(self.loss_total, self.loss_combined, name='accumulate_loss')
-            self.clear_loss_total = tf.assign(self.loss_total, 0., name='clear_loss_total')
-        '''
+            # define summarizer
+            self.variable_summaries(self.loss_prediction)
+            self.variable_summaries(self.loss_sparsity)
+            self.variable_summaries(self.loss_prior)
+            self.variable_summaries(self.loss_total)
+            self.merged_summary = tf.summary.merge_all()
+            self.summary_writer = tf.summary.FileWriter(self.log_directory, tf.get_default_graph())
+
     def add_loss_sparsity(self, loss_weighting=None):
         if loss_weighting == None:
             loss_weighting = self.loss_weighting
