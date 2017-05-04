@@ -76,7 +76,7 @@ class DcmRnn(Initialization):
 
         self.log_directory = log_directory or './logs'
 
-        self.set_up_hyperparameter_values()
+        self.set_up_loss_weighting()
         self.trainable_flags_h = {'alpha': True,
                                   'E0': True,
                                   'k': True,
@@ -108,11 +108,8 @@ class DcmRnn(Initialization):
         self.t_delta = parameter_package['t_delta']
         self.n_stimuli = parameter_package['n_stimuli']
 
-    def set_up_hyperparameter_values(self):
-        hyperparameter_values = {}
-        hyperparameter_values[self.variable_scope_name_x_parameter] = {'gradient': 1., 'sparse': 1., 'prior': 0.}
-        hyperparameter_values[self.variable_scope_name_h_parameter] = {'gradient': 1., 'sparse': 0., 'prior': 1.}
-        self.hyperparameter_values = hyperparameter_values
+    def set_up_loss_weighting(self):
+        self.loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
 
     def create_shared_variables_x(self, neural_parameter_initial):
         """
@@ -134,6 +131,8 @@ class DcmRnn(Initialization):
             self.Wxxu = [tf.get_variable('Wxxu' + '_s' + str(n), dtype=tf.float32, initializer=self.Wxxu_init[n])
                          for n in range(self.n_stimuli)]
             self.Wxu = tf.get_variable('Wxu', dtype=tf.float32, initializer=self.Wxu_init)
+        self.x_parameters = [self.Wxx, self.Wxxu, self.Wxu]
+        return self.x_parameters
 
     def create_shared_variables_h(self, initial_values):
         """
@@ -155,8 +154,8 @@ class DcmRnn(Initialization):
                 hemodynamic_parameter.append(temp_tensor)
             hemodynamic_parameter = tf.stack(hemodynamic_parameter, 1, 'hemodynamic_parameter')
             hemodynamic_parameter = tf.transpose(hemodynamic_parameter)
-        self.hemodynamic_parameter = hemodynamic_parameter
-        return hemodynamic_parameter
+        self.h_parameters = hemodynamic_parameter
+        return self.h_parameters
 
     def phi_h(self, h_state_current, alpha, E0):
         """
@@ -438,13 +437,13 @@ class DcmRnn(Initialization):
         self.add_hemodynamic_layer(self.x_extended, self.h_state_initial)
         self.add_output_layer(self.h_state_predicted)
 
-        # define loss
+        # define loss_prediction
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
-            self.loss = self.mse(self.y_true, self.y_predicted_stacked, "loss")
+            self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
             # self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
             self.loss_smooth = tf.reduce_sum(tf.abs(self.x_state_stacked[0:-1, :] - self.x_state_stacked[1:, :]))
-            self.loss_combined = self.loss + 0 * self.loss_smooth
+            self.loss_combined = self.loss_prediction + 0 * self.loss_smooth
         with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
             self.loss_total = tf.get_variable('loss_total', initializer=0., trainable=False)
             self.sum_loss = tf.assign_add(self.loss_total, self.loss_combined, name='accumulate_loss')
@@ -452,7 +451,7 @@ class DcmRnn(Initialization):
 
         # define optimiser
         self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_combined)
-        # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
+        # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_prediction)
 
         # define summarizer
         self.variable_summaries(self.loss_total)
@@ -493,8 +492,11 @@ class DcmRnn(Initialization):
         """
 
         self.neural_parameter_initial = neural_parameter_initial
-        self.hemodynamic_parameter_initial = hemodynamic_parameter_initial or \
-                                             self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
+        if hemodynamic_parameter_initial is None:
+            self.hemodynamic_parameter_initial = \
+                self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
+        else:
+            self.hemodynamic_parameter_initial = hemodynamic_parameter_initial
 
         self.check_parameter_consistency()
 
@@ -516,14 +518,14 @@ class DcmRnn(Initialization):
         self.u_extended.extend(self.u_tailing)
 
         # x layer
-        self.create_shared_variables_x(self.neural_parameter_initial)
+        self.x_parameters = self.create_shared_variables_x(self.neural_parameter_initial)
         self.x_state_initial_default = \
             self.set_initial_neural_state_as_zeros(self.n_region).astype(np.float32)
         self.x_state_initial = tf.get_variable('x_initial', initializer=self.x_state_initial_default, trainable=False)
         self.add_neural_layer(self.u_extended, self.x_state_initial)
 
         # h layer
-        self.create_shared_variables_h(self.hemodynamic_parameter_initial)  # name_scope inside
+        self.h_parameters = self.create_shared_variables_h(self.hemodynamic_parameter_initial)
         with tf.variable_scope(self.variable_scope_name_h_initial):
             # no matter how much shift_x_y is, we only need h_state of one time point as the connector
             self.h_state_initial_default = \
@@ -537,11 +539,46 @@ class DcmRnn(Initialization):
         # output layer
         self.add_output_layer(self.h_state_predicted)
 
+        # define loss
+        self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
+        with tf.variable_scope(self.variable_scope_name_loss):
+            self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
+            self.loss_sparsity = self.add_loss_sparsity()
+            self.loss_prior = self.add_loss_prior(self.h_parameters)
+            self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
+                                             self.loss_weighting['sparsity'] * self.loss_sparsity,
+                                             self.loss_weighting['prior'] * self.loss_prior],
+                                            name='loss_total')
 
+        '''
+            self.loss_smooth = tf.reduce_sum(tf.abs(self.x_state_stacked[0:-1, :] - self.x_state_stacked[1:, :]))
+            self.loss_combined = self.loss_prediction + 0 * self.loss_smooth
+        with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
+            self.loss_total = tf.get_variable('loss_total', initializer=0., trainable=False)
+            self.sum_loss = tf.assign_add(self.loss_total, self.loss_combined, name='accumulate_loss')
+            self.clear_loss_total = tf.assign(self.loss_total, 0., name='clear_loss_total')
+        '''
+    def add_loss_sparsity(self, loss_weighting=None):
+        if loss_weighting == None:
+            loss_weighting = self.loss_weighting
+        loss_Wxx = tf.reduce_sum(tf.reshape(tf.abs(self.Wxx - np.identity(self.n_region, dtype=np.float32)), [-1]))
+        loss_Wxxu = tf.reduce_sum(
+            [tf.reduce_sum(tf.reshape(tf.abs(self.Wxxu[s]), [-1])) for s in range(self.n_stimuli)])
+        loss_Wxu = tf.reduce_sum(tf.reshape(tf.abs(self.Wxu), [-1]))
+        self.loss_sparsity = tf.reduce_sum([loss_weighting['Wxx'] * loss_Wxx, loss_weighting['Wxxu'] * loss_Wxxu,
+                                            loss_weighting['Wxu'] * loss_Wxu], name="loss_sparsity")
+        return self.loss_sparsity
 
-
-
-
+    def add_loss_prior(self, h_parameters=None):
+        if h_parameters == None:
+            h_parameters = self.h_parameters
+        prior_distribution = self.get_expanded_hemodynamic_parameter_prior_distributions(self.n_region)
+        mask = np.array(prior_distribution['std'] > 0)
+        mean = np.array(prior_distribution['mean'], dtype=np.float32)[mask]
+        std = np.array(prior_distribution['std'], dtype=np.float32)[mask]
+        temp = tf.square(tf.reshape(tf.boolean_mask(h_parameters, mask), [-1]) - mean) / tf.square(std)
+        self.loss_prior = tf.reduce_sum(temp, name="loss_prior")
+        return self.loss_prior
 
     # unitilies
     def get_element_count(self, tensor):

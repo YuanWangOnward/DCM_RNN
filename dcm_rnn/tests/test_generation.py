@@ -27,7 +27,7 @@ class DataUnitTests(unittest.TestCase):
         self.du._secured_data['if_random_scan_time'] = True
         self.du._secured_data['learning_rate'] = 0.1
         self.du._secured_data['n_backpro'] = 12
-        # self.du.complete_data_unit()
+        self.du.complete_data_unit()
         # print(self.du._secured_data)
 
 if __name__ == '__main__':

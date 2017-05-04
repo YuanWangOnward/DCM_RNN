@@ -124,7 +124,7 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
     plt.plot()
     plt.plot(y_total_loss)
     plt.plot(x_total_loss, '--')
-    plt.title('y and x total loss')
+    plt.title('y and x total loss_prediction')
     plt.tight_layout()
 
     plot_file_name = image_log_dir + log_file_name_prefix + '.png'
@@ -223,7 +223,7 @@ with tf.Session() as sess:
                                  feed_dict={dr.x_state_stacked_placeholder:
                                                 data['x_hat'].get(j_partition).reshape(dr.n_recurrent_step, 1)})
                         sess.run(tf.assign(dr.h_state_initial, h_initial_segment))
-                        # calculate loss and prepare for next segment
+                        # calculate loss_prediction and prepare for next segment
                         loss_total, h_initial_segment = sess.run(
                             [dr.sum_loss, dr.h_connector],
                             feed_dict={dr.y_true: data['y_true'][j_partition]})

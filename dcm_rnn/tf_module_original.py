@@ -57,7 +57,7 @@ class DCM_RNN:
         # masks for penalty weighting and connection support
         # self.define_masks()
 
-        # define loss
+        # define loss_prediction
         self.add_loss_prediction()
         self.add_loss_sparse()
         self.add_loss_prior()
@@ -413,7 +413,7 @@ class DCM_RNN:
         self.loss_y = tf.reduce_mean(self.loss_y_list)
 
     def add_loss_sparse(self):
-        # check mask value, if all 0, then don't add the variable to the loss
+        # check mask value, if all 0, then don't add the variable to the loss_prediction
         parameter_profile = self.parameter_profile
         variable_names = self.names_in_graph
         variable_values = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
@@ -431,7 +431,7 @@ class DCM_RNN:
             self.loss_sparse = tf.add_n(self.loss_sparse_list)
 
     def add_loss_prior(self):
-        # check mask value, if all 0, then don't add the variable to the loss
+        # check mask value, if all 0, then don't add the variable to the loss_prediction
         parameter_profile = self.parameter_profile
         variable_names = self.names_in_graph
         parameter_prior = self.parameter_prior
