@@ -73,7 +73,7 @@ class DcmRnn(Initialization):
         self.variable_scope_name_y = variable_scope_name_y or 'cell_y'
         self.variable_scope_name_y_stacked = variable_scope_name_y_stacked or 'y_stacked'
 
-        self.variable_scope_name_loss = variable_scope_name_loss or 'loss'
+        self.variable_scope_name_loss = variable_scope_name_loss or 'loss_total'
 
         self.log_directory = log_directory or './logs'
 
@@ -540,7 +540,7 @@ class DcmRnn(Initialization):
         # output layer
         self.add_output_layer(self.h_state_predicted)
 
-        # define loss
+        # define loss_total
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
             self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
@@ -552,7 +552,8 @@ class DcmRnn(Initialization):
                                             name='loss_total')
         if self.if_add_optimiser:
             # define optimiser
-            self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
+            # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
+            self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
 
             # define summarizer
             self.variable_summaries(self.loss_prediction)
