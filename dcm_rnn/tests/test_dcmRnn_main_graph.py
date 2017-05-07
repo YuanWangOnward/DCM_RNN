@@ -191,4 +191,9 @@ class TestDcmRnnMainGraph(TestCase):
             np.testing.assert_almost_equal(loss_prior, 0, decimal=5)
             np.testing.assert_almost_equal(loss_total, loss_prediction + loss_sparsity + loss_prior, decimal=5)
 
+    def test_show_all_variable_value(self):
+        self.dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial)
+
+
+
 

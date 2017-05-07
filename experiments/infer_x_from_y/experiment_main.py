@@ -166,8 +166,8 @@ dr.n_recurrent_step = N_RECURRENT_STEP
 if IF_NODE_MODE:
     dr.n_region = 1
 # for initializer graph, hemodynamic parameters are set non-trainable
-for key in dr.trainable_flags_h.keys():
-    dr.trainable_flags_h[key] = False
+for key in dr.trainable_flags.keys():
+    dr.trainable_flags[key] = False
 dr.build_an_initializer_graph(hemodynamic_parameter_initial=None)
 
 # prepare data

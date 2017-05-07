@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 from dcm_rnn.toolboxes import Initialization
 import dcm_rnn.toolboxes as tb
+import pandas as pd
 
 
 def reset_interactive_sesssion(isess):
@@ -50,7 +51,7 @@ class DcmRnn(Initialization):
         self.shift_u_y = 4
         self.shift_u_x = 1
         self.shift_data = int(self.n_recurrent_step / 2)
-        self.if_add_optimiser = True    # turn off when do testing to save time
+        self.if_add_optimiser = True  # turn off when do testing to save time
 
         self.variable_scope_name_u_stacked = variable_scope_name_u_stacked or 'u_stacked'
         self.variable_scope_name_u = variable_scope_name_x or 'cell_u'
@@ -78,18 +79,21 @@ class DcmRnn(Initialization):
         self.log_directory = log_directory or './logs'
 
         self.set_up_loss_weighting()
-        self.trainable_flags_h = {'alpha': True,
-                                  'E0': True,
-                                  'k': True,
-                                  'gamma': True,
-                                  'tao': True,
-                                  'epsilon': False,
-                                  'V0': False,
-                                  'TE': False,
-                                  'r0': False,
-                                  'theta0': False,
-                                  'x_h_coupling': False
-                                  }
+        self.trainable_flags = {'Wxx': True,
+                                'Wxxu': True,
+                                'Wxu': True,
+                                'alpha': True,
+                                'E0': True,
+                                'k': True,
+                                'gamma': True,
+                                'tao': True,
+                                'epsilon': False,
+                                'V0': False,
+                                'TE': False,
+                                'r0': False,
+                                'theta0': False,
+                                'x_h_coupling': False
+                                }
 
     def collect_parameters(self, du):
         """
@@ -128,7 +132,8 @@ class DcmRnn(Initialization):
         self.Wxu_init = np.array(self.C, dtype=np.float32).reshape(self.n_region, 1) * self.t_delta
 
         with tf.variable_scope(self.variable_scope_name_x_parameter):
-            self.Wxx = tf.get_variable('Wxx', dtype=tf.float32, initializer=self.Wxx_init)
+            self.Wxx = tf.get_variable(
+                'Wxx', dtype=tf.float32, initializer=self.Wxx_init, trainable=self.trainable_flags['Wxx'])
             self.Wxxu = [tf.get_variable('Wxxu' + '_s' + str(n), dtype=tf.float32, initializer=self.Wxxu_init[n])
                          for n in range(self.n_stimuli)]
             self.Wxu = tf.get_variable('Wxu', dtype=tf.float32, initializer=self.Wxu_init)
@@ -149,7 +154,7 @@ class DcmRnn(Initialization):
                     temp = tf.get_variable(para + '_r' + str(idx_r),
                                            dtype=tf.float32,
                                            initializer=initial_values[para][region_label],
-                                           trainable=self.trainable_flags_h[para])
+                                           trainable=self.trainable_flags[para])
                     temp_list.append(temp)
                 temp_tensor = tf.stack(temp_list, 0)
                 hemodynamic_parameter.append(temp_tensor)
@@ -417,8 +422,8 @@ class DcmRnn(Initialization):
         for n in range(self.shift_x_y):
             with tf.variable_scope(self.variable_scope_name_x_tailing):
                 self.x_tailing.append(tf.constant(np.zeros(self.n_region, dtype=np.float32),
-                                                   dtype=np.float32,
-                                                   name='x_tailing_' + str(n)))
+                                                  dtype=np.float32,
+                                                  name='x_tailing_' + str(n)))
         self.x_extended = self.x_state
         self.x_extended.extend(self.x_tailing)
 
@@ -513,8 +518,8 @@ class DcmRnn(Initialization):
         self.u_tailing = []
         for n in range(self.shift_u_y):
             self.u_tailing.append(tf.constant(np.zeros(self.n_stimuli, dtype=np.float32),
-                                                  dtype=np.float32,
-                                                  name='u_tailing_' + str(n)))
+                                              dtype=np.float32,
+                                              name='u_tailing_' + str(n)))
         self.u_extended = self.u
         self.u_extended.extend(self.u_tailing)
 
@@ -553,7 +558,8 @@ class DcmRnn(Initialization):
         if self.if_add_optimiser:
             # define optimiser
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
-            self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
+            # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
+            self.train = tf.train.AdagradOptimizer(self.learning_rate).minimize(self.loss_total)
 
             # define summarizer
             self.variable_summaries(self.loss_prediction)
@@ -609,3 +615,43 @@ class DcmRnn(Initialization):
             tf.summary.scalar('max', tf.reduce_max(tensor))
             tf.summary.scalar('min', tf.reduce_min(tensor))
             tf.summary.histogram('histogram', tensor)
+
+    def show_all_variable_value(self, dr, isess, visFlag=False):
+        output = []
+        output_buff = pd.DataFrame()
+        parameter_key_list = [var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
+
+        for idx, key in enumerate(self.parameter_key_list):
+            if key == 'Wxx':
+                values = isess.run(dr.Wxx)
+                tmp = pd.DataFrame(values, index=['To_r' + str(i) for i in range(dr.n_region)], \
+                                   columns=['From_r' + str(i) for i in range(dr.n_region)])
+                tmp.name = key
+                output.append(tmp)
+            elif key == 'Wxxu':
+                values = isess.run(dr.Wxxu)
+                for n in range(dr.n_stimuli):
+                    tmp = pd.DataFrame(values[n], index=['To_r' + str(i) for i in range(dr.n_region)], \
+                                       columns=['From_r' + str(i) for i in range(dr.n_region)])
+                    tmp.name = key + '_s' + str(n)
+                    output.append(tmp)
+            elif key == 'Wxu':
+                values = isess.run(dr.Wxu)
+                tmp = pd.DataFrame(values, index=['To_r' + str(i) for i in range(dr.n_region)], \
+                                   columns=['stimuli_' + str(i) for i in range(dr.n_stimuli)])
+                tmp.name = key
+                output.append(tmp)
+            else:
+                values = eval('isess.run2(dr.' + key + ')')
+                # print(key)
+                # print(true_values)
+                tmp = [values[key + '_r' + str(i)] for i in range(dr.n_region)]
+                tmp = pd.Series(tmp, index=['region_' + str(i) for i in range(dr.n_region)])
+                output_buff[key] = tmp
+        output_buff.name = 'hemodynamic_parameters'
+        output.append(output_buff)
+        if visFlag:
+            for item in output:
+                print(item.name)
+                display(item)
+        return output

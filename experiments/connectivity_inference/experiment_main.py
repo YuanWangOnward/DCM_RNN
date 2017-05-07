@@ -9,11 +9,11 @@ import datetime
 import warnings
 
 # global setting
-MAX_EPOCHS = 8
+MAX_EPOCHS = 2
 CHECK_STEPS = 1
 N_PARTITIONS = 16
-N_SEGMENTS = 512
-LEARNING_RATE = 0.000001
+N_SEGMENTS = 128
+LEARNING_RATE = 0.00001
 N_RECURRENT_STEP = 8
 DATA_SHIFT = 4
 IF_NODE_MODE = True
@@ -25,8 +25,12 @@ LOG_EXTRA_PREFIX = 'Estimation3_'
 current_dir = os.getcwd()
 print('working directory is ' + current_dir)
 if current_dir.split('/')[-1] == "dcm_rnn":
-    os.chdir(current_dir + '/experiments/infer_x_from_y')
-data_path = "../../dcm_rnn/resources/template0.pkl"
+    os.chdir(current_dir + '/..')
+    data_path = "/resources/template0.pkl"
+elif current_dir.split('/')[-1] == "DCM_RNN":
+    data_path = "/dcm_rnn/resources/template0.pkl"
+elif current_dir.split('/')[-1] == "connectivity_inference":
+    data_path = "../../dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)
 
 # build model
@@ -36,10 +40,25 @@ dr.learning_rate = LEARNING_RATE
 dr.shift_data = DATA_SHIFT
 dr.n_recurrent_step = N_RECURRENT_STEP
 neural_parameter_initial = {}
-neural_parameter_initial['A'] = du.get('A') * 1.2
+neural_parameter_initial['A'] = du.get('A') * 1.5
 neural_parameter_initial['B'] = du.get('B')
-neural_parameter_initial['C'] = du.get('C') * 1.5
+neural_parameter_initial['C'] = du.get('C')
 dr.loss_weighting = {'prediction': 5., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+dr.trainable_flags = {'Wxx': True,
+                      'Wxxu': False,
+                      'Wxu': False,
+                      'alpha': False,
+                      'E0': False,
+                      'k': False,
+                      'gamma': False,
+                      'tao': False,
+                      'epsilon': False,
+                      'V0': False,
+                      'TE': False,
+                      'r0': False,
+                      'theta0': False,
+                      'x_h_coupling': False
+                      }
 dr.build_main_graph(neural_parameter_initial=neural_parameter_initial)
 
 # prepare data
@@ -67,7 +86,9 @@ with tf.Session() as sess:
                              dr.h_state_initial: h_state_initial,
                              dr.y_true: data['y'][i]
                          })
-            # print("Index:", '%04d' % i, "loss_prediction=", "{:.9f}".format(loss_prediction))
+            print("Index:", '%04d' % i, "loss_prediction=", "{:.9f}".format(loss_prediction))
+            Wxx = sess.run(dr.Wxx)
+            print(Wxx)
             loss_total_accumulated += loss_total
             loss_prediction_accumulated += loss_prediction
         loss_total_accumulated_list.append(loss_total_accumulated)
@@ -75,6 +96,8 @@ with tf.Session() as sess:
         if epoch % CHECK_STEPS == 0:
             print("Epoch:", '%04d' % epoch, "loss_total=", "{:.9f}".format(loss_total_accumulated),
                   "loss_prediction=", "{:.9f}".format(loss_prediction_accumulated))
+            Wxx = sess.run(dr.Wxx)
+            print(Wxx)
     Wxx = sess.run(dr.Wxx)
     Wxxu = sess.run(dr.Wxxu)
     Wxu = sess.run(dr.Wxu)
@@ -85,4 +108,3 @@ print(loss_prediction_accumulated_list)
 print(Wxx)
 print(Wxxu[0])
 print(Wxu)
-
