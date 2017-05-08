@@ -1,9 +1,10 @@
 # This module contains the tensorflow model for DCM-RNN.
 import tensorflow as tf
 import numpy as np
-from dcm_rnn.toolboxes import Initialization
-import dcm_rnn.toolboxes as tb
+from toolboxes import Initialization
+import toolboxes as tb
 import pandas as pd
+from IPython.display import display
 
 
 def reset_interactive_sesssion(isess):
@@ -456,8 +457,8 @@ class DcmRnn(Initialization):
             self.clear_loss_total = tf.assign(self.loss_total, 0., name='clear_loss_total')
 
         # define optimiser
-        self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_combined)
-        # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_prediction)
+        # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_combined)
+        self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_prediction)
 
         # define summarizer
         self.variable_summaries(self.loss_total)
@@ -616,37 +617,37 @@ class DcmRnn(Initialization):
             tf.summary.scalar('min', tf.reduce_min(tensor))
             tf.summary.histogram('histogram', tensor)
 
-    def show_all_variable_value(self, dr, isess, visFlag=False):
+    def show_all_variable_value(self, isess, visFlag=False):
         output = []
         output_buff = pd.DataFrame()
         parameter_key_list = [var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 
         for idx, key in enumerate(self.parameter_key_list):
             if key == 'Wxx':
-                values = isess.run(dr.Wxx)
-                tmp = pd.DataFrame(values, index=['To_r' + str(i) for i in range(dr.n_region)], \
-                                   columns=['From_r' + str(i) for i in range(dr.n_region)])
+                values = isess.run(self.Wxx)
+                tmp = pd.DataFrame(values, index=['To_r' + str(i) for i in range(self.n_region)], \
+                                   columns=['From_r' + str(i) for i in range(self.n_region)])
                 tmp.name = key
                 output.append(tmp)
             elif key == 'Wxxu':
-                values = isess.run(dr.Wxxu)
-                for n in range(dr.n_stimuli):
-                    tmp = pd.DataFrame(values[n], index=['To_r' + str(i) for i in range(dr.n_region)], \
-                                       columns=['From_r' + str(i) for i in range(dr.n_region)])
+                values = isess.run(self.Wxxu)
+                for n in range(self.n_stimuli):
+                    tmp = pd.DataFrame(values[n], index=['To_r' + str(i) for i in range(self.n_region)], \
+                                       columns=['From_r' + str(i) for i in range(self.n_region)])
                     tmp.name = key + '_s' + str(n)
                     output.append(tmp)
             elif key == 'Wxu':
-                values = isess.run(dr.Wxu)
-                tmp = pd.DataFrame(values, index=['To_r' + str(i) for i in range(dr.n_region)], \
-                                   columns=['stimuli_' + str(i) for i in range(dr.n_stimuli)])
+                values = isess.run(self.Wxu)
+                tmp = pd.DataFrame(values, index=['To_r' + str(i) for i in range(self.n_region)], \
+                                   columns=['stimuli_' + str(i) for i in range(self.n_stimuli)])
                 tmp.name = key
                 output.append(tmp)
             else:
-                values = eval('isess.run2(dr.' + key + ')')
+                values = eval('isess.run2(self.' + key + ')')
                 # print(key)
                 # print(true_values)
-                tmp = [values[key + '_r' + str(i)] for i in range(dr.n_region)]
-                tmp = pd.Series(tmp, index=['region_' + str(i) for i in range(dr.n_region)])
+                tmp = [values[key + '_r' + str(i)] for i in range(self.n_region)]
+                tmp = pd.Series(tmp, index=['region_' + str(i) for i in range(self.n_region)])
                 output_buff[key] = tmp
         output_buff.name = 'hemodynamic_parameters'
         output.append(output_buff)

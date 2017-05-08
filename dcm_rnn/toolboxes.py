@@ -23,6 +23,8 @@ def cdr(relative_path, if_print=False):
 
 
 def load_template(data_path):
+    current_dir = os.getcwd()
+    print('working directory is ' + current_dir)
     with open(data_path, 'rb') as f:
         template = pickle.load(f)
     return template
