@@ -93,8 +93,6 @@ def calculate_log_data():
     x_hat_log = tb.split(data['x_hat'].get(), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     if IF_NODE_MODE:
         x_hat_log = [array.reshape(dr.n_recurrent_step, 1) for array in x_hat_log]
-    else:
-        x_hat_log = [array for array in x_hat_log]
     x_true_log = data['x_true']
 
     h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
@@ -150,16 +148,26 @@ def add_data_log(data_log_dir=None, extra_prefix=''):
 
 
 # global setting
-MAX_EPOCHS = 2
-MAX_EPOCHS_INNER = 8
-CHECK_STEPS = MAX_EPOCHS_INNER
-N_SEGMENTS = 128     # total amount of data segments
-LEARNING_RATE = 2
-N_RECURRENT_STEP = 8
-DATA_SHIFT = 4
-IF_NODE_MODE = True
+IF_NODE_MODE = False
 IF_IMAGE_LOG = True
-IF_DATA_LOG = True
+IF_DATA_LOG = False
+if IF_NODE_MODE:
+    MAX_EPOCHS = 2
+    MAX_EPOCHS_INNER = 8
+    CHECK_STEPS = MAX_EPOCHS_INNER
+    N_SEGMENTS = 128     # total amount of data segments
+    N_RECURRENT_STEP = 64
+    LEARNING_RATE = 128 / N_RECURRENT_STEP
+    DATA_SHIFT = 4
+    NODE_INDEX = 2
+else:
+    MAX_EPOCHS = 2
+    MAX_EPOCHS_INNER = 8
+    CHECK_STEPS = MAX_EPOCHS_INNER
+    N_SEGMENTS = 64  # total amount of data segments
+    N_RECURRENT_STEP = 64
+    LEARNING_RATE = 128 / N_RECURRENT_STEP
+    DATA_SHIFT = 4
 LOG_EXTRA_PREFIX = 'Estimation3_'
 
 
@@ -192,12 +200,14 @@ if IF_NODE_MODE:
 for key in dr.trainable_flags.keys():
     # in the initialization graph, the hemodynamic parameters are not trainable
     dr.trainable_flags[key] = False
-dr.build_an_initializer_graph(hemodynamic_parameter_initial=None)
+h_parameter_initial = \
+    dr.randomly_generate_hemodynamic_parameters(dr.n_region, deviation_constraint=2).astype(np.float32)
+dr.build_an_initializer_graph(hemodynamic_parameter_initial=h_parameter_initial)
 print('Building tf model done.')
 
 # prepare data
 if IF_NODE_MODE:
-    prepare_data(max_segments=N_SEGMENTS, node_index=0)
+    prepare_data(max_segments=N_SEGMENTS, node_index=NODE_INDEX)
 else:
     prepare_data(max_segments=N_SEGMENTS)
 print('Data preparation done.')
@@ -314,9 +324,20 @@ with tf.Session() as sess:
         else:
             # x_hat_previous = copy.deepcopy(data['x_hat'])
             x_hat_previous = data['x_hat'].get().copy()
-        '''
         x_hat_previous = data['x_hat'].get().copy()
+        '''
+    data_saved = {}
+    data_saved['iteration'] = count_total
+    data_saved['h_parameter_initial'] = h_parameter_initial
+    data_saved['x_hat'] = x_hat_log
+    data_saved['x_true'] = x_true_log
+    data_saved['y_hat'] = y_hat_log
+    data_saved['y_true'] = y_true_log
 
+    dt = datetime.datetime.now()
+    file_name = "%04d%02d%02d%02d%02d%02d.pkl" % (
+        dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+    pickle.dump(data_saved, open(file_name, "wb"))
 
 print("Optimization Finished!")
 # x_hat = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)

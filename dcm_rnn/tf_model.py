@@ -403,10 +403,12 @@ class DcmRnn(Initialization):
         :return:
         """
 
-        self.hemodynamic_parameter_initial = hemodynamic_parameter_initial or \
-                                             self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
-
-        # x layer state
+        if hemodynamic_parameter_initial is None:
+            self.hemodynamic_parameter_initial = \
+                self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
+        else:
+            self.hemodynamic_parameter_initial = hemodynamic_parameter_initial
+                # x layer state
         with tf.variable_scope(self.variable_scope_name_x_stacked):
             self.x_state_stacked = \
                 tf.get_variable(name='x_state_stacked', dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region])

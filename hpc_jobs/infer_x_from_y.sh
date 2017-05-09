@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
-#SBATCH --time=16:00:00
-#SBATCH --mem=12GB
-#SBATCH --job-name=infer_x_from_y
+#SBATCH --time=32:00:00
+#SBATCH --mem=16GB
+#SBATCH --job-name=infer_x_from_y_random_h_parameter_3_node
 #SBATCH --mail-type=END
 #SBATCH --mail-user=yw1225@nyu.edu
 #SBATCH --output=slurm_%j.out
@@ -14,7 +14,7 @@ module load python3/intel/3.5.3
 module load tensorflow/python3.5/1.0.1
 #SBATCH --gres=gpu:1
 
-JOBNAME=infer_x_from_y
+JOBNAME=infer_x_from_y_three_nodes
 RUNDIR=$SCRATCH/runs/$JOBNAME-${SLURM_JOB_ID/.*}
 SOURCEDIR=~/projects/DCM_RNN/dcm_rnn
 OUTPUTDIR=$SCRATCH/results/DCM_RNN/$JOBNAME/${SLURM_JOB_ID/.*}
