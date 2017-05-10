@@ -30,10 +30,16 @@ def prepare_data(max_segments=None, node_index=None):
     global sequence_length
     global H_STATE_INITIAL
     global IF_NOISED_Y
+    global SNR
     data = {}
 
     if IF_NOISED_Y:
-        pass
+        std = np.std(du.get('y').reshape([-1])) / SNR
+        noise = np.random.normal(0, std, du.get('y').shape)
+        data['x_true'], data['y_true'] = \
+            tb.split_data_for_initializer_graph(du.get('x'), du.get('y') + noise,
+                                                n_segment=dr.n_recurrent_step,
+                                                n_step=dr.shift_data, shift_x_y=dr.shift_x_y)
     else:
         data['x_true'], data['y_true'] = tb.split_data_for_initializer_graph(
             du.get('x'), du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift_x_y=dr.shift_x_y)
@@ -44,6 +50,8 @@ def prepare_data(max_segments=None, node_index=None):
     sequence_length = dr.n_recurrent_step + (len(data['x_true']) - 1) * dr.shift_data
     data['x_hat'] = tb.ArrayWrapper(np.zeros(temp.shape) * np.mean(du.get('y')),
                                     n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+    data['y_true_noise_free'] = \
+        tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift_x_y=dr.shift_x_y)
 
     if max_segments is not None:
         if max_segments > len(data['x_true']):
@@ -51,6 +59,7 @@ def prepare_data(max_segments=None, node_index=None):
             max_segments = len(data['x_true'])
         data['x_true'] = data['x_true'][:max_segments]
         data['y_true'] = data['y_true'][:max_segments]
+        data['y_true_noise_free'] = data['y_true_noise_free'][:max_segments]
         data['h_true_monitor'] = data['h_true_monitor'][:max_segments]
         sequence_length = dr.n_recurrent_step + (len(data['x_true']) - 1) * dr.shift_data
         data['x_hat'].data = np.take(data['x_hat'].data, range(0, sequence_length), axis=0)
@@ -58,6 +67,8 @@ def prepare_data(max_segments=None, node_index=None):
     if node_index is not None:
         data['x_true'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['x_true']]
         data['y_true'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_true']]
+        data['y_true_noise_free'] = \
+            [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_true_noise_free']]
         data['h_true_monitor'] = [np.take(array, node_index, 1) for array in data['h_true_monitor']]
         # data['x_hat'].data = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['x_hat']]
         data['x_hat'] = tb.ArrayWrapper(np.take(data['x_hat'].data, node_index, axis=1),
@@ -98,6 +109,8 @@ def calculate_log_data():
     global y_true_log_merged
     global y_original_log
     global y_original_log_merged
+    global y_true_noise_free_log
+    global y_true_noise_free_log_merged
 
     # x_hat_log = data['x_hat']
     x_hat_log = tb.split(data['x_hat'].get(), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
@@ -116,6 +129,8 @@ def calculate_log_data():
         dr.run_initializer_graph(sess, h_initial_segment, x_true_log)
 
     y_origianl_log = data['y_true']
+    y_true_noise_free_log = data['y_true_noise_free']
+
 
     x_hat_log_merged = tb.merge(x_hat_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     x_true_log_merged = tb.merge(x_true_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
@@ -123,9 +138,10 @@ def calculate_log_data():
     y_hat_log_merged = tb.merge(y_hat_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     y_true_log_merged = tb.merge(y_true_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     y_original_log_merged = tb.merge(y_origianl_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-
+    y_true_noise_free_log_merged = tb.merge(y_true_noise_free_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
 
 def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
+    global IF_NOISED_Y
     if not os.path.exists(image_log_dir):
         os.makedirs(image_log_dir)
     log_file_name_prefix = get_log_prefix(extra_prefix)
@@ -136,6 +152,7 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
     y_hat = y_hat_log_merged
     y_true = y_true_log_merged
     y_original = y_original_log_merged
+    y_true_noise_free = y_true_noise_free_log_merged
 
     plt.figure(figsize=(10, 10))
     plt.subplot(2, 2, 1)
@@ -143,10 +160,17 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
     plt.plot(x_hat, '--')
     plt.title('x true and hat Iteration = ' + str(count_total))
 
-    plt.subplot(2, 2, 2)
-    plt.plot(y_original)
-    plt.plot(y_hat, '--')
-    plt.title('y true and hat Iteration = ' + str(count_total))
+    if IF_NOISED_Y:
+        plt.subplot(2, 2, 2)
+        plt.plot(y_true_noise_free)
+        plt.plot(y_original)
+        plt.plot(y_hat, '--')
+        plt.title('y true and hat Iteration = ' + str(count_total))
+    else:
+        plt.subplot(2, 2, 2)
+        plt.plot(y_original)
+        plt.plot(y_hat, '--')
+        plt.title('y true and hat Iteration = ' + str(count_total))
 
     plt.subplot(2, 2, 3)
     plt.plot(y_original)
@@ -200,7 +224,7 @@ if IF_NODE_MODE:
     N_RECURRENT_STEP = 64
     LEARNING_RATE = 128 / N_RECURRENT_STEP
     DATA_SHIFT = 4
-    SNR = 2
+    SNR = 3
     LOG_EXTRA_PREFIX = 'single_node_'
 else:
     MAX_EPOCHS = 4
@@ -210,7 +234,7 @@ else:
     N_RECURRENT_STEP = 64
     LEARNING_RATE = 128 / N_RECURRENT_STEP
     DATA_SHIFT = 4
-    SNR = 2
+    SNR = 3
     LOG_EXTRA_PREFIX = 'all_node_'
 
 
