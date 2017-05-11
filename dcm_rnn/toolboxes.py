@@ -45,13 +45,12 @@ def mse(value_hat, value_true):
     mse = ((value_hat.flatten() - value_true.flatten()) ** 2).mean()
     return mse
 
-
 def rmse(value_hat, value_true):
     error = value_hat.flatten() - value_true.flatten()
     norm_true = np.linalg.norm(value_true.flatten())
     norm_error = np.linalg.norm(error)
-    rmse = norm_error / norm_true
-    return rmse
+    return norm_error / norm_true
+
 
 
 def argsort2(array):

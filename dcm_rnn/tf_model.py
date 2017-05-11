@@ -457,10 +457,10 @@ class DcmRnn(Initialization):
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
             self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
-            smooth_temp1 = tf.concat([self.x_state_stacked[0:-1], self.x_state_stacked[0:2]], axis=0)
-            smooth_temp2 = tf.concat([self.x_state_stacked[1:], self.x_state_stacked_before_update[0:2]], axis=0)
-            self.loss_smooth = self.mse(smooth_temp1, smooth_temp2)
-            # self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
+            # smooth_temp1 = tf.concat([self.x_state_stacked[0:-1], self.x_state_stacked[0:2]], axis=0)
+            #smooth_temp2 = tf.concat([self.x_state_stacked[1:], self.x_state_stacked_before_update[0:2]], axis=0)
+            # self.loss_smooth = self.mse(smooth_temp1, smooth_temp2)
+            self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
             # self.loss_smooth = tf.reduce_sum(tf.abs(self.x_state_stacked[0:-1, :] - self.x_state_stacked[1:, :]))
             self.loss_combined = self.loss_prediction + self.loss_weighting['smooth'] * self.loss_smooth
         with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
