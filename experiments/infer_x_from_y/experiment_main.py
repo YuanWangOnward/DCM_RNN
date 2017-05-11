@@ -101,7 +101,8 @@ def calculate_log_data():
 
         loss_x_normalizer = np.sum(data['x_true_merged'].flatten() ** 2)
         loss_y_normalizer = np.sum(data['y_true_merged'].flatten() ** 2)
-        loss_smooth_normalizer = loss_x_normalizer
+        loss_smooth_normalizer =\
+            np.sum((data['x_true_merged'][:-1].flatten() - data['x_true_merged'][1:].flatten()) ** 2)
 
     data['x_hat'] = tb.split(data['x_hat_merged'].get(), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     if IF_NODE_MODE:
@@ -192,10 +193,10 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
     plt.legend()
 
     plt.subplot(2, 2, 4)
-    plt.plot(data['loss_x'], label='x')
-    plt.plot(data['loss_y'], label='y')
-    plt.plot(data['loss_smooth'], label='smooth')
-    plt.plot(data['loss_total'], label='total')
+    plt.plot(data['loss_x'], label='x loss')
+    plt.plot(data['loss_y'], label='y loss')
+    plt.plot(data['loss_smooth'], label='smooth loss')
+    plt.plot(data['loss_total'], label='total loss')
     plt.xlabel('check point index')
     plt.ylabel('value')
     plt.title('Normalized loss, iteration = ' + str(count_total))
@@ -244,7 +245,7 @@ def add_data_log(data_log_dir='./data_logs/', extra_prefix=''):
 
 
 # global setting
-IF_RANDOM_H_PARA = True
+IF_RANDOM_H_PARA = False
 IF_RANDOM_H_STATE_INIT = True
 IF_NOISED_Y = True
 
@@ -330,16 +331,16 @@ with tf.Session() as sess:
         for i_segment in range(N_SEGMENTS):
             sess.run(tf.global_variables_initializer())
             for epoch_inner in range(MAX_EPOCHS_INNER):
-
                 # assign proper data
                 if IF_NODE_MODE is True:
-                    sess.run([dr.assign_x_state_stacked, dr.assign_x_state_stacked_before_update],
+                    sess.run([dr.assign_x_state_stacked, dr.assign_x_state_stacked_before_update,
+                              tf.assign(dr.h_state_initial, h_initial_segment)],
                              feed_dict={dr.x_state_stacked_placeholder:
                                             data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)})
                 else:
-                    sess.run([dr.assign_x_state_stacked, dr.assign_x_state_stacked_before_update],
+                    sess.run([dr.assign_x_state_stacked, dr.assign_x_state_stacked_before_update,
+                              tf.assign(dr.h_state_initial, h_initial_segment)],
                              feed_dict={dr.x_state_stacked_placeholder: data['x_hat_merged'].get(i_segment)})
-                sess.run(tf.assign(dr.h_state_initial, h_initial_segment))
 
                 # training
                 sess.run(dr.train, feed_dict={dr.y_true: data['y_train'][i_segment]})
@@ -347,29 +348,6 @@ with tf.Session() as sess:
                 # collect results
                 temp = sess.run([dr.x_state_stacked])
                 data['x_hat_merged'].set(i_segment, temp)
-
-                '''
-                # assign proper data
-                if IF_NODE_MODE is True:
-                    _, _, _, _, temp = \
-                        sess.run([tf.assign(dr.h_state_initial, h_initial_segment),
-                                  tf.assign(dr.assign_x_state_stacked,
-                                            data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)),
-                                  tf.assign(dr.x_state_stacked_before_update,
-                                            data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)),
-                                  dr.train,
-                                  dr.x_state_stacked],
-                                 feed_dict={dr.y_true: data['y_train'][i_segment]})
-                else:
-                    _, _, _, _, temp = \
-                        sess.run([tf.assign(dr.h_state_initial, h_initial_segment),
-                                  tf.assign(dr.assign_x_state_stacked, data['x_hat_merged'].get(i_segment)),
-                                  tf.assign(dr.x_state_stacked_before_update, data['x_hat_merged'].get(i_segment)),
-                                  dr.train,
-                                  dr.x_state_stacked],
-                                 feed_dict={dr.y_true: data['y_train'][i_segment]})
-                data['x_hat_merged'].set(i_segment, temp)
-                '''
 
                 if epoch_inner == MAX_EPOCHS_INNER - 1:
                     # predict the coming x
