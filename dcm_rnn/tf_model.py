@@ -115,7 +115,8 @@ class DcmRnn(Initialization):
         self.n_stimuli = parameter_package['n_stimuli']
 
     def set_up_loss_weighting(self):
-        self.loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+        self.loss_weighting = \
+            {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1., 'smooth': 5.}
 
     def create_shared_variables_x(self, neural_parameter_initial):
         """
@@ -412,11 +413,17 @@ class DcmRnn(Initialization):
         with tf.variable_scope(self.variable_scope_name_x_stacked):
             self.x_state_stacked = \
                 tf.get_variable(name='x_state_stacked', dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region])
+            self.x_state_stacked_before_update = \
+                tf.get_variable(name='x_state_stacked_before_update',
+                                dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], trainable=False)
             self.x_state_stacked_placeholder = \
                 tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region],
                                name='x_state_stacked_placeholder')
             self.assign_x_state_stacked = \
                 tf.assign(self.x_state_stacked, self.x_state_stacked_placeholder, name='assign_x_state_stacked')
+            self.assign_x_state_stacked_before_update = \
+                tf.assign(self.x_state_stacked,
+                          self.x_state_stacked_placeholder, name='assign_x_state_stacked_before_update')
         self.x_state = []
         for n in range(self.n_recurrent_step):
             with tf.variable_scope(self.variable_scope_name_x):
@@ -450,9 +457,12 @@ class DcmRnn(Initialization):
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
             self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
-            self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
+            smooth_temp1 = tf.concat([self.x_state_stacked[0:-1], self.x_state_stacked[0:2]], axis=0)
+            smooth_temp2 = tf.concat([self.x_state_stacked[1:], self.x_state_stacked_before_update[0:2]], axis=0)
+            self.loss_smooth = self.mse(smooth_temp1, smooth_temp2)
+            # self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
             # self.loss_smooth = tf.reduce_sum(tf.abs(self.x_state_stacked[0:-1, :] - self.x_state_stacked[1:, :]))
-            self.loss_combined = self.loss_prediction + 0 * self.loss_smooth
+            self.loss_combined = self.loss_prediction + self.loss_weighting['smooth'] * self.loss_smooth
         with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
             self.loss_total = tf.get_variable('loss_total', initializer=0., trainable=False)
             self.sum_loss = tf.assign_add(self.loss_total, self.loss_combined, name='accumulate_loss')
@@ -460,7 +470,7 @@ class DcmRnn(Initialization):
 
         # define optimiser
         # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_combined)
-        self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_prediction)
+        self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_combined)
 
         # define summarizer
         self.variable_summaries(self.loss_total)

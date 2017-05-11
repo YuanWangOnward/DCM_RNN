@@ -85,7 +85,6 @@ def prepare_data(max_segments=None, node_index=None):
 
 
 def calculate_log_data():
-
     # run forward pass with x_true to show y error caused by error in the network parameters, it should run only once
     if 'y_hat_x_true' not in data.keys():
         sess.run(tf.global_variables_initializer())
@@ -118,7 +117,6 @@ def calculate_log_data():
     data['y_hat_x_true'] = data['y_hat_x_true']
     data['y_hat'] = y_hat_log
 
-
     # merged data
     data['x_true_merged'] = data['x_true_merged']
     data['x_hat_merged'] = data['x_hat_merged']
@@ -126,7 +124,6 @@ def calculate_log_data():
     data['h_true_monitor_merged'] = data['h_true_monitor_merged']
     data['h_hat_x_true_monitor_merged'] = data['h_hat_x_true_monitor_merged']
     data['h_hat_monitor_merged'] = tb.merge(h_hat_monitor_log, dr.n_recurrent_step, dr.shift_data)
-
 
     data['y_train_merged'] = data['y_train_merged']
     data['y_true_merged'] = data['y_true_merged']
@@ -206,6 +203,8 @@ def add_data_log(data_log_dir='./data_logs/', extra_prefix=''):
     data_saved['SNR'] = SNR
     data_saved['LOG_EXTRA_PREFIX'] = LOG_EXTRA_PREFIX
 
+    data_saved['SMOOTH_WEIGHT'] = SMOOTH_WEIGHT
+
     data_saved['iteration'] = count_total
     data_saved.update(data)
 
@@ -221,27 +220,19 @@ IF_NOISED_Y = True
 IF_NODE_MODE = True
 IF_IMAGE_LOG = True
 IF_DATA_LOG = True
-if IF_NODE_MODE:
-    NODE_INDEX = 0
-    MAX_EPOCHS = 4
-    MAX_EPOCHS_INNER = 4
-    N_SEGMENTS = 128  # total amount of data segments
-    CHECK_STEPS = N_SEGMENTS * MAX_EPOCHS_INNER
-    N_RECURRENT_STEP = 64
-    LEARNING_RATE = 128 / N_RECURRENT_STEP
-    DATA_SHIFT = 4
-    SNR = 3
-    LOG_EXTRA_PREFIX = 'single_node_'
-else:
-    MAX_EPOCHS = 4
-    MAX_EPOCHS_INNER = 4
-    N_SEGMENTS = 64  # total amount of data segments
-    CHECK_STEPS = N_SEGMENTS * MAX_EPOCHS_INNER
-    N_RECURRENT_STEP = 64
-    LEARNING_RATE = 128 / N_RECURRENT_STEP
-    DATA_SHIFT = 4
-    SNR = 3
-    LOG_EXTRA_PREFIX = 'all_node_'
+
+SNR = 3
+NODE_INDEX = 0
+SMOOTH_WEIGHT = 5
+N_RECURRENT_STEP = 64
+MAX_EPOCHS = 4
+MAX_EPOCHS_INNER = 4
+N_SEGMENTS = 128  # total amount of data segments
+#CHECK_STEPS = 4
+CHECK_STEPS = N_SEGMENTS * MAX_EPOCHS_INNER
+LEARNING_RATE = 128 / N_RECURRENT_STEP
+DATA_SHIFT = 4
+LOG_EXTRA_PREFIX = ''
 
 # load in data
 current_dir = os.getcwd()
@@ -267,6 +258,7 @@ dr.collect_parameters(du)
 dr.learning_rate = LEARNING_RATE
 dr.shift_data = DATA_SHIFT
 dr.n_recurrent_step = N_RECURRENT_STEP
+dr.loss_weighting['smooth'] = SMOOTH_WEIGHT
 if IF_NODE_MODE:
     dr.n_region = 1
 for key in dr.trainable_flags.keys():
@@ -311,11 +303,11 @@ with tf.Session() as sess:
             for epoch_inner in range(MAX_EPOCHS_INNER):
                 # assign proper data
                 if IF_NODE_MODE is True:
-                    sess.run(dr.assign_x_state_stacked,
+                    sess.run([dr.assign_x_state_stacked, dr.assign_x_state_stacked_before_update],
                              feed_dict={dr.x_state_stacked_placeholder:
                                             data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)})
                 else:
-                    sess.run(dr.assign_x_state_stacked,
+                    sess.run([dr.assign_x_state_stacked, dr.assign_x_state_stacked_before_update],
                              feed_dict={dr.x_state_stacked_placeholder: data['x_hat_merged'].get(i_segment)})
                 sess.run(tf.assign(dr.h_state_initial, h_initial_segment))
 
