@@ -1,9 +1,10 @@
 import matplotlib
+
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
-#import dcm_rnn.tf_model as tfm
-#import dcm_rnn.toolboxes as tb
+# import dcm_rnn.tf_model as tfm
+# import dcm_rnn.toolboxes as tb
 import tf_model as tfm
 import toolboxes as tb
 import numpy as np
@@ -13,7 +14,6 @@ import datetime
 import warnings
 import sys
 import random
-
 
 '''
 # choose matplotlib backend depending on interpreter used
@@ -25,62 +25,10 @@ else:
 '''
 
 
-def prepare_data(max_segments=None, node_index=None):
-    global data
-    global sequence_length
-    global H_STATE_INITIAL
-    global IF_NOISED_Y
-    global SNR
-    data = {}
-
-    if IF_NOISED_Y:
-        std = np.std(du.get('y').reshape([-1])) / SNR
-        noise = np.random.normal(0, std, du.get('y').shape)
-        data['x_true'], data['y_true'] = \
-            tb.split_data_for_initializer_graph(du.get('x'), du.get('y') + noise,
-                                                n_segment=dr.n_recurrent_step,
-                                                n_step=dr.shift_data, shift_x_y=dr.shift_x_y)
-    else:
-        data['x_true'], data['y_true'] = tb.split_data_for_initializer_graph(
-            du.get('x'), du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift_x_y=dr.shift_x_y)
-
-    data['h_true_monitor'] = tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-    data['h_true_monitor'] = data['h_true_monitor'][:len(data['y_true'])]
-    temp = tb.merge(data['x_true'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-    sequence_length = dr.n_recurrent_step + (len(data['x_true']) - 1) * dr.shift_data
-    data['x_hat'] = tb.ArrayWrapper(np.zeros(temp.shape) * np.mean(du.get('y')),
-                                    n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-    data['y_true_noise_free'] = \
-        tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift_x_y=dr.shift_x_y)
-
-    if max_segments is not None:
-        if max_segments > len(data['x_true']):
-            warnings.warn("max_segments is larger than the length of available data", UserWarning)
-            max_segments = len(data['x_true'])
-        data['x_true'] = data['x_true'][:max_segments]
-        data['y_true'] = data['y_true'][:max_segments]
-        data['y_true_noise_free'] = data['y_true_noise_free'][:max_segments]
-        data['h_true_monitor'] = data['h_true_monitor'][:max_segments]
-        sequence_length = dr.n_recurrent_step + (len(data['x_true']) - 1) * dr.shift_data
-        data['x_hat'].data = np.take(data['x_hat'].data, range(0, sequence_length), axis=0)
-
-    if node_index is not None:
-        data['x_true'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['x_true']]
-        data['y_true'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_true']]
-        data['y_true_noise_free'] = \
-            [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_true_noise_free']]
-        data['h_true_monitor'] = [np.take(array, node_index, 1) for array in data['h_true_monitor']]
-        # data['x_hat'].data = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['x_hat']]
-        data['x_hat'] = tb.ArrayWrapper(np.take(data['x_hat'].data, node_index, axis=1),
-                                        n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-        H_STATE_INITIAL = H_STATE_INITIAL[node_index].reshape(1, 4)
-    return data
-
-
 def get_log_prefix(extra_prefix=''):
     prefix = extra_prefix \
-             + 'node' + str(dr.n_region) \
-             + '_segment' + str(N_SEGMENTS) \
+             + 'nodeNumber' + str(dr.n_region) \
+             + '_segments' + str(N_SEGMENTS) \
              + '_learningRate' + str(dr.learning_rate).replace('.', 'p') \
              + '_recurrentStep' + str(N_RECURRENT_STEP) \
              + '_dataShift' + str(DATA_SHIFT) \
@@ -88,57 +36,103 @@ def get_log_prefix(extra_prefix=''):
     return prefix
 
 
+def prepare_data(max_segments=None, node_index=None):
+    global data
+    global SEQUENCE_LENGTH
+    global H_STATE_INITIAL
+    global IF_NOISED_Y
+    global SNR
+    global NOISE
+
+    if IF_NOISED_Y:
+        std = np.std(du.get('y').reshape([-1])) / SNR
+        NOISE = np.random.normal(0, std, du.get('y').shape)
+    else:
+        NOISE = np.zeros(du.get('y').shape)
+
+    ## saved line. SEQUENCE_LENGTH = dr.n_recurrent_step + (len(data['x_true']) - 1) * dr.shift_data
+    data['y_train'] = tb.split(du.get('y') + NOISE, dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)
+    max_segments_natural = len(data['y_train'])
+    data['y_true'] = tb.split(du.get('y'), dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)[:max_segments_natural]
+    data['h_true_monitor'] = tb.split(du.get('h'), dr.n_recurrent_step, dr.shift_data)[:max_segments_natural]
+    data['x_true'] = tb.split(du.get('x'), dr.n_recurrent_step, dr.shift_data)[:max_segments_natural]
+
+    if max_segments is not None:
+        if max_segments > max_segments_natural:
+            warnings.warn("max_segments is larger than the length of available data", UserWarning)
+        else:
+            data['x_true'] = data['x_true'][:max_segments]
+            data['h_true_monitor'] = data['h_true_monitor'][:max_segments]
+            data['y_true'] = data['y_true'][:max_segments]
+            data['y_train'] = data['y_train'][:max_segments]
+
+    if node_index is not None:
+        data['x_true'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['x_true']]
+        data['h_true_monitor'] = [np.take(array, node_index, 1) for array in data['h_true_monitor']]
+        data['y_true'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_true']]
+        data['y_train'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_train']]
+        H_STATE_INITIAL = H_STATE_INITIAL[node_index].reshape(1, 4)
+
+    # collect merged data (without split and merge, it can be tricky to cut proper part from du)
+    data['x_true_merged'] = tb.merge(data['x_true'], dr.n_recurrent_step, dr.shift_data)
+    # x_hat is with extra wrapper for easy modification with a single index
+    data['x_hat_merged'] = tb.ArrayWrapper(np.zeros(data['x_true_merged'].shape), dr.n_recurrent_step, dr.shift_data)
+    data['h_true_monitor_merged'] = tb.merge(data['h_true_monitor'], dr.n_recurrent_step, dr.shift_data)
+    data['y_true_merged'] = tb.merge(data['y_true'], dr.n_recurrent_step, dr.shift_data)
+    data['y_train_merged'] = tb.merge(data['y_train'], dr.n_recurrent_step, dr.shift_data)
+
+    return data
+
+
 def calculate_log_data():
-    global x_hat_log
-    global x_hat_log_merged
-    global x_true_log
-    global x_true_log_merged
 
-    global h_hat_monitor_log
-    global h_hat_connector_log
-    global h_true_monitor_log
-    global h_true_connector_log
-    global h_original_monitor_log
-    global h_original_connector_log
-    global h_train_monitor_log
-    global h_train_connector_log
+    # run forward pass with x_true to show y error caused by error in the network parameters, it should run only once
+    if 'y_hat_x_true' not in data.keys():
+        sess.run(tf.global_variables_initializer())
+        y_hat_x_true_log, h_hat_x_true_monitor_log, h_hat_x_true_connector_log = \
+            dr.run_initializer_graph(sess, H_STATE_INITIAL, data['x_true'])
+        data['h_hat_x_true_monitor'] = h_hat_x_true_monitor_log
+        data['y_hat_x_true'] = y_hat_x_true_log
+        data['h_hat_x_true_monitor_merged'] = tb.merge(h_hat_x_true_monitor_log, dr.n_recurrent_step, dr.shift_data)
+        data['y_hat_x_true_merged'] = tb.merge(y_hat_x_true_log, dr.n_recurrent_step, dr.shift_data)
 
-    global y_hat_log
-    global y_hat_log_merged
-    global y_true_log
-    global y_true_log_merged
-    global y_original_log
-    global y_original_log_merged
-    global y_true_noise_free_log
-    global y_true_noise_free_log_merged
-
-    # x_hat_log = data['x_hat']
-    x_hat_log = tb.split(data['x_hat'].get(), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+    data['x_hat'] = tb.split(data['x_hat_merged'].get(), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     if IF_NODE_MODE:
-        x_hat_log = [array.reshape(dr.n_recurrent_step, 1) for array in x_hat_log]
-    x_true_log = data['x_true']
+        data['x_hat'] = [array.reshape(dr.n_recurrent_step, 1) for array in data['x_hat']]
 
     sess.run(tf.global_variables_initializer())
-    h_initial_segment = H_STATE_INITIAL
     y_hat_log, h_hat_monitor_log, h_hat_connector_log = \
-        dr.run_initializer_graph(sess, h_initial_segment, x_hat_log)
+        dr.run_initializer_graph(sess, H_STATE_INITIAL, data['x_hat'])
 
-    sess.run(tf.global_variables_initializer())
-    h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
-    y_true_log, h_true_monitor_log, h_true_connector_log = \
-        dr.run_initializer_graph(sess, h_initial_segment, x_true_log)
+    # collect results
+    # segmented data
+    data['x_hat'] = data['x_hat']
+    data['x_true'] = data['x_true']
 
-    y_origianl_log = data['y_true']
-    y_true_noise_free_log = data['y_true_noise_free']
+    data['h_true_monitor'] = data['h_true_monitor']
+    data['h_hat_x_true_monitor'] = data['h_hat_x_true_monitor']
+    data['h_hat_monitor'] = h_hat_monitor_log
+
+    data['y_train'] = data['y_train']
+    data['y_true'] = data['y_true']
+    data['y_hat_x_true'] = data['y_hat_x_true']
+    data['y_hat'] = y_hat_log
 
 
-    x_hat_log_merged = tb.merge(x_hat_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-    x_true_log_merged = tb.merge(x_true_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+    # merged data
+    data['x_true_merged'] = data['x_true_merged']
+    data['x_hat_merged'] = data['x_hat_merged']
 
-    y_hat_log_merged = tb.merge(y_hat_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-    y_true_log_merged = tb.merge(y_true_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-    y_original_log_merged = tb.merge(y_origianl_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-    y_true_noise_free_log_merged = tb.merge(y_true_noise_free_log, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+    data['h_true_monitor_merged'] = data['h_true_monitor_merged']
+    data['h_hat_x_true_monitor_merged'] = data['h_hat_x_true_monitor_merged']
+    data['h_hat_monitor_merged'] = tb.merge(h_hat_monitor_log, dr.n_recurrent_step, dr.shift_data)
+
+
+    data['y_train_merged'] = data['y_train_merged']
+    data['y_true_merged'] = data['y_true_merged']
+    data['y_hat_x_true_merged'] = data['y_hat_x_true_merged']
+    data['y_hat_merged'] = tb.merge(y_hat_log, dr.n_recurrent_step, dr.shift_data)
+
 
 def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
     global IF_NOISED_Y
@@ -146,44 +140,40 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
         os.makedirs(image_log_dir)
     log_file_name_prefix = get_log_prefix(extra_prefix)
 
-    x_hat = x_hat_log_merged
-    x_true = x_true_log_merged
-
-    y_hat = y_hat_log_merged
-    y_true = y_true_log_merged
-    y_original = y_original_log_merged
-    y_true_noise_free = y_true_noise_free_log_merged
-
     plt.figure(figsize=(10, 10))
     plt.subplot(2, 2, 1)
-    plt.plot(x_true)
-    plt.plot(x_hat, '--')
-    plt.title('x true and hat Iteration = ' + str(count_total))
+    plt.plot(data['x_true_merged'], label='x_true')
+    plt.plot(data['x_hat_merged'].get(), '--', label='x_hat')
+    plt.title('Iteration = ' + str(count_total))
+    plt.legend()
 
     if IF_NOISED_Y:
         plt.subplot(2, 2, 2)
-        plt.plot(y_true_noise_free)
-        plt.plot(y_original)
-        plt.plot(y_hat, '--')
-        plt.title('y true and hat Iteration = ' + str(count_total))
+        plt.plot(data['y_train_merged'], label='y_train')
+        plt.plot(data['y_true_merged'], label='y_true')
+        plt.plot(data['y_hat_merged'], '--', label='y_hat')
+        plt.title('Iteration = ' + str(count_total))
+        plt.legend()
     else:
         plt.subplot(2, 2, 2)
-        plt.plot(y_original)
-        plt.plot(y_hat, '--')
-        plt.title('y true and hat Iteration = ' + str(count_total))
+        plt.plot(data['y_true_merged'], label='y_true')
+        plt.plot(data['y_hat_merged'], '--', label='y_hat')
+        plt.title('Iteration = ' + str(count_total))
+        plt.legend()
 
     plt.subplot(2, 2, 3)
-    plt.plot(y_original)
-    plt.plot(y_true, '--')
-    plt.title('y error by h_para and h_init')
+    plt.plot(data['y_true_merged'], label='by net_true')
+    plt.plot(data['y_hat_x_true_merged'], '--', label='by net_hat')
+    plt.title('y reproduced with x_true, iteration = ' + str(count_total))
+    plt.legend()
 
     plt.subplot(2, 2, 4)
-    plt.plot()
-    plt.plot(y_total_loss)
-    plt.plot(x_total_loss, '--')
-    plt.title('y and x total loss_prediction')
-    plt.tight_layout()
+    plt.plot(y_total_loss, label='y loss')
+    plt.plot(x_total_loss, '--', label='x loss')
+    plt.title('Iteration = ' + str(count_total))
+    plt.legend()
 
+    plt.tight_layout()
     plot_file_name = image_log_dir + log_file_name_prefix + '.png'
     plt.savefig(plot_file_name)
     plt.close()
@@ -196,30 +186,46 @@ def add_data_log(data_log_dir='./data_logs/', extra_prefix=''):
     log_file_name_prefix = get_log_prefix(extra_prefix)
 
     data_saved = {}
-    data_saved['h_parameter_initial'] = H_PARA_INITIAL
-    data_saved['h_state_initial'] = H_STATE_INITIAL
+
+    data_saved['IF_RANDOM_H_PARA'] = IF_RANDOM_H_PARA
+    data_saved['IF_RANDOM_H_STATE_INIT'] = IF_RANDOM_H_STATE_INIT
+    data_saved['IF_NOISED_Y'] = IF_NOISED_Y
+    data_saved['IF_NODE_MODE'] = IF_NODE_MODE
+    data_saved['IF_IMAGE_LOG'] = IF_IMAGE_LOG
+    data_saved['IF_DATA_LOG'] = IF_DATA_LOG
+
+    data_saved['NODE_INDEX'] = NODE_INDEX
+    data_saved['MAX_EPOCHS'] = MAX_EPOCHS
+    data_saved['MAX_EPOCHS_INNER'] = MAX_EPOCHS_INNER
+    data_saved['N_SEGMENTS'] = N_SEGMENTS
+    data_saved['CHECK_STEPS'] = CHECK_STEPS
+
+    data_saved['N_RECURRENT_STEP'] = N_RECURRENT_STEP
+    data_saved['LEARNING_RATE'] = LEARNING_RATE
+    data_saved['DATA_SHIFT'] = DATA_SHIFT
+    data_saved['SNR'] = SNR
+    data_saved['LOG_EXTRA_PREFIX'] = LOG_EXTRA_PREFIX
+
     data_saved['iteration'] = count_total
-    data_saved['x_hat'] = x_hat_log_merged
-    data_saved['x_true'] = x_true_log_merged
-    data_saved['y_hat'] = y_hat_log_merged
-    data_saved['y_true'] = y_true_log_merged
+    data_saved.update(data)
 
     file_name = data_log_dir + log_file_name_prefix + '.pkl'
     pickle.dump(data_saved, open(file_name, "wb"))
 
 
 # global setting
-IF_RANDOM_H_PARA = False
+IF_RANDOM_H_PARA = True
 IF_RANDOM_H_STATE_INIT = True
-IF_NOISED_Y = False
+IF_NOISED_Y = True
+
 IF_NODE_MODE = True
 IF_IMAGE_LOG = True
 IF_DATA_LOG = True
 if IF_NODE_MODE:
-    NODE_INDEX = 2
+    NODE_INDEX = 0
     MAX_EPOCHS = 4
     MAX_EPOCHS_INNER = 4
-    N_SEGMENTS = 128     #total amount of data segments
+    N_SEGMENTS = 128  # total amount of data segments
     CHECK_STEPS = N_SEGMENTS * MAX_EPOCHS_INNER
     N_RECURRENT_STEP = 64
     LEARNING_RATE = 128 / N_RECURRENT_STEP
@@ -236,7 +242,6 @@ else:
     DATA_SHIFT = 4
     SNR = 3
     LOG_EXTRA_PREFIX = 'all_node_'
-
 
 # load in data
 current_dir = os.getcwd()
@@ -281,6 +286,7 @@ dr.build_an_initializer_graph(hemodynamic_parameter_initial=H_PARA_INITIAL)
 print('Building tf model done.')
 
 # prepare data
+data = {}
 if IF_NODE_MODE:
     prepare_data(max_segments=N_SEGMENTS, node_index=NODE_INDEX)
 else:
@@ -289,7 +295,7 @@ print('Data preparation done.')
 
 # training
 print('Start training.')
-x_hat_previous = data['x_hat'].data.copy()
+x_hat_previous = data['x_hat_merged'].data.copy()
 x_total_loss = np.zeros([MAX_EPOCHS * MAX_EPOCHS_INNER * N_SEGMENTS])
 y_total_loss = np.zeros([MAX_EPOCHS * MAX_EPOCHS_INNER * N_SEGMENTS])
 count_total = 0
@@ -307,27 +313,27 @@ with tf.Session() as sess:
                 if IF_NODE_MODE is True:
                     sess.run(dr.assign_x_state_stacked,
                              feed_dict={dr.x_state_stacked_placeholder:
-                                        data['x_hat'].get(i_segment).reshape(dr.n_recurrent_step, 1)})
+                                            data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)})
                 else:
                     sess.run(dr.assign_x_state_stacked,
-                             feed_dict={dr.x_state_stacked_placeholder: data['x_hat'].get(i_segment)})
+                             feed_dict={dr.x_state_stacked_placeholder: data['x_hat_merged'].get(i_segment)})
                 sess.run(tf.assign(dr.h_state_initial, h_initial_segment))
 
                 # training
-                sess.run(dr.train, feed_dict={dr.y_true: data['y_true'][i_segment]})
+                sess.run(dr.train, feed_dict={dr.y_true: data['y_train'][i_segment]})
 
                 # collect results
                 temp = sess.run([dr.x_state_stacked])
-                data['x_hat'].set(i_segment, temp)
+                data['x_hat_merged'].set(i_segment, temp)
 
                 if epoch_inner == MAX_EPOCHS_INNER - 1:
                     # predict the coming x
                     '''
                     if i_segment < N_SEGMENTS - 1 and epoch == 0:
-                        temp = data['x_hat'].get(i_segment)
+                        temp = data['x_hat_merged'].get(i_segment)
                         predicted_value = np.mean(temp[-1])
-                        data['x_hat'].set(i_segment + 1, predicted_value)
-                        data['x_hat'].set(i_segment, temp)
+                        data['x_hat_merged'].set(i_segment + 1, predicted_value)
+                        data['x_hat_merged'].set(i_segment, temp)
                     '''
                     # update hemodynamic state initial
                     h_initial_segment = sess.run(dr.h_connector)
@@ -344,25 +350,27 @@ with tf.Session() as sess:
                         if IF_NODE_MODE is True:
                             sess.run(dr.assign_x_state_stacked,
                                      feed_dict={dr.x_state_stacked_placeholder:
-                                                    data['x_hat'].get(j_segment).reshape(dr.n_recurrent_step, 1)})
+                                                    data['x_hat_merged'].get(j_segment).reshape(dr.n_recurrent_step,
+                                                                                                1)})
                         else:
                             sess.run(dr.assign_x_state_stacked,
-                                     feed_dict={dr.x_state_stacked_placeholder: data['x_hat'].get(j_segment)})
+                                     feed_dict={dr.x_state_stacked_placeholder: data['x_hat_merged'].get(j_segment)})
                         sess.run(tf.assign(dr.h_state_initial, h_initial_segment_test))
 
                         # calculate loss_prediction and prepare for next segment
                         loss_total, h_initial_segment_test = sess.run(
                             [dr.sum_loss, dr.h_connector],
-                            feed_dict={dr.y_true: data['y_true'][j_segment]})
+                            feed_dict={dr.y_true: data['y_train'][j_segment]})
 
                     summary = sess.run(dr.merged_summary)
                     dr.summary_writer.add_summary(summary, count_total)
-                    x_hat_temp = data['x_hat'].data
-                    x_true_temp = tb.merge(data['x_true'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+                    x_hat_temp = data['x_hat_merged'].data
+                    x_true_temp = data['x_true_merged']
                     y_total_loss[count_total - 1] = loss_total
                     x_total_loss[count_total - 1] = tb.mse(x_hat_temp, x_true_temp)
                     print("Total iteration:", '%04d' % count_total, "y_total_loss=", "{:.9f}".format(loss_total - 1))
-                    print("Total iteration:", '%04d' % count_total, "x_total_loss=", "{:.9f}".format(x_total_loss[count_total - 1]))
+                    print("Total iteration:", '%04d' % count_total, "x_total_loss=",
+                          "{:.9f}".format(x_total_loss[count_total - 1]))
 
                     if IF_IMAGE_LOG or IF_DATA_LOG:
                         calculate_log_data()
@@ -374,46 +382,23 @@ with tf.Session() as sess:
                         add_data_log(extra_prefix=LOG_EXTRA_PREFIX)
         '''
         # check stop criterion
-        relative_change = tb.rmse(x_hat_previous, data['x_hat'].get())
+        relative_change = tb.rmse(x_hat_previous, data['x_hat_merged'].get())
         if relative_change < dr.stop_threshold:
             print('Relative change: ' + str(relative_change))
             print('Stop criterion met, stop training')
         else:
-            # x_hat_previous = copy.deepcopy(data['x_hat'])
-            x_hat_previous = data['x_hat'].get().copy()
+            # x_hat_previous = copy.deepcopy(data['x_hat_merged'])
+            x_hat_previous = data['x_hat_merged'].get().copy()
         '''
 
 print("Optimization Finished!")
 '''
-# x_hat = tb.merge(data['x_hat'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-x_hat = data['x_hat'].get()
+# x_hat = tb.merge(data['x_hat_merged'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+x_hat = data['x_hat_merged'].get()
 x_true = tb.merge(data['x_true'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
 plt.figure()
 plt.plot(x_true)
 plt.plot(x_hat, '--')
-'''
-
-
-# show predicted fMRI signal
-'''
-h_initial_segment = dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    y_hat = dr.run_initializer_graph(sess, h_initial_segment, data['x_hat'][: N_SEGMENTS])[0]
-    y_true = dr.run_initializer_graph(sess, h_initial_segment, data['x_true'][: N_SEGMENTS])[0]
-
-y_hat = tb.merge(y_hat, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-y_true = tb.merge(y_true, n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
-
-plt.figure()
-plt.subplot(1, 2, 1)
-plt.plot(y_true)
-plt.subplot(1, 2, 1)
-plt.plot(y_hat, '--')
-plt.title('y_true and y_hat')
-plt.subplot(1, 2, 2)
-plt.plot(y_true - y_hat)
-plt.title('error, rmse=' + str(tb.rmse(y_true, y_hat)))
 '''
 
 # save result
@@ -431,10 +416,10 @@ data_saved['epoch_inner'] = epoch_inner
 data_saved['N_SEGMENTS'] = N_SEGMENTS
 
 
-data_saved['x_hat'] = x_hat
+data_saved['x_hat_merged'] = x_hat
 data_saved['x_true'] = x_true
 data_saved['y_hat'] = y_hat
-data_saved['y_true'] = y_true
+data_saved['y_train'] = y_train
 
 dt = datetime.datetime.now()
 file_name = "%04d%02d%02d%02d%02d%02d.pkl" % (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)

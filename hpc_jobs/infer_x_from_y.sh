@@ -2,7 +2,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
 #SBATCH --time=4:00:00
-#SBATCH --mem=12GB
+#SBATCH --mem=8GB
 #SBATCH --job-name=massive_infer_x_from_y_node_0_h_para_standard_h_init_random
 #SBATCH --mail-type=END
 #SBATCH --mail-user=yw1225@nyu.edu

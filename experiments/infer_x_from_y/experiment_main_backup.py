@@ -78,7 +78,7 @@ def calculate_log_data():
     global y_original_log
     global y_train_log
 
-    # x_hat_log = data['x_hat']
+    # x_hat = data['x_hat']
     x_hat_log = tb.split(data['x_hat'].get(), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     x_hat_log = [ array.reshape(dr.n_recurrent_step, 1) for array in x_hat_log]
     x_true_log = data['x_true']
