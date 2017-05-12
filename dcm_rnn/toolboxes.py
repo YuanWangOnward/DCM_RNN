@@ -52,59 +52,12 @@ def rmse(value_hat, value_true):
     return norm_error / norm_true
 
 
-
 def argsort2(array):
     return np.squeeze(np.dstack(np.unravel_index(np.argsort(array.ravel()), array.shape)))
 
+
 def take_value(array, rc_locations):
     return [array[x[0], x[1]] for x in rc_locations]
-
-
-class OrderedDict(collections.OrderedDict):
-    def __init__(self, dictionary=None, key_order=None):
-        if dictionary == None and key_order == None:
-            super().__init__()
-        else:
-            super().__init__()
-            if isinstance(key_order, dict):
-                if set(dictionary.keys()) != set(key_order.keys()):
-                    raise ValueError('Dictionary and order do not match')
-                else:
-                    self.key_order = self.form_list_order(key_order)
-                    sorted_key_order = sorted(key_order.items(), key=lambda item: item[1])
-                    sorted_key_order = [item[0] for item in sorted_key_order]
-                    for key in sorted_key_order:
-                        self[key] = dictionary[key]
-            elif isinstance(key_order, list):
-                if set(dictionary.keys()) != set(key_order):
-                    raise ValueError('Dictionary and order do not match')
-                else:
-                    self.key_order = key_order
-                    for key in key_order:
-                        self[key] = dictionary[key]
-            else:
-                raise ValueError('Key order should be r list or dictionary')
-
-    def form_list_order(self, dict_order):
-        """
-        OrderDict accepts dictionary type order. Internally, it uses list order.
-        :param dict_order: {key:order} dictionary
-        :return: [keys] list
-        """
-        sorted_key_order = sorted(dict_order.items(), key=lambda item: item[1])
-        sorted_key_order = [item[0] for item in sorted_key_order]
-        return sorted_key_order
-
-    def get_order_index(self, key):
-        """
-        Find index in the order for given key.
-        :param key: key
-        :return: index
-        """
-        if key not in self.key_order:
-            raise ValueError(key + ' is not r valid element in key order')
-        else:
-            return self.key_order.index(key)
 
 
 def split(data, n_segment, n_step=None, shift=0, split_dimension=0):
@@ -127,6 +80,7 @@ def split(data, n_segment, n_step=None, shift=0, split_dimension=0):
         assert i + n_segment <= length_after_shift
         output.append(np.take(data_shifted, range(i, i + n_segment), split_dimension))
     return output
+
 
 def split_index(data_shape, n_segment, n_step=None, shift=0, split_dimension=0):
     """
@@ -183,6 +137,85 @@ def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_
     x_splits = x_splits[:n_segments]
     y_splits = y_splits[:n_segments]
     return [x_splits, y_splits]
+
+def solve_for_effective_connection(x, u):
+    """
+    Solve for the effective connection matrices Wxx, Wxxu, and Wxu from neural activity and stimuli
+    x_t+1 = [Wxx Wxxu Wxu] * [x_t, Khatri-Rao_product(u_t, x_t), u_t]^T
+    Y = W*X
+    W = YX^T(XX^T)^(-1)
+    :param x: neural activity, np.array with shape [n_time_point, n_node]
+    :param u: stimuli, np.array with shape [n_time_point, n_stimuli]
+    :return: return [Wxx Wxxu Wxu] where Wxxu is a list of arrays
+    """
+    n_time_point = x.shape[0]
+    n_node = x.shape[1]
+    n_stimuli = u.shape[1]
+    Y = np.transpose(x[1:])
+    assert Y.shape == (n_node, n_time_point - 1)
+    temp = np.asarray([np.kron(u[i], x[i]) for i in range(n_time_point)])
+    X = np.transpose(np.concatenate([x[:-1], temp[:-1], u[:-1]], axis=1))
+    assert X.shape == (n_node * (n_stimuli + 1) + n_stimuli, n_time_point-1)
+    temp1 = np.matmul(Y, np.transpose(X))
+    assert temp1.shape == (n_node, n_node * (n_stimuli + 1) + n_stimuli)
+    temp2 = np.linalg.pinv(np.matmul(X, np.transpose(X)))
+    assert temp2.shape == (n_node * (n_stimuli + 1) + n_stimuli, n_node * (n_stimuli + 1) + n_stimuli)
+    W = np.matmul(temp1, temp2)
+    assert W.shape == (n_node, n_node * (n_stimuli + 1) + n_stimuli)
+    Wxx = W[:, :n_node]
+    Wxxu = []
+    for s in range(n_stimuli):
+        Wxxu.append(W[:, (s + 1) * n_node:(s + 2) * n_node])
+    Wxu = W[:, -n_stimuli:]
+    return [Wxx, Wxxu, Wxu]
+
+
+
+class OrderedDict(collections.OrderedDict):
+    def __init__(self, dictionary=None, key_order=None):
+        if dictionary == None and key_order == None:
+            super().__init__()
+        else:
+            super().__init__()
+            if isinstance(key_order, dict):
+                if set(dictionary.keys()) != set(key_order.keys()):
+                    raise ValueError('Dictionary and order do not match')
+                else:
+                    self.key_order = self.form_list_order(key_order)
+                    sorted_key_order = sorted(key_order.items(), key=lambda item: item[1])
+                    sorted_key_order = [item[0] for item in sorted_key_order]
+                    for key in sorted_key_order:
+                        self[key] = dictionary[key]
+            elif isinstance(key_order, list):
+                if set(dictionary.keys()) != set(key_order):
+                    raise ValueError('Dictionary and order do not match')
+                else:
+                    self.key_order = key_order
+                    for key in key_order:
+                        self[key] = dictionary[key]
+            else:
+                raise ValueError('Key order should be r list or dictionary')
+
+    def form_list_order(self, dict_order):
+        """
+        OrderDict accepts dictionary type order. Internally, it uses list order.
+        :param dict_order: {key:order} dictionary
+        :return: [keys] list
+        """
+        sorted_key_order = sorted(dict_order.items(), key=lambda item: item[1])
+        sorted_key_order = [item[0] for item in sorted_key_order]
+        return sorted_key_order
+
+    def get_order_index(self, key):
+        """
+        Find index in the order for given key.
+        :param key: key
+        :return: index
+        """
+        if key not in self.key_order:
+            raise ValueError(key + ' is not r valid element in key order')
+        else:
+            return self.key_order.index(key)
 
 
 class ArrayWrapper:

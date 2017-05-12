@@ -247,7 +247,7 @@ def add_data_log(data_log_dir='./data_logs/', extra_prefix=''):
 # global setting
 IF_RANDOM_H_PARA = False
 IF_RANDOM_H_STATE_INIT = False
-IF_NOISED_Y = True
+IF_NOISED_Y = False
 
 IF_NODE_MODE = True
 IF_IMAGE_LOG = True
@@ -255,13 +255,13 @@ IF_DATA_LOG = True
 
 SNR = 3
 NODE_INDEX = 0
-SMOOTH_WEIGHT = 1
+SMOOTH_WEIGHT = 0.1
 N_RECURRENT_STEP = 64
 MAX_EPOCHS = 4
 MAX_EPOCHS_INNER = 4
-N_SEGMENTS = 8  # total amount of data segments
-CHECK_STEPS = 4
-# CHECK_STEPS = N_SEGMENTS * MAX_EPOCHS_INNER
+N_SEGMENTS = 128  # total amount of data segments
+# CHECK_STEPS = 4
+CHECK_STEPS = N_SEGMENTS * MAX_EPOCHS_INNER
 LEARNING_RATE = 128 / N_RECURRENT_STEP
 DATA_SHIFT = 4
 LOG_EXTRA_PREFIX = ''

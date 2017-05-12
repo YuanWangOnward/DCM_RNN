@@ -1,6 +1,8 @@
 from unittest import TestCase
 import numpy as np
 import dcm_rnn.toolboxes as tb
+import os
+import pickle
 
 class TestToolboxUtilities(TestCase):
     def test_split(self):
@@ -128,9 +130,12 @@ class TestToolboxUtilities(TestCase):
         array_true[:, 3: 7, :] = 2
         np.testing.assert_array_equal(array, array_true)
 
-
-
-
-
-
-
+    def test_solve_for_effective_connection(self):
+        print('working directory is ' + os.getcwd())
+        data_path = 'dcm_rnn/resources/template0.pkl'
+        du = tb.load_template(data_path)
+        W = tb.solve_for_effective_connection(du.get('x'), du.get('u'))
+        np.testing.assert_array_almost_equal(W[0], du.get('Wxx'), decimal=5)
+        for s in range(du.get('n_stimuli')):
+            np.testing.assert_array_almost_equal(W[1][s], du.get('Wxxu')[s], decimal=5)
+        np.testing.assert_array_almost_equal(W[2], du.get('Wxu'), decimal=5)

@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
-#SBATCH --time=4:00:00
-#SBATCH --mem=8GB
-#SBATCH --job-name=infer_x_from_y_node_0_random_h_para_0_random_h_init_1_noised_3_smooth_10
+#SBATCH --time=2:00:00
+#SBATCH --mem=6GB
+#SBATCH --job-name=infer_x_from_y_nd_0_rhp_0_rhi_o_ns_0_smooth_01
 #SBATCH --mail-type=END
 #SBATCH --mail-user=yw1225@nyu.edu
 #SBATCH --output=slurm_%j.out
@@ -14,7 +14,7 @@ module load python3/intel/3.5.3
 module load tensorflow/python3.5/1.0.1
 #SBATCH --gres=gpu:1
 
-JOBNAME=infer_x_from_y_node_0_random_h_para_0_random_h_init_1_noised_3_smooth_10
+JOBNAME=infer_x_from_y_nd_0_rhp_0_rhi_o_ns_0_smooth_01
 RUNDIR=$SCRATCH/runs/$JOBNAME-${SLURM_JOB_ID/.*}
 SOURCEDIR=~/projects/DCM_RNN/dcm_rnn
 OUTPUTDIR=$SCRATCH/results/DCM_RNN/$JOBNAME/${SLURM_JOB_ID/.*}
