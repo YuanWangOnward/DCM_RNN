@@ -416,17 +416,6 @@ class DcmRnn(Initialization):
             self.x_state_stacked_previous = \
                 tf.get_variable(name='x_state_stacked_previous',
                                 dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], trainable=False)
-            '''
-            self.x_state_stacked_placeholder = \
-                tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region],
-                               name='x_state_stacked_placeholder')
-            
-            self.assign_x_state_stacked = \
-                tf.assign(self.x_state_stacked, self.x_state_stacked_placeholder, name='assign_x_state_stacked')
-            self.assign_x_state_stacked_before_update = \
-                tf.assign(self.x_state_stacked,
-                          self.x_state_stacked_placeholder, name='assign_x_state_stacked_before_update')
-            '''
         self.x_state = []
         for n in range(self.n_recurrent_step):
             with tf.variable_scope(self.variable_scope_name_x):
@@ -463,38 +452,10 @@ class DcmRnn(Initialization):
 
             x_state_stacked_backtracked = tf.concat(
                 [self.x_state_stacked_previous[self.shift_data - 2: self.shift_data], self.x_state_stacked], axis=0)
-            first_order_difference_operator = \
-                np.diag([1] * (2 + self.n_recurrent_step)) \
-                + np.diag([-1] * (1 + self.n_recurrent_step), 1)
-            second_order_difference_operator = \
-                np.diag([-2] * (2 + self.n_recurrent_step)) \
-                + np.diag([1] * (1 + self.n_recurrent_step), -1) \
-                + np.diag([1] * (1 + self.n_recurrent_step), 1)
-            first_order_difference_operator[-1] = 0
-            second_order_difference_operator[0] = 0
-            second_order_difference_operator[-1] = 0
-            first_order_difference_operator = first_order_difference_operator.astype(np.float32)
-            second_order_difference_operator = second_order_difference_operator.astype(np.float32)
-
-            first_order_difference = tf.matmul(first_order_difference_operator, x_state_stacked_backtracked)
-            second_order_difference = tf.matmul(second_order_difference_operator, x_state_stacked_backtracked)
-            difference = tf.concat([first_order_difference, second_order_difference], axis=1)
-            # difference = first_order_difference
-            self.loss_smooth = self.mse(difference, 0., "loss_smooth")
-
-            '''
-            smooth_temp1 = tf.concat([tf.reshape(self.x_state_stacked_previous[self.shift_data - 1: self.shift_data], [1,1]),
-                                      self.x_state_stacked[:-1],
-                                      # self.x_state_stacked[0:-2] - self.x_state_stacked[1:]
-                                      ], axis=0)
-            smooth_temp2 = tf.concat([self.x_state_stacked[:],
-                                      # self.x_state_stacked[1:-1] - self.x_state_stacked[1:]
-                                      ], axis=0)
-            self.loss_smooth = self.mse(smooth_temp1, smooth_temp2)
-            '''
+            self.loss_smooth = self.mse(self.second_order_smooth(x_state_stacked_backtracked))
 
             # self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
-            # self.loss_smooth = tf.reduce_sum(tf.abs(self.x_state_stacked[0:-1, :] - self.x_state_stacked[1:, :]))
+            # self.loss_smooth = tf.reduce_mean(tf.abs(self.x_state_stacked[0:-1, :] - self.x_state_stacked[1:, :]))
             self.loss_combined = self.loss_prediction + self.loss_weighting['smooth'] * self.loss_smooth
         with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
             self.loss_total = tf.get_variable('loss_total', initializer=0., trainable=False)
@@ -643,13 +604,45 @@ class DcmRnn(Initialization):
         return np.prod(tensor.get_shape().as_list())
     '''
 
-    def mse(self, tensor1, tensor2, name=None):
+    def mse(self, tensor1, tensor2=0., name=None):
         with tf.variable_scope('MSE'):
             mse = tf.reduce_mean((tf.reshape(tensor1, [-1]) - tf.reshape(tensor2, [-1])) ** 2)
             # mse = temp / self.get_element_count(tensor1)
             if name is not None:
                 tf.identity(mse, name=name)
             return mse
+
+
+    def second_order_smooth(self, tensor, axis=0):
+        """
+        Calculate the first order and second order derivative for smoothing
+        :param tensor: 
+        :param axis: smoothing direction, 0 or 1
+        :return: 
+        """
+        signal_length = tensor.get_shape().as_list()[axis]
+
+        # build operator matrices
+        first_order_difference_operator = np.diag([1] * signal_length) + np.diag([-1] * (signal_length - 1), 1)
+        second_order_difference_operator = np.diag([-2] * signal_length) \
+            + np.diag([1] * (signal_length - 1), -1) \
+            + np.diag([1] * (signal_length - 1), 1)
+        first_order_difference_operator[-1] = 0
+        second_order_difference_operator[0] = 0
+        second_order_difference_operator[-1] = 0
+        first_order_difference_operator = first_order_difference_operator.astype(np.float32)
+        second_order_difference_operator = second_order_difference_operator.astype(np.float32)
+
+        if axis == 0:
+            first_order_difference = tf.matmul(first_order_difference_operator, tensor)
+            second_order_difference = tf.matmul(second_order_difference_operator, tensor)
+            derivative = tf.concat([first_order_difference, second_order_difference], axis=1)
+        else:
+            first_order_difference = tf.matmul(tensor, first_order_difference_operator)
+            second_order_difference = tf.matmul(tensor, first_order_difference_operator)
+            derivative = tf.concat([first_order_difference, second_order_difference], axis=0)
+
+        return derivative
 
     def variable_summaries(self, tensor):
         """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""

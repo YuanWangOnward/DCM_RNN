@@ -247,7 +247,7 @@ def add_data_log(data_log_dir='./data_logs/', extra_prefix=''):
 # global setting
 IF_RANDOM_H_PARA = False
 IF_RANDOM_H_STATE_INIT = False
-IF_NOISED_Y = False
+IF_NOISED_Y = True
 
 IF_NODE_MODE = True
 IF_IMAGE_LOG = True
@@ -330,29 +330,16 @@ with tf.Session() as sess:
     for epoch in range(MAX_EPOCHS):
         sess.run(tf.global_variables_initializer())
         h_initial_segment = H_STATE_INITIAL
-        # sess.run(tf.assign(dr.x_state_stacked_previous, np.ones(data['x_hat_merged'].get(0).shape).astype(np.float32)))
         sess.run(tf.assign(dr.x_state_stacked_previous, data['x_hat_merged'].get(0)))
-        # x_state_stacked_previous = sess.run(dr.x_state_stacked_previous)
         for i_segment in range(N_SEGMENTS):
 
             for epoch_inner in range(MAX_EPOCHS_INNER):
                 # assign proper data
                 if IF_NODE_MODE is True:
-                    '''
-                    sess.run([dr.assign_x_state_stacked, dr.assign_x_state_stacked_before_update,
-                              tf.assign(dr.h_state_initial, h_initial_segment)],
-                             feed_dict={dr.x_state_stacked_placeholder:
-                                            data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)})
-                    '''
                     sess.run([tf.assign(dr.x_state_stacked,
                                         data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)),
                               tf.assign(dr.h_state_initial, h_initial_segment)])
                 else:
-                    '''
-                    sess.run([dr.assign_x_state_stacked, dr.assign_x_state_stacked_before_update,
-                              tf.assign(dr.h_state_initial, h_initial_segment)],
-                             feed_dict={dr.x_state_stacked_placeholder: data['x_hat_merged'].get(i_segment)})
-                    '''
                     sess.run([tf.assign(dr.x_state_stacked, data['x_hat_merged'].get(i_segment)),
                               tf.assign(dr.h_state_initial, h_initial_segment)])
 
@@ -363,26 +350,11 @@ with tf.Session() as sess:
                 temp = sess.run(dr.x_state_stacked)
                 data['x_hat_merged'].set(i_segment, temp)
 
-                # print('x_state_stacked_previous:')
-                # print(x_state_stacked_previous[:6])
-                # print('x_state_stacked:')
-                # print(temp[:6])
+                # add counting
                 count_total += 1
-
-                # it needs to be done before calculate_log_data()
-                if epoch_inner == MAX_EPOCHS_INNER - 1:
-                    # update hemodynamic state initial
-                    h_initial_segment = sess.run(dr.h_connector)
-                    # update previous neural state
-                    sess.run(tf.assign(dr.x_state_stacked_previous, data['x_hat_merged'].get(i_segment)))
-                    # x_state_stacked_previous = sess.run(dr.x_state_stacked_previous)
-                    # print('x_state_stacked_previous is updated')
 
                 # Display logs per CHECK_STEPS step
                 if count_total % CHECK_STEPS == 0:
-                    # x_state_stacked_previous = sess.run(dr.x_state_stacked_previous)
-                    # print(x_state_stacked_previous[:8])
-
                     calculate_log_data()
 
                     # saved summary = sess.run(dr.merged_summary)
@@ -390,8 +362,6 @@ with tf.Session() as sess:
 
                     print("Total iteration:", '%04d' % count_total, "loss_y=", "{:.9f}".format(data['loss_y'][-1]))
                     print("Total iteration:", '%04d' % count_total, "loss_x=", "{:.9f}".format(data['loss_x'][-1]))
-                    # x_state_stacked_previous = sess.run(dr.x_state_stacked_previous)
-                    # print(x_state_stacked_previous[:8])
 
                     if IF_IMAGE_LOG:
                         add_image_log(extra_prefix=LOG_EXTRA_PREFIX)
@@ -399,17 +369,22 @@ with tf.Session() as sess:
                     if IF_DATA_LOG:
                         add_data_log(extra_prefix=LOG_EXTRA_PREFIX)
 
-                '''
-                # check stop criterion
-                relative_change = tb.rmse(x_hat_previous, data['x_hat_merged'].get())
-                if relative_change < dr.stop_threshold:
-                    print('Relative change: ' + str(relative_change))
-                    print('Stop criterion met, stop training')
-                else:
-                    # x_hat_previous = copy.deepcopy(data['x_hat_merged'])
-                    x_hat_previous = data['x_hat_merged'].get().copy()
-                '''
+                    '''
+                    # check stop criterion
+                    relative_change = tb.rmse(x_hat_previous, data['x_hat_merged'].get())
+                    if relative_change < dr.stop_threshold:
+                        print('Relative change: ' + str(relative_change))
+                        print('Stop criterion met, stop training')
+                    else:
+                        # x_hat_previous = copy.deepcopy(data['x_hat_merged'])
+                        x_hat_previous = data['x_hat_merged'].get().copy()
+                    '''
 
+            # prepare for next segment
+            # update hemodynamic state initial
+            h_initial_segment = sess.run(dr.h_connector)
+            # update previous neural state
+            sess.run(tf.assign(dr.x_state_stacked_previous, data['x_hat_merged'].get(i_segment)))
 
 isess.close()
 print("Optimization Finished!")
