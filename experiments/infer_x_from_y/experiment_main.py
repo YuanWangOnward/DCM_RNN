@@ -88,12 +88,13 @@ def calculate_log_data():
     global loss_x_normalizer
     global loss_y_normalizer
     global loss_smooth_normalizer
-
+    global isess
     # run forward pass with x_true to show y error caused by error in the network parameters, it should run only once
     if 'y_hat_x_true' not in data.keys():
-        sess.run(tf.global_variables_initializer())
+
+        isess.run(tf.global_variables_initializer())
         y_hat_x_true_log, h_hat_x_true_monitor_log, h_hat_x_true_connector_log = \
-            dr.run_initializer_graph(sess, H_STATE_INITIAL, data['x_true'])
+            dr.run_initializer_graph(isess, H_STATE_INITIAL, data['x_true'])
         data['h_hat_x_true_monitor'] = h_hat_x_true_monitor_log
         data['y_hat_x_true'] = y_hat_x_true_log
         data['h_hat_x_true_monitor_merged'] = tb.merge(h_hat_x_true_monitor_log, dr.n_recurrent_step, dr.shift_data)
@@ -101,16 +102,15 @@ def calculate_log_data():
 
         loss_x_normalizer = np.sum(data['x_true_merged'].flatten() ** 2)
         loss_y_normalizer = np.sum(data['y_true_merged'].flatten() ** 2)
-        loss_smooth_normalizer =\
-            np.sum((data['x_true_merged'][:-1].flatten() - data['x_true_merged'][1:].flatten()) ** 2)
+        loss_smooth_normalizer = np.std(data['x_true_merged'].flatten()) ** 2
 
     data['x_hat'] = tb.split(data['x_hat_merged'].get(), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     if IF_NODE_MODE:
         data['x_hat'] = [array.reshape(dr.n_recurrent_step, 1) for array in data['x_hat']]
 
-    sess.run(tf.global_variables_initializer())
+    isess.run(tf.global_variables_initializer())
     y_hat_log, h_hat_monitor_log, h_hat_connector_log = \
-        dr.run_initializer_graph(sess, H_STATE_INITIAL, data['x_hat'])
+        dr.run_initializer_graph(isess, H_STATE_INITIAL, data['x_hat'])
 
     # collect results
     # segmented data
@@ -163,7 +163,7 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
     plt.plot(data['x_hat_merged'].get(), '--', label='x_hat')
     plt.xlabel('time')
     plt.ylabel('signal')
-    plt.title('Iteration = ' + str(count_total))
+    plt.title('Iter = ' + str(count_total))
     plt.legend()
 
     if IF_NOISED_Y:
@@ -173,7 +173,7 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
         plt.plot(data['y_hat_merged'], '--', label='y_hat')
         plt.xlabel('time')
         plt.ylabel('signal')
-        plt.title('Iteration = ' + str(count_total))
+        plt.title('Iter = ' + str(count_total))
         plt.legend()
     else:
         plt.subplot(2, 2, 2)
@@ -181,7 +181,7 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
         plt.plot(data['y_hat_merged'], '--', label='y_hat')
         plt.xlabel('time')
         plt.ylabel('signal')
-        plt.title('Iteration = ' + str(count_total))
+        plt.title('Iter = ' + str(count_total))
         plt.legend()
 
     plt.subplot(2, 2, 3)
@@ -189,17 +189,17 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
     plt.plot(data['y_hat_x_true_merged'], '--', label='by net_hat')
     plt.xlabel('time')
     plt.ylabel('signal')
-    plt.title('y reproduced with x_true, iteration = ' + str(count_total))
+    plt.title('y reproduced with x_true, iter = ' + str(count_total))
     plt.legend()
 
     plt.subplot(2, 2, 4)
-    plt.plot(data['loss_x'], label='x loss')
-    plt.plot(data['loss_y'], label='y loss')
-    plt.plot(data['loss_smooth'], label='smooth loss')
+    plt.plot(data['loss_x'], '--', label='x loss')
+    plt.plot(data['loss_y'], '-.', label='y loss')
+    # plt.plot(data['loss_smooth'], label='smooth loss')
     plt.plot(data['loss_total'], label='total loss')
     plt.xlabel('check point index')
     plt.ylabel('value')
-    plt.title('Normalized loss, iteration = ' + str(count_total))
+    plt.title('Normalized loss, iter = ' + str(count_total))
     plt.legend()
 
     plt.tight_layout()
@@ -246,8 +246,8 @@ def add_data_log(data_log_dir='./data_logs/', extra_prefix=''):
 
 # global setting
 IF_RANDOM_H_PARA = False
-IF_RANDOM_H_STATE_INIT = True
-IF_NOISED_Y = True
+IF_RANDOM_H_STATE_INIT = False
+IF_NOISED_Y = False
 
 IF_NODE_MODE = True
 IF_IMAGE_LOG = True
@@ -255,11 +255,11 @@ IF_DATA_LOG = True
 
 SNR = 3
 NODE_INDEX = 0
-SMOOTH_WEIGHT = 5
+SMOOTH_WEIGHT = 1
 N_RECURRENT_STEP = 64
 MAX_EPOCHS = 4
 MAX_EPOCHS_INNER = 4
-N_SEGMENTS = 128  # total amount of data segments
+N_SEGMENTS = 8  # total amount of data segments
 CHECK_STEPS = 4
 # CHECK_STEPS = N_SEGMENTS * MAX_EPOCHS_INNER
 LEARNING_RATE = 128 / N_RECURRENT_STEP
@@ -325,45 +325,64 @@ data['loss_y'] = []
 data['loss_smooth'] = []
 data['loss_total'] = []
 count_total = 0
+isess = tf.InteractiveSession()     # for calculate loss during training
 with tf.Session() as sess:
     for epoch in range(MAX_EPOCHS):
+        sess.run(tf.global_variables_initializer())
         h_initial_segment = H_STATE_INITIAL
+        # sess.run(tf.assign(dr.x_state_stacked_previous, np.ones(data['x_hat_merged'].get(0).shape).astype(np.float32)))
+        sess.run(tf.assign(dr.x_state_stacked_previous, data['x_hat_merged'].get(0)))
+        # x_state_stacked_previous = sess.run(dr.x_state_stacked_previous)
         for i_segment in range(N_SEGMENTS):
-            sess.run(tf.global_variables_initializer())
+
             for epoch_inner in range(MAX_EPOCHS_INNER):
                 # assign proper data
                 if IF_NODE_MODE is True:
+                    '''
                     sess.run([dr.assign_x_state_stacked, dr.assign_x_state_stacked_before_update,
                               tf.assign(dr.h_state_initial, h_initial_segment)],
                              feed_dict={dr.x_state_stacked_placeholder:
                                             data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)})
+                    '''
+                    sess.run([tf.assign(dr.x_state_stacked,
+                                        data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)),
+                              tf.assign(dr.h_state_initial, h_initial_segment)])
                 else:
+                    '''
                     sess.run([dr.assign_x_state_stacked, dr.assign_x_state_stacked_before_update,
                               tf.assign(dr.h_state_initial, h_initial_segment)],
                              feed_dict={dr.x_state_stacked_placeholder: data['x_hat_merged'].get(i_segment)})
+                    '''
+                    sess.run([tf.assign(dr.x_state_stacked, data['x_hat_merged'].get(i_segment)),
+                              tf.assign(dr.h_state_initial, h_initial_segment)])
 
                 # training
                 sess.run(dr.train, feed_dict={dr.y_true: data['y_train'][i_segment]})
 
                 # collect results
-                temp = sess.run([dr.x_state_stacked])
+                temp = sess.run(dr.x_state_stacked)
                 data['x_hat_merged'].set(i_segment, temp)
 
+                # print('x_state_stacked_previous:')
+                # print(x_state_stacked_previous[:6])
+                # print('x_state_stacked:')
+                # print(temp[:6])
+                count_total += 1
+
+                # it needs to be done before calculate_log_data()
                 if epoch_inner == MAX_EPOCHS_INNER - 1:
-                    # predict the coming x
-                    '''
-                    if i_segment < N_SEGMENTS - 1 and epoch == 0:
-                        temp = data['x_hat_merged'].get(i_segment)
-                        predicted_value = np.mean(temp[-1])
-                        data['x_hat_merged'].set(i_segment + 1, predicted_value)
-                        data['x_hat_merged'].set(i_segment, temp)
-                    '''
                     # update hemodynamic state initial
                     h_initial_segment = sess.run(dr.h_connector)
-                count_total += 1
+                    # update previous neural state
+                    sess.run(tf.assign(dr.x_state_stacked_previous, data['x_hat_merged'].get(i_segment)))
+                    # x_state_stacked_previous = sess.run(dr.x_state_stacked_previous)
+                    # print('x_state_stacked_previous is updated')
 
                 # Display logs per CHECK_STEPS step
                 if count_total % CHECK_STEPS == 0:
+                    # x_state_stacked_previous = sess.run(dr.x_state_stacked_previous)
+                    # print(x_state_stacked_previous[:8])
+
                     calculate_log_data()
 
                     # saved summary = sess.run(dr.merged_summary)
@@ -371,23 +390,28 @@ with tf.Session() as sess:
 
                     print("Total iteration:", '%04d' % count_total, "loss_y=", "{:.9f}".format(data['loss_y'][-1]))
                     print("Total iteration:", '%04d' % count_total, "loss_x=", "{:.9f}".format(data['loss_x'][-1]))
+                    # x_state_stacked_previous = sess.run(dr.x_state_stacked_previous)
+                    # print(x_state_stacked_previous[:8])
 
                     if IF_IMAGE_LOG:
                         add_image_log(extra_prefix=LOG_EXTRA_PREFIX)
 
                     if IF_DATA_LOG:
                         add_data_log(extra_prefix=LOG_EXTRA_PREFIX)
-        '''
-        # check stop criterion
-        relative_change = tb.rmse(x_hat_previous, data['x_hat_merged'].get())
-        if relative_change < dr.stop_threshold:
-            print('Relative change: ' + str(relative_change))
-            print('Stop criterion met, stop training')
-        else:
-            # x_hat_previous = copy.deepcopy(data['x_hat_merged'])
-            x_hat_previous = data['x_hat_merged'].get().copy()
-        '''
 
+                '''
+                # check stop criterion
+                relative_change = tb.rmse(x_hat_previous, data['x_hat_merged'].get())
+                if relative_change < dr.stop_threshold:
+                    print('Relative change: ' + str(relative_change))
+                    print('Stop criterion met, stop training')
+                else:
+                    # x_hat_previous = copy.deepcopy(data['x_hat_merged'])
+                    x_hat_previous = data['x_hat_merged'].get().copy()
+                '''
+
+
+isess.close()
 print("Optimization Finished!")
 
 

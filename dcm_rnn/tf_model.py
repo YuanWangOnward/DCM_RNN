@@ -116,7 +116,7 @@ class DcmRnn(Initialization):
 
     def set_up_loss_weighting(self):
         self.loss_weighting = \
-            {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1., 'smooth': 5.}
+            {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1., 'smooth': 4.}
 
     def create_shared_variables_x(self, neural_parameter_initial):
         """
@@ -409,21 +409,24 @@ class DcmRnn(Initialization):
                 self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
         else:
             self.hemodynamic_parameter_initial = hemodynamic_parameter_initial
-                # x layer state
+            # x layer state
         with tf.variable_scope(self.variable_scope_name_x_stacked):
             self.x_state_stacked = \
                 tf.get_variable(name='x_state_stacked', dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region])
-            self.x_state_stacked_before_update = \
-                tf.get_variable(name='x_state_stacked_before_update',
+            self.x_state_stacked_previous = \
+                tf.get_variable(name='x_state_stacked_previous',
                                 dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], trainable=False)
+            '''
             self.x_state_stacked_placeholder = \
                 tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region],
                                name='x_state_stacked_placeholder')
+            
             self.assign_x_state_stacked = \
                 tf.assign(self.x_state_stacked, self.x_state_stacked_placeholder, name='assign_x_state_stacked')
             self.assign_x_state_stacked_before_update = \
                 tf.assign(self.x_state_stacked,
                           self.x_state_stacked_placeholder, name='assign_x_state_stacked_before_update')
+            '''
         self.x_state = []
         for n in range(self.n_recurrent_step):
             with tf.variable_scope(self.variable_scope_name_x):
@@ -457,10 +460,40 @@ class DcmRnn(Initialization):
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
             self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
-            # smooth_temp1 = tf.concat([self.x_state_stacked[0:-1], self.x_state_stacked[0:2]], axis=0)
-            #smooth_temp2 = tf.concat([self.x_state_stacked[1:], self.x_state_stacked_before_update[0:2]], axis=0)
-            # self.loss_smooth = self.mse(smooth_temp1, smooth_temp2)
-            self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
+
+            x_state_stacked_backtracked = tf.concat(
+                [self.x_state_stacked_previous[self.shift_data - 2: self.shift_data], self.x_state_stacked], axis=0)
+            first_order_difference_operator = \
+                np.diag([1] * (2 + self.n_recurrent_step)) \
+                + np.diag([-1] * (1 + self.n_recurrent_step), 1)
+            second_order_difference_operator = \
+                np.diag([-2] * (2 + self.n_recurrent_step)) \
+                + np.diag([1] * (1 + self.n_recurrent_step), -1) \
+                + np.diag([1] * (1 + self.n_recurrent_step), 1)
+            first_order_difference_operator[-1] = 0
+            second_order_difference_operator[0] = 0
+            second_order_difference_operator[-1] = 0
+            first_order_difference_operator = first_order_difference_operator.astype(np.float32)
+            second_order_difference_operator = second_order_difference_operator.astype(np.float32)
+
+            first_order_difference = tf.matmul(first_order_difference_operator, x_state_stacked_backtracked)
+            second_order_difference = tf.matmul(second_order_difference_operator, x_state_stacked_backtracked)
+            difference = tf.concat([first_order_difference, second_order_difference], axis=1)
+            # difference = first_order_difference
+            self.loss_smooth = self.mse(difference, 0., "loss_smooth")
+
+            '''
+            smooth_temp1 = tf.concat([tf.reshape(self.x_state_stacked_previous[self.shift_data - 1: self.shift_data], [1,1]),
+                                      self.x_state_stacked[:-1],
+                                      # self.x_state_stacked[0:-2] - self.x_state_stacked[1:]
+                                      ], axis=0)
+            smooth_temp2 = tf.concat([self.x_state_stacked[:],
+                                      # self.x_state_stacked[1:-1] - self.x_state_stacked[1:]
+                                      ], axis=0)
+            self.loss_smooth = self.mse(smooth_temp1, smooth_temp2)
+            '''
+
+            # self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
             # self.loss_smooth = tf.reduce_sum(tf.abs(self.x_state_stacked[0:-1, :] - self.x_state_stacked[1:, :]))
             self.loss_combined = self.loss_prediction + self.loss_weighting['smooth'] * self.loss_smooth
         with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
@@ -605,13 +638,15 @@ class DcmRnn(Initialization):
         return self.loss_prior
 
     # unitilies
+    '''
     def get_element_count(self, tensor):
         return np.prod(tensor.get_shape().as_list())
+    '''
 
     def mse(self, tensor1, tensor2, name=None):
         with tf.variable_scope('MSE'):
-            temp = tf.reduce_sum((tf.reshape(tensor1, [-1]) - tf.reshape(tensor2, [-1])) ** 2)
-            mse = temp / self.get_element_count(tensor1)
+            mse = tf.reduce_mean((tf.reshape(tensor1, [-1]) - tf.reshape(tensor2, [-1])) ** 2)
+            # mse = temp / self.get_element_count(tensor1)
             if name is not None:
                 tf.identity(mse, name=name)
             return mse
@@ -668,3 +703,5 @@ class DcmRnn(Initialization):
                 print(item.name)
                 display(item)
         return output
+
+
