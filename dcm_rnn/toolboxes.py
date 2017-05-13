@@ -1,6 +1,5 @@
 import random
 import numpy as np
-import scipy as sp
 import scipy.ndimage
 import pandas as pd
 import math as mth
