@@ -138,6 +138,7 @@ def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_
     y_splits = y_splits[:n_segments]
     return [x_splits, y_splits]
 
+
 def solve_for_effective_connection(x, u):
     """
     Solve for the effective connection matrices Wxx, Wxxu, and Wxu from neural activity and stimuli

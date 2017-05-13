@@ -7,7 +7,7 @@ import pandas as pd
 from IPython.display import display
 
 
-def reset_interactive_sesssion(isess):
+def reset_interactive_session(isess):
     try:
         isess
     except:

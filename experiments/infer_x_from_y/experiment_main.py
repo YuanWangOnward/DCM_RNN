@@ -38,6 +38,11 @@ def get_log_prefix(extra_prefix=''):
 
 def prepare_data(max_segments=None, node_index=None):
     global data
+    global loss_x_normalizer
+    global loss_y_normalizer
+    global loss_smooth_normalizer
+    global isess
+
     global SEQUENCE_LENGTH
     global H_STATE_INITIAL
     global IF_NOISED_Y
@@ -56,11 +61,13 @@ def prepare_data(max_segments=None, node_index=None):
     data['y_true'] = tb.split(du.get('y'), dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)[:max_segments_natural]
     data['h_true_monitor'] = tb.split(du.get('h'), dr.n_recurrent_step, dr.shift_data)[:max_segments_natural]
     data['x_true'] = tb.split(du.get('x'), dr.n_recurrent_step, dr.shift_data)[:max_segments_natural]
+    data['u'] = tb.split(du.get('u'), dr.n_recurrent_step, dr.shift_data)[:max_segments_natural]
 
     if max_segments is not None:
         if max_segments > max_segments_natural:
             warnings.warn("max_segments is larger than the length of available data", UserWarning)
         else:
+            data['u'] = data['u'][:max_segments]
             data['x_true'] = data['x_true'][:max_segments]
             data['h_true_monitor'] = data['h_true_monitor'][:max_segments]
             data['y_true'] = data['y_true'][:max_segments]
@@ -74,6 +81,7 @@ def prepare_data(max_segments=None, node_index=None):
         H_STATE_INITIAL = H_STATE_INITIAL[node_index].reshape(1, 4)
 
     # collect merged data (without split and merge, it can be tricky to cut proper part from du)
+    data['u_merged'] = tb.merge(data['u'], dr.n_recurrent_step, dr.shift_data)
     data['x_true_merged'] = tb.merge(data['x_true'], dr.n_recurrent_step, dr.shift_data)
     # x_hat is with extra wrapper for easy modification with a single index
     data['x_hat_merged'] = tb.ArrayWrapper(np.zeros(data['x_true_merged'].shape), dr.n_recurrent_step, dr.shift_data)
@@ -81,28 +89,24 @@ def prepare_data(max_segments=None, node_index=None):
     data['y_true_merged'] = tb.merge(data['y_true'], dr.n_recurrent_step, dr.shift_data)
     data['y_train_merged'] = tb.merge(data['y_train'], dr.n_recurrent_step, dr.shift_data)
 
+    # run forward pass with x_true to show y error caused by error in the network parameters
+    isess.run(tf.global_variables_initializer())
+    y_hat_x_true_log, h_hat_x_true_monitor_log, h_hat_x_true_connector_log = \
+        dr.run_initializer_graph(isess, H_STATE_INITIAL, data['x_true'])
+    data['h_hat_x_true_monitor'] = h_hat_x_true_monitor_log
+    data['y_hat_x_true'] = y_hat_x_true_log
+    data['h_hat_x_true_monitor_merged'] = tb.merge(h_hat_x_true_monitor_log, dr.n_recurrent_step, dr.shift_data)
+    data['y_hat_x_true_merged'] = tb.merge(y_hat_x_true_log, dr.n_recurrent_step, dr.shift_data)
+
+    loss_x_normalizer = np.sum(data['x_true_merged'].flatten() ** 2)
+    loss_y_normalizer = np.sum(data['y_true_merged'].flatten() ** 2)
+    loss_smooth_normalizer = np.std(data['x_true_merged'].flatten()) ** 2
+
     return data
 
 
 def calculate_log_data():
-    global loss_x_normalizer
-    global loss_y_normalizer
-    global loss_smooth_normalizer
     global isess
-    # run forward pass with x_true to show y error caused by error in the network parameters, it should run only once
-    if 'y_hat_x_true' not in data.keys():
-
-        isess.run(tf.global_variables_initializer())
-        y_hat_x_true_log, h_hat_x_true_monitor_log, h_hat_x_true_connector_log = \
-            dr.run_initializer_graph(isess, H_STATE_INITIAL, data['x_true'])
-        data['h_hat_x_true_monitor'] = h_hat_x_true_monitor_log
-        data['y_hat_x_true'] = y_hat_x_true_log
-        data['h_hat_x_true_monitor_merged'] = tb.merge(h_hat_x_true_monitor_log, dr.n_recurrent_step, dr.shift_data)
-        data['y_hat_x_true_merged'] = tb.merge(y_hat_x_true_log, dr.n_recurrent_step, dr.shift_data)
-
-        loss_x_normalizer = np.sum(data['x_true_merged'].flatten() ** 2)
-        loss_y_normalizer = np.sum(data['y_true_merged'].flatten() ** 2)
-        loss_smooth_normalizer = np.std(data['x_true_merged'].flatten()) ** 2
 
     data['x_hat'] = tb.split(data['x_hat_merged'].get(), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     if IF_NODE_MODE:
@@ -249,13 +253,13 @@ IF_RANDOM_H_PARA = False
 IF_RANDOM_H_STATE_INIT = False
 IF_NOISED_Y = False
 
-IF_NODE_MODE = True
+IF_NODE_MODE = False
 IF_IMAGE_LOG = True
 IF_DATA_LOG = True
 
 SNR = 3
 NODE_INDEX = 0
-SMOOTH_WEIGHT = 0.1
+SMOOTH_WEIGHT = 0.2
 N_RECURRENT_STEP = 64
 MAX_EPOCHS = 4
 MAX_EPOCHS_INNER = 4
@@ -311,6 +315,7 @@ print('Building tf model done.')
 
 # prepare data
 data = {}
+isess = tf.InteractiveSession()     # for calculate loss during training
 if IF_NODE_MODE:
     prepare_data(max_segments=N_SEGMENTS, node_index=NODE_INDEX)
 else:
@@ -325,7 +330,7 @@ data['loss_y'] = []
 data['loss_smooth'] = []
 data['loss_total'] = []
 count_total = 0
-isess = tf.InteractiveSession()     # for calculate loss during training
+
 with tf.Session() as sess:
     for epoch in range(MAX_EPOCHS):
         sess.run(tf.global_variables_initializer())
@@ -388,5 +393,26 @@ with tf.Session() as sess:
 
 isess.close()
 print("Optimization Finished!")
+
+if not IF_NODE_MODE:
+    # only the middle part of x_hat to estimate effective connection
+    n_time_poine = data['x_hat_merged'].get().shape[0]
+    start_point = int(n_time_poine / 4)
+    end_point = int(n_time_poine * 3 / 4)
+    x_hat_truncated = data['x_hat_merged'].get()[start_point: end_point]
+    u_truncated = data['u_merged'][start_point: end_point]
+    W_hat = tb.solve_for_effective_connection(x_hat_truncated, u_truncated)
+
+    data['Wxx_hat'] = W_hat[0]
+    data['Wxxu_hat'] = W_hat[1]
+    data['Wxu_hat'] = W_hat[2]
+
+    print(data['Wxx_hat'])
+    print(data['Wxxu_hat'][0])
+    print(data['Wxu_hat'])
+
+
+    add_data_log(extra_prefix='final_')
+
 
 
