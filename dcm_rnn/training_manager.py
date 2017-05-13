@@ -16,6 +16,7 @@ import copy
 import toolboxes as tb
 import tf_model as tfm
 import tensorflow as tf
+from operator import attrgetter
 
 
 class TrainingManager(tb.Initialization):
@@ -39,6 +40,7 @@ class TrainingManager(tb.Initialization):
         self.SMOOTH_WEIGHT = 0.2
         self.N_RECURRENT_STEP = 64
         self.MAX_EPOCHS = 4
+
         self.MAX_EPOCHS_INNER = 4
         self.N_SEGMENTS = 128  # total amount of self.data segments
         # self.CHECK_STEPS = 4
@@ -46,6 +48,40 @@ class TrainingManager(tb.Initialization):
         self.LEARNING_RATE = 128 / self.N_RECURRENT_STEP
         self.DATA_SHIFT = 4
         self.LOG_EXTRA_PREFIX = ''
+
+
+    def __dir__(self):
+        return ['IF_RANDOM_H_PARA', 'IF_RANDOM_H_STATE_INIT', 'IF_NOISED_Y',
+                'IF_NODE_MODE', 'IF_IMAGE_LOG', 'IF_DATA_LOG',
+                'SNR', 'NODE_INDEX', 'SMOOTH_WEIGHT', 'N_RECURRENT_STEP', 'MAX_EPOCHS',
+                'MAX_EPOCHS_INNER', 'N_SEGMENTS', 'CHECK_STEPS', 'LEARNING_RATE', 'DATA_SHIFT',
+                'LOG_EXTRA_PREFIX', 'data'
+                ]
+
+    def prepare_dcm_rnn(self, dr, tag='initializer'):
+        """
+        Set parameters in dr with training manager configures. Modify dr in place.
+        :param dr: a DcmRnn instance, which will be used to build tensorflow model
+        :param tag: experiment type
+        :return: modified dr
+        """
+        dr.learning_rate = self.LEARNING_RATE
+        dr.shift_data = self.DATA_SHIFT
+        dr.n_recurrent_step = self.N_RECURRENT_STEP
+
+        if tag == 'initializer':
+            dr.loss_weighting['smooth'] = self.SMOOTH_WEIGHT
+            if self.IF_NODE_MODE:
+                dr.n_region = 1
+            for key in dr.trainable_flags.keys():
+                # in the initialization graph, the hemodynamic parameters are not trainable
+                dr.trainable_flags[key] = False
+        return dr
+
+
+    def prepare_distributed_data_package(self):
+        return {name: copy.deepcopy(getattr(self, name)) for name in dir(self)}
+
 
 
     def prepare_data(self, du, dr):
@@ -89,7 +125,8 @@ class TrainingManager(tb.Initialization):
 
         if self.N_SEGMENTS is not None:
             if self.N_SEGMENTS > max_segments_natural:
-                warnings.warn("self.N_SEGMENTS is larger than the length of available self.data", UserWarning)
+                self.N_SEGMENTS = max_segments_natural
+                warnings.warn("self.N_SEGMENTS is larger than the length of available data", UserWarning)
             else:
                 self.data['u'] = self.data['u'][:self.N_SEGMENTS]
                 self.data['x_true'] = self.data['x_true'][:self.N_SEGMENTS]
@@ -133,4 +170,21 @@ class TrainingManager(tb.Initialization):
         self.data['loss_smooth_normalizer'] = np.std(self.data['x_true_merged'].flatten()) ** 2
 
         return self.data
+
+
+    def train(self, dr, para_package, label):
+        """"""
+        print('Training starts!')
+        # make a train scope copy of data
+        data = copy.deepcopy(self.data)
+        x_hat_previous = self.data['x_hat_merged'].data.copy()
+        data['loss_x'] = []
+        data['loss_y'] = []
+        data['loss_smooth'] = []
+        data['loss_total'] = []
+
+
+        print("Optimization Finished!")
+
+
 

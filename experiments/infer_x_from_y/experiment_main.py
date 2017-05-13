@@ -44,18 +44,18 @@ print('Loading data done.')
 # build model
 dr = tfm.DcmRnn()
 dr.collect_parameters(du)
-dr.learning_rate = tm.LEARNING_RATE
-dr.shift_data = tm.DATA_SHIFT
-dr.n_recurrent_step = tm.N_RECURRENT_STEP
-dr.loss_weighting['smooth'] = tm.SMOOTH_WEIGHT
-if tm.IF_NODE_MODE:
-    dr.n_region = 1
-for key in dr.trainable_flags.keys():
-    # in the initialization graph, the hemodynamic parameters are not trainable
-    dr.trainable_flags[key] = False
+tm.prepare_dcm_rnn(dr, tag='initializer')
 dr.build_an_initializer_graph()
 print('Building tf model done.')
 
 # prepare data
-data = tm.prepare_data(du, dr)
+tm.prepare_data(du, dr)
 print('Preparing data done.')
+
+# get distributed data package
+package = tm.prepare_distributed_data_package()
+print('Preparing distributed data package done.')
+
+# training
+# tm.train(dr, dr, dr)
+# print('Training done.')
