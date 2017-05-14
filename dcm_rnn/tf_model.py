@@ -3,18 +3,9 @@ import tensorflow as tf
 import numpy as np
 from toolboxes import Initialization
 import toolboxes as tb
-import pandas as pd
-from IPython.display import display
+# import pandas as pd
+# from IPython.display import display
 
-
-def reset_interactive_session(isess):
-    try:
-        isess
-    except:
-        isess = tf.InteractiveSession()
-    else:
-        isess.close()
-        isess = tf.InteractiveSession()
 
 
 class DcmRnn(Initialization):
@@ -599,11 +590,6 @@ class DcmRnn(Initialization):
         return self.loss_prior
 
     # unitilies
-    '''
-    def get_element_count(self, tensor):
-        return np.prod(tensor.get_shape().as_list())
-    '''
-
     def mse(self, tensor1, tensor2=0., name=None):
         with tf.variable_scope('MSE'):
             mse = tf.reduce_mean((tf.reshape(tensor1, [-1]) - tf.reshape(tensor2, [-1])) ** 2)
@@ -611,7 +597,6 @@ class DcmRnn(Initialization):
             if name is not None:
                 tf.identity(mse, name=name)
             return mse
-
 
     def second_order_smooth(self, tensor, axis=0):
         """
@@ -657,6 +642,7 @@ class DcmRnn(Initialization):
             tf.summary.scalar('min', tf.reduce_min(tensor))
             tf.summary.histogram('histogram', tensor)
 
+    '''
     def show_all_variable_value(self, isess, visFlag=False):
         output = []
         output_buff = pd.DataFrame()
@@ -696,5 +682,6 @@ class DcmRnn(Initialization):
                 print(item.name)
                 display(item)
         return output
+    '''
 
 

@@ -19,6 +19,10 @@ import tensorflow as tf
 from operator import attrgetter
 
 
+class DistributedDataPackage:
+    pass
+
+
 class TrainingManager(tb.Initialization):
     """
     This class is used to the manage training process
@@ -49,6 +53,7 @@ class TrainingManager(tb.Initialization):
         self.DATA_SHIFT = 4
         self.LOG_EXTRA_PREFIX = ''
 
+        self.data = {}
 
     def __dir__(self):
         return ['IF_RANDOM_H_PARA', 'IF_RANDOM_H_STATE_INIT', 'IF_NOISED_Y',
@@ -78,12 +83,7 @@ class TrainingManager(tb.Initialization):
                 dr.trainable_flags[key] = False
         return dr
 
-
-    def prepare_distributed_data_package(self):
-        return {name: copy.deepcopy(getattr(self, name)) for name in dir(self)}
-
-
-
+    '''
     def prepare_data(self, du, dr):
         """
         Prepare data in du for dr in training. Create a 'data' dictionary 
@@ -91,7 +91,6 @@ class TrainingManager(tb.Initialization):
         :param dr: a DcmRnn instance, with needed parameters
         :return: 
         """
-        self.data = {}
 
         # create data according to flag
         if self.IF_RANDOM_H_PARA:
@@ -170,14 +169,93 @@ class TrainingManager(tb.Initialization):
         self.data['loss_smooth_normalizer'] = np.std(self.data['x_true_merged'].flatten()) ** 2
 
         return self.data
+    '''
+
+    def prepare_distributed_data_package(self):
+        ddp = DistributedDataPackage()
+        for name in dir(self):
+            setattr(ddp, name, copy.deepcopy(getattr(self, name)))
+        #return {name: copy.deepcopy(getattr(self, name)) for name in dir(self)}
+        return ddp
+
+    def prepare_data(self, du, dr, data_package):
+        """
+        Prepare data in du for dr in training. Create a 'data' dictionary 
+        :param du: a DataUnit instance, with needed data
+        :param dr: a DcmRnn instance, with needed parameters
+        :param data_package: a dictionary, stores configure and data for a particular experimental case
+        :return: modified
+        """
+        dp = data_package
+        data = dp.data
+
+        # create data according to flag
+        if dp.IF_RANDOM_H_PARA:
+            dp.H_PARA_INITIAL = \
+                dr.randomly_generate_hemodynamic_parameters(dr.n_region, deviation_constraint=2).astype(np.float32)
+        else:
+            dp.H_PARA_INITIAL = dr.get_standard_hemodynamic_parameters(n_node=dr.n_region).astype(np.float32)
+
+        if dp.IF_RANDOM_H_STATE_INIT:
+            dp.H_STATE_INITIAL = du.get('h')[random.randint(64, du.get('h').shape[0] - 64)].astype(np.float32)
+        else:
+            dp.H_STATE_INITIAL = \
+                dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
+
+        if dp.IF_NOISED_Y:
+            std = np.std(du.get('y').reshape([-1])) / dp.SNR
+            dp.NOISE = np.random.normal(0, std, du.get('y').shape)
+        else:
+            dp.NOISE = np.zeros(du.get('y').shape)
+
+        data['y_train'] = tb.split(du.get('y') + dp.NOISE, dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)
+        max_segments_natural = len(data['y_train'])
+        data['max_segments_natural'] = max_segments_natural
+        data['y_true'] = tb.split(du.get('y'), dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)[:max_segments_natural]
+        data['h_true_monitor'] = tb.split(du.get('h'), dr.n_recurrent_step, dr.shift_data)[:max_segments_natural]
+        data['x_true'] = tb.split(du.get('x'), dr.n_recurrent_step, dr.shift_data)[:max_segments_natural]
+        data['u'] = tb.split(du.get('u'), dr.n_recurrent_step, dr.shift_data)[:max_segments_natural]
+
+        if dp.N_SEGMENTS is not None:
+            if dp.N_SEGMENTS > max_segments_natural:
+                dp.N_SEGMENTS = max_segments_natural
+                warnings.warn("dp.N_SEGMENTS is larger than the length of available data", UserWarning)
+            else:
+                data['u'] = data['u'][:dp.N_SEGMENTS]
+                data['x_true'] = data['x_true'][:dp.N_SEGMENTS]
+                data['h_true_monitor'] = data['h_true_monitor'][:dp.N_SEGMENTS]
+                data['y_true'] = data['y_true'][:dp.N_SEGMENTS]
+                data['y_train'] = data['y_train'][:dp.N_SEGMENTS]
+
+        if dp.IF_NODE_MODE is True:
+            node_index = dp.NODE_INDEX
+            data['x_true'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['x_true']]
+            data['h_true_monitor'] = [np.take(array, node_index, 1) for array in data['h_true_monitor']]
+            data['y_true'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_true']]
+            data['y_train'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_train']]
+            dp.H_STATE_INITIAL = dp.H_STATE_INITIAL[node_index].reshape(1, 4)
+
+        # saved dp.SEQUENCE_LENGTH = dr.n_recurrent_step + (len(data['x_true']) - 1) * dr.shift_data
+        # collect merged data (without split and merge, it can be tricky to cut proper part from du)
+        data['u_merged'] = tb.merge(data['u'], dr.n_recurrent_step, dr.shift_data)
+        data['x_true_merged'] = tb.merge(data['x_true'], dr.n_recurrent_step, dr.shift_data)
+        # x_hat is with extra wrapper for easy modification with a single index
+        data['x_hat_merged'] = \
+            tb.ArrayWrapper(np.zeros(data['x_true_merged'].shape), dr.n_recurrent_step, dr.shift_data)
+        data['h_true_monitor_merged'] = \
+            tb.merge(data['h_true_monitor'], dr.n_recurrent_step, dr.shift_data)
+        data['y_true_merged'] = tb.merge(data['y_true'], dr.n_recurrent_step, dr.shift_data)
+        data['y_train_merged'] = tb.merge(data['y_train'], dr.n_recurrent_step, dr.shift_data)
+
+        return data_package
 
 
     def train(self, dr, para_package, label):
         """"""
         print('Training starts!')
         # make a train scope copy of data
-        data = copy.deepcopy(self.data)
-        x_hat_previous = self.data['x_hat_merged'].data.copy()
+        data = para_package.data
+        x_hat_previous = data['x_hat_merged'].data.copy()
         data['loss_x'] = []
         data['loss_y'] = []
         data['loss_smooth'] = []
@@ -186,5 +264,7 @@ class TrainingManager(tb.Initialization):
 
         print("Optimization Finished!")
 
+    def f(self, x):
+        print(x)
 
 

@@ -108,6 +108,22 @@ def prepare_data(max_segments=None, node_index=None):
 def calculate_log_data():
     global isess
 
+    if 'y_hat_x_true' not in data.keys():
+        # run forward pass with x_true to show y error caused by error in the network parameters
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            y_hat_x_true_log, h_hat_x_true_monitor_log, h_hat_x_true_connector_log = \
+                dr.run_initializer_graph(sess, H_STATE_INITIAL, data['x_true'])
+
+        data['h_hat_x_true_monitor'] = h_hat_x_true_monitor_log
+        data['y_hat_x_true'] = y_hat_x_true_log
+        data['h_hat_x_true_monitor_merged'] = tb.merge(h_hat_x_true_monitor_log, dr.n_recurrent_step, dr.shift_data)
+        data['y_hat_x_true_merged'] = tb.merge(y_hat_x_true_log, dr.n_recurrent_step, dr.shift_data)
+
+        data['loss_x_normalizer'] = np.sum(data['x_true_merged'].flatten() ** 2)
+        data['loss_y_normalizer'] = np.sum(data['y_true_merged'].flatten() ** 2)
+        data['loss_smooth_normalizer'] = np.std(data['x_true_merged'].flatten()) ** 2
+
     data['x_hat'] = tb.split(data['x_hat_merged'].get(), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
     if IF_NODE_MODE:
         data['x_hat'] = [array.reshape(dr.n_recurrent_step, 1) for array in data['x_hat']]

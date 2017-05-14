@@ -13,6 +13,10 @@ import warnings
 import sys
 import random
 import training_manager
+import multiprocessing
+from multiprocessing.pool import Pool
+import itertools
+from itertools import product
 
 
 # global setting, you need to modify it accordingly
@@ -45,16 +49,24 @@ print('Loading data done.')
 dr = tfm.DcmRnn()
 dr.collect_parameters(du)
 tm.prepare_dcm_rnn(dr, tag='initializer')
-dr.build_an_initializer_graph()
+# dr.build_an_initializer_graph()
 print('Building tf model done.')
-
-# prepare data
-tm.prepare_data(du, dr)
-print('Preparing data done.')
 
 # get distributed data package
 package = tm.prepare_distributed_data_package()
 print('Preparing distributed data package done.')
+
+# modify each package according to each particular experimental case, store in a list
+package_list = [package, package, package, package]
+
+# prepare data in parallel
+cpu_count = multiprocessing.cpu_count()
+print('There are ' + str(cpu_count) + ' cores available.')
+iterator = list(itertools.product(*[[du], [dr], package_list]))
+with Pool(cpu_count) as p:
+    p.starmap(tm.prepare_data, iterator)
+# print('Preparing data done for process ' + str(multiprocessing.current_process()))
+
 
 # training
 # tm.train(dr, dr, dr)
