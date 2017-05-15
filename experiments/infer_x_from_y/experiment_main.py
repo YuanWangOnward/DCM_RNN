@@ -16,7 +16,6 @@ import training_manager
 import multiprocessing
 from multiprocessing.pool import Pool
 import itertools
-from itertools import product
 
 
 # global setting, you need to modify it accordingly
@@ -36,6 +35,8 @@ else:
 
 tm = training_manager.TrainingManager()
 tm.N_RECURRENT_STEP = 8
+tm.N_SEGMENTS = 8
+tm.CHECK_STEPS = 1
 tm.IF_NODE_MODE = True
 
 
@@ -51,20 +52,24 @@ tm.prepare_dcm_rnn(dr, tag='initializer')
 # dr.build_an_initializer_graph()
 print('Creating and configuring tf model done.')
 
-# get distributed data package
-package = tm.prepare_distributed_data_package()
-print('Preparing distributed data package done.')
+# get distributed data data_package
+configure_package = tm.prepare_distributed_configure_package()
+print('Preparing distributed data data_package done.')
 
-# modify each package according to each particular experimental case, store in a list
-package_list = [package, package, package, package]
+# modify each data_package according to each particular experimental case, store in a list
+package_list = tm.modify_configure_packages(configure_package, 'PACKAGE_LABEL', [1, 2, 3, 4])
+
 
 # start parallel processing
 cpu_count = multiprocessing.cpu_count()
 print('There are ' + str(cpu_count) + ' cores available.')
-iterator = list(itertools.product(*[[du], [dr], package_list]))
+iterator = itertools.product(*[[du], [dr], package_list])
 with Pool(cpu_count) as p:
     # prepare data
     package_list = p.starmap(tm.prepare_data, iterator)
+
+    # modify data if necessary
+    package_list = tm.modify_data_packages()
 
     # build graph and training must be done in one function
     iterator = itertools.product(*[[dr], package_list])

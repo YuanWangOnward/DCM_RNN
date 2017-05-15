@@ -156,7 +156,7 @@ para_forerunner = {
 }
 
 '''
-# package structure rearrangement
+# data_package structure rearrangement
 THE MOST IMPORTANT THING IS KEEPING INTEGRALTITY AND CONSISTENCE OF DATA UNIT.
 Class DataUnit should have r hidden dictionary recording all the parameters and scanned cores.
 It should only be written by DataUnit's methods to keep integrality and consistence but should be read easily.

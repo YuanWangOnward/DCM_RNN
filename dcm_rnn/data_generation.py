@@ -66,7 +66,7 @@ def build_a_base(current_base_number):
                 OUTPUT_DIR = current_dir + '/../data'
             else:
                 raise ValueError("Cannot find default output directory. \
-                    Specify it or run this script in package root directory")
+                    Specify it or run this script in data_package root directory")
             print("Output directory is " + OUTPUT_DIR)
 
     TOTAL_BASE_NUMBER = 10

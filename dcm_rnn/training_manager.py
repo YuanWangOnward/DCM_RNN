@@ -20,7 +20,9 @@ from operator import attrgetter
 
 
 class DistributedDataPackage:
-    pass
+    def __init__(self):
+        pass
+
 
 
 class TrainingManager(tb.Initialization):
@@ -51,6 +53,7 @@ class TrainingManager(tb.Initialization):
         self.CHECK_STEPS = self.N_SEGMENTS * self.MAX_EPOCHS_INNER
         self.LEARNING_RATE = 128 / self.N_RECURRENT_STEP
         self.DATA_SHIFT = 4
+        self.PACKAGE_LABEL = ''     # used in parallel processing
         self.LOG_EXTRA_PREFIX = ''
 
         self.data = {}
@@ -60,7 +63,7 @@ class TrainingManager(tb.Initialization):
                 'IF_NODE_MODE', 'IF_IMAGE_LOG', 'IF_DATA_LOG',
                 'SNR', 'NODE_INDEX', 'SMOOTH_WEIGHT', 'N_RECURRENT_STEP', 'MAX_EPOCHS',
                 'MAX_EPOCHS_INNER', 'N_SEGMENTS', 'CHECK_STEPS', 'LEARNING_RATE', 'DATA_SHIFT',
-                'LOG_EXTRA_PREFIX', 'data'
+                'PACKAGE_LABEL', 'LOG_EXTRA_PREFIX', 'data'
                 ]
 
     def prepare_dcm_rnn(self, dr, tag='initializer'):
@@ -171,12 +174,37 @@ class TrainingManager(tb.Initialization):
         return self.data
     '''
 
-    def prepare_distributed_data_package(self):
+    def prepare_distributed_configure_package(self):
         ddp = DistributedDataPackage()
         for name in dir(self):
             setattr(ddp, name, copy.deepcopy(getattr(self, name)))
-        #return {name: copy.deepcopy(getattr(self, name)) for name in dir(self)}
         return ddp
+
+    def modify_configure_packages(self, data_package, attribute, values):
+        """
+        Modify the attribute in data_package with value. 
+        Update PACKAGE_LABEL and LOG_EXTRA_PREFIX attribute accordingly.
+        If data_package is a DistributedDataPackage instance, it's duplicated as many as elements in values.
+        If data_package is a list of DistributedDataPackage instances, 
+        the value of the attribute in each instance is modified according to values.
+        :param data_package: DistributedDataPackage instance, or a list of DistributedDataPackage instances
+        :param attribute: target attribute
+        :param values: a list of attribute values
+        :return: a list of DistributedDataPackage instances with modified attribute
+        """
+        if isinstance(data_package, DistributedDataPackage):
+            data_package_list = [copy.deepcopy(data_package) for _ in range(len(values))]
+        else:
+            assert len(data_package) == len(values)
+            data_package_list = data_package
+
+        for idx, dp in enumerate(data_package_list):
+            assert attribute in dir(dp)
+            setattr(dp, attribute, values[idx])
+            if attribute not in ['LOG_EXTRA_PREFIX', 'PACKAGE_LABEL']:
+                dp.LOG_EXTRA_PREFIX = dp.LOG_EXTRA_PREFIX + attribute + str(values[idx]) + '_'
+            dp.PACKAGE_LABEL = 'package_' + str(idx)
+        return data_package_list
 
     def prepare_data(self, du, dr, data_package):
         """
@@ -191,24 +219,24 @@ class TrainingManager(tb.Initialization):
 
         # create data according to flag
         if dp.IF_RANDOM_H_PARA:
-            dp.H_PARA_INITIAL = \
+            data['H_PARA_INITIAL'] = \
                 dr.randomly_generate_hemodynamic_parameters(dr.n_region, deviation_constraint=2).astype(np.float32)
         else:
-            dp.H_PARA_INITIAL = dr.get_standard_hemodynamic_parameters(n_node=dr.n_region).astype(np.float32)
+            data['H_PARA_INITIAL'] = dr.get_standard_hemodynamic_parameters(n_node=dr.n_region).astype(np.float32)
 
         if dp.IF_RANDOM_H_STATE_INIT:
-            dp.H_STATE_INITIAL = du.get('h')[random.randint(64, du.get('h').shape[0] - 64)].astype(np.float32)
+            data['H_STATE_INITIAL'] = du.get('h')[random.randint(64, du.get('h').shape[0] - 64)].astype(np.float32)
         else:
-            dp.H_STATE_INITIAL = \
+            data['H_STATE_INITIAL'] = \
                 dr.set_initial_hemodynamic_state_as_inactivated(n_node=dr.n_region).astype(np.float32)
 
         if dp.IF_NOISED_Y:
             std = np.std(du.get('y').reshape([-1])) / dp.SNR
-            dp.NOISE = np.random.normal(0, std, du.get('y').shape)
+            data['NOISE'] = np.random.normal(0, std, du.get('y').shape)
         else:
-            dp.NOISE = np.zeros(du.get('y').shape)
+            data['NOISE'] = np.zeros(du.get('y').shape)
 
-        data['y_train'] = tb.split(du.get('y') + dp.NOISE, dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)
+        data['y_train'] = tb.split(du.get('y') + data['NOISE'], dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)
         max_segments_natural = len(data['y_train'])
         data['max_segments_natural'] = max_segments_natural
         data['y_true'] = tb.split(du.get('y'), dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)[:max_segments_natural]
@@ -233,7 +261,7 @@ class TrainingManager(tb.Initialization):
             data['h_true_monitor'] = [np.take(array, node_index, 1) for array in data['h_true_monitor']]
             data['y_true'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_true']]
             data['y_train'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_train']]
-            dp.H_STATE_INITIAL = dp.H_STATE_INITIAL[node_index].reshape(1, 4)
+            data['H_STATE_INITIAL'] = data['H_STATE_INITIAL'][node_index].reshape(1, 4)
 
         # saved dp.SEQUENCE_LENGTH = dr.n_recurrent_step + (len(data['x_true']) - 1) * dr.shift_data
         # collect merged data (without split and merge, it can be tricky to cut proper part from du)
@@ -249,30 +277,129 @@ class TrainingManager(tb.Initialization):
 
         return data_package
 
-    def train(self, dr, para_package):
+    def modify_signel_data_package(self, data_package, key, value):
+        """
+        Modify the item in data_package.data with value. 
+        Update LOG_EXTRA_PREFIX attribute accordingly.
+        :param data_package: DistributedDataPackage instance
+        :param key: target data key
+        :param value: one value for target key
+        :return: a modified DistributedDataPackage instances
+        """
+        data_package.data['key'] = value
+        data_package.LOG_EXTRA_PREFIX = data_package.LOG_EXTRA_PREFIX + key + '_modified_'
+        return data_package
+
+    def modify_data_packages(self, data_package, key, values):
+        """
+        Modify the item in data_package.data with value. 
+        Update LOG_EXTRA_PREFIX attribute accordingly.
+        If data_package is a DistributedDataPackage instance, it's duplicated as many as elements in values.
+        If data_package is a list of DistributedDataPackage instances, 
+        the value of the item in each instance.data is modified according to values.
+        :param data_package: DistributedDataPackage instance, or a list of DistributedDataPackage instances
+        :param key: target data key
+        :param values: one value or a list of attribute values
+        :return: a list of DistributedDataPackage instances with modified attribute
+        """
+        if isinstance(data_package, DistributedDataPackage):
+            data_package_list = [copy.deepcopy(data_package) for _ in range(len(values))]
+        else:
+            assert len(data_package) == len(values)
+            data_package_list = data_package
+        for idx, dp in enumerate(data_package_list):
+            dp.data[key] = values[idx]
+            dp.LOG_EXTRA_PREFIX = dp.LOG_EXTRA_PREFIX + key + '_modified_'
+        return data_package_list
+
+    def train(self, dr, data_package):
         """"""
         print('Training starts!')
-        # make a train scope copy of data
-        data = para_package.data
-        x_hat_previous = data['x_hat_merged'].data.copy()
+        dp = data_package
+        data = dp.data
         data['loss_x'] = []
         data['loss_y'] = []
         data['loss_smooth'] = []
         data['loss_total'] = []
-
+        x_hat_previous = data['x_hat_merged'].data.copy()   # for stop criterion checking
+        isess = tf.Session()    # used for calculate log data
+        count_total = 0
         with tf.Session() as sess:
-            sess.run(tf.global_variables_initializer())
-            y_hat_log, h_hat_monitor_log, h_hat_connector_log = \
-                dr.run_initializer_graph(sess, para_package.H_STATE_INITIAL, data['x_true'])
+            for epoch in range(dp.MAX_EPOCHS):
+                sess.run(tf.global_variables_initializer())
+                h_initial_segment = data['H_STATE_INITIAL']
+                sess.run(tf.assign(dr.x_state_stacked_previous, data['x_hat_merged'].get(0)))
+                for i_segment in range(dp.N_SEGMENTS):
+
+                    for epoch_inner in range(dp.MAX_EPOCHS_INNER):
+                        # assign proper data
+                        if dp.IF_NODE_MODE is True:
+                            sess.run([tf.assign(dr.x_state_stacked,
+                                                data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)),
+                                      tf.assign(dr.h_state_initial, h_initial_segment)])
+                        else:
+                            sess.run([tf.assign(dr.x_state_stacked, data['x_hat_merged'].get(i_segment)),
+                                      tf.assign(dr.h_state_initial, h_initial_segment)])
+
+                        # training
+                        sess.run(dr.train, feed_dict={dr.y_true: data['y_train'][i_segment]})
+
+                        # collect results
+                        data['x_hat_merged'].set(i_segment, sess.run(dr.x_state_stacked))
+
+                        # add counting
+                        count_total += 1
+
+                        # Display logs per CHECK_STEPS step
+                        if count_total % dp.CHECK_STEPS == 0:
+                            pass
+                            # calculate_log_data()
+
+                            # saved summary = sess.run(dr.merged_summary)
+                            # saved dr.summary_writer.add_summary(summary, count_total)
+
+                            '''
+                            print("Total iteration:", '%04d' % count_total, "loss_y=",
+                                  "{:.9f}".format(data['loss_y'][-1]))
+                            print("Total iteration:", '%04d' % count_total, "loss_x=",
+                                  "{:.9f}".format(data['loss_x'][-1]))
+
+                            if IF_IMAGE_LOG:
+                                add_image_log(extra_prefix=LOG_EXTRA_PREFIX)
+
+                            if IF_DATA_LOG:
+                                add_data_log(extra_prefix=LOG_EXTRA_PREFIX)
+                            '''
+                            '''
+                            # check stop criterion
+                            relative_change = tb.rmse(x_hat_previous, data['x_hat_merged'].get())
+                            if relative_change < dr.stop_threshold:
+                                print('Relative change: ' + str(relative_change))
+                                print('Stop criterion met, stop training')
+                            else:
+                                # x_hat_previous = copy.deepcopy(data['x_hat_merged'])
+                                x_hat_previous = data['x_hat_merged'].get().copy()
+                            '''
+
+                    # prepare for next segment
+                    # update hemodynamic state initial
+                    h_initial_segment = sess.run(dr.h_connector)
+                    # update previous neural state
+                    sess.run(tf.assign(dr.x_state_stacked_previous, data['x_hat_merged'].get(i_segment)))
+
+        isess.close()
+
         print("Optimization Finished!")
 
-        data['y_hat_log'] = y_hat_log
+        # data['y_hat_log'] = y_hat_log
 
-        return para_package
+        return data_package
+
+
 
     def build_initializer_graph_and_train(self, dr, data_package):
 
-        dr.build_an_initializer_graph(data_package.H_PARA_INITIAL)
+        dr.build_an_initializer_graph(data_package.data['H_PARA_INITIAL'])
 
         self.train(dr, data_package)
 
