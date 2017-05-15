@@ -1,6 +1,6 @@
 import matplotlib
-
 matplotlib.use('agg')
+
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import tf_model as tfm
@@ -20,7 +20,6 @@ from itertools import product
 
 
 # global setting, you need to modify it accordingly
-# project directory
 if '/Users/yuanwang' in sys.executable:
     PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
     print("It seems a local run on Yuan's laptop")
@@ -45,12 +44,12 @@ data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)
 print('Loading data done.')
 
-# build model
+# create and configure DcmRnn instance
 dr = tfm.DcmRnn()
 dr.collect_parameters(du)
 tm.prepare_dcm_rnn(dr, tag='initializer')
 # dr.build_an_initializer_graph()
-print('Building tf model done.')
+print('Creating and configuring tf model done.')
 
 # get distributed data package
 package = tm.prepare_distributed_data_package()
@@ -59,15 +58,16 @@ print('Preparing distributed data package done.')
 # modify each package according to each particular experimental case, store in a list
 package_list = [package, package, package, package]
 
-# prepare data in parallel
+# start parallel processing
 cpu_count = multiprocessing.cpu_count()
 print('There are ' + str(cpu_count) + ' cores available.')
 iterator = list(itertools.product(*[[du], [dr], package_list]))
 with Pool(cpu_count) as p:
-    p.starmap(tm.prepare_data, iterator)
-# print('Preparing data done for process ' + str(multiprocessing.current_process()))
+    # prepare data
+    package_list = p.starmap(tm.prepare_data, iterator)
 
+    # build graph and training must be done in one function
+    iterator = itertools.product(*[[dr], package_list])
+    output = p.starmap(tm.build_initializer_graph_and_train, iterator)
 
-# training
-# tm.train(dr, dr, dr)
-# print('Training done.')
+# collect results

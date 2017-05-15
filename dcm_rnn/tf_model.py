@@ -462,6 +462,8 @@ class DcmRnn(Initialization):
         self.merged_summary = tf.summary.merge_all()
         self.summary_writer = tf.summary.FileWriter(self.log_directory, tf.get_default_graph())
 
+        return self
+
     def run_initializer_graph(self, sess, h_state_initial, data_x):
         """
         Run forward the initializer graph

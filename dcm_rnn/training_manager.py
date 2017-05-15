@@ -249,8 +249,7 @@ class TrainingManager(tb.Initialization):
 
         return data_package
 
-
-    def train(self, dr, para_package, label):
+    def train(self, dr, para_package):
         """"""
         print('Training starts!')
         # make a train scope copy of data
@@ -261,10 +260,23 @@ class TrainingManager(tb.Initialization):
         data['loss_smooth'] = []
         data['loss_total'] = []
 
-
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            y_hat_log, h_hat_monitor_log, h_hat_connector_log = \
+                dr.run_initializer_graph(sess, para_package.H_STATE_INITIAL, data['x_true'])
         print("Optimization Finished!")
 
-    def f(self, x):
-        print(x)
+        data['y_hat_log'] = y_hat_log
+
+        return para_package
+
+    def build_initializer_graph_and_train(self, dr, data_package):
+
+        dr.build_an_initializer_graph(data_package.H_PARA_INITIAL)
+
+        self.train(dr, data_package)
+
+        return data_package
+
 
 
