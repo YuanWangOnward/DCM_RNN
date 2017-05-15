@@ -24,11 +24,11 @@ class DistributedDataPackage:
         pass
 
 
-
 class TrainingManager(tb.Initialization):
     """
     This class is used to the manage training process
     """
+
     def __init__(self):
         tb.Initialization.__init__(self)
 
@@ -53,7 +53,7 @@ class TrainingManager(tb.Initialization):
         self.CHECK_STEPS = self.N_SEGMENTS * self.MAX_EPOCHS_INNER
         self.LEARNING_RATE = 128 / self.N_RECURRENT_STEP
         self.DATA_SHIFT = 4
-        self.PACKAGE_LABEL = ''     # used in parallel processing
+        self.PACKAGE_LABEL = ''  # used in parallel processing
         self.LOG_EXTRA_PREFIX = ''
 
         self.data = {}
@@ -312,6 +312,89 @@ class TrainingManager(tb.Initialization):
             dp.LOG_EXTRA_PREFIX = dp.LOG_EXTRA_PREFIX + key + '_modified_'
         return data_package_list
 
+    def get_log_prefix(self, data_package, extra_prefix=''):
+        global count_total
+        dp = data_package
+        if dp.IF_NODE_MODE:
+            node_index = dp.NODE_INDEX
+        else:
+            node_index = 'a'
+        prefix = extra_prefix \
+                 + '_nNode' + str(node_index) \
+                 + '_nSeg' + str(dp.N_SEGMENTS) \
+                 + '_nRec' + str(dp.N_RECURRENT_STEP) \
+                 + '_nDaSh' + str(dp.DATA_SHIFT) \
+                 + '_leRa' + str(dp.LEARNING_RATE).replace('.', 'p') \
+                 + '_iter' + str(count_total)
+        return prefix
+
+    def calculate_log_data(self, dr, data_package, isess):
+        """"""
+        dp = data_package
+        data = dp.data
+
+        if 'y_hat_x_true' not in data.keys():
+            # run forward pass with x_true to show y error caused by error in the network parameters
+            isess.run(tf.global_variables_initializer())
+            y_hat_x_true_log, h_hat_x_true_monitor_log, h_hat_x_true_connector_log = \
+                dr.run_initializer_graph(isess, data['H_STATE_INITIAL'], data['x_true'])
+
+            data['h_hat_x_true_monitor'] = h_hat_x_true_monitor_log
+            data['y_hat_x_true'] = y_hat_x_true_log
+            data['h_hat_x_true_monitor_merged'] = tb.merge(h_hat_x_true_monitor_log, dr.n_recurrent_step, dr.shift_data)
+            data['y_hat_x_true_merged'] = tb.merge(y_hat_x_true_log, dr.n_recurrent_step, dr.shift_data)
+
+            data['loss_x_normalizer'] = np.sum(data['x_true_merged'].flatten() ** 2)
+            data['loss_y_normalizer'] = np.sum(data['y_true_merged'].flatten() ** 2)
+            data['loss_smooth_normalizer'] = np.std(data['x_true_merged'].flatten()) ** 2
+
+        data['x_hat'] = tb.split(data['x_hat_merged'].get(), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)
+        if dp.IF_NODE_MODE:
+            data['x_hat'] = [array.reshape(dr.n_recurrent_step, 1) for array in data['x_hat']]
+
+        isess.run(tf.global_variables_initializer())
+        y_hat_log, h_hat_monitor_log, h_hat_connector_log = \
+            dr.run_initializer_graph(isess, dp.data['H_STATE_INITIAL'], data['x_hat'])
+
+        # collect results
+        # segmented data
+        data['x_hat'] = data['x_hat']
+        data['x_true'] = data['x_true']
+
+        data['h_true_monitor'] = data['h_true_monitor']
+        data['h_hat_x_true_monitor'] = data['h_hat_x_true_monitor']
+        data['h_hat_monitor'] = h_hat_monitor_log
+
+        data['y_train'] = data['y_train']
+        data['y_true'] = data['y_true']
+        data['y_hat_x_true'] = data['y_hat_x_true']
+        data['y_hat'] = y_hat_log
+
+        # merged data
+        data['x_true_merged'] = data['x_true_merged']
+        data['x_hat_merged'] = data['x_hat_merged']
+
+        data['h_true_monitor_merged'] = data['h_true_monitor_merged']
+        data['h_hat_x_true_monitor_merged'] = data['h_hat_x_true_monitor_merged']
+        data['h_hat_monitor_merged'] = tb.merge(h_hat_monitor_log, dr.n_recurrent_step, dr.shift_data)
+
+        data['y_train_merged'] = data['y_train_merged']
+        data['y_true_merged'] = data['y_true_merged']
+        data['y_hat_x_true_merged'] = data['y_hat_x_true_merged']
+        data['y_hat_merged'] = tb.merge(y_hat_log, dr.n_recurrent_step, dr.shift_data)
+
+        # calculate loss
+        loss_x = np.sum((data['x_hat_merged'].data.flatten() - data['x_true_merged'].flatten()) ** 2)
+        loss_y = np.sum((data['y_hat_merged'].flatten() - data['y_true_merged'].flatten()) ** 2)
+        loss_smooth = np.sum((data['x_hat_merged'].data[0:-1].flatten() - data['x_hat_merged'].data[1:].flatten()) ** 2)
+
+        data['loss_x'].append(loss_x / data['loss_x_normalizer'])
+        data['loss_y'].append(loss_y / data['loss_y_normalizer'])
+        data['loss_smooth'].append(loss_smooth / data['loss_smooth_normalizer'])
+        data['loss_total'].append((loss_y + dr.loss_weighting['smooth'] * loss_smooth) / (
+            data['loss_y_normalizer'] + dr.loss_weighting['smooth'] * data['loss_smooth_normalizer']))
+        return data_package
+
     def train(self, dr, data_package):
         """"""
         print('Training starts!')
@@ -321,8 +404,8 @@ class TrainingManager(tb.Initialization):
         data['loss_y'] = []
         data['loss_smooth'] = []
         data['loss_total'] = []
-        x_hat_previous = data['x_hat_merged'].data.copy()   # for stop criterion checking
-        isess = tf.Session()    # used for calculate log data
+        x_hat_previous = data['x_hat_merged'].data.copy()  # for stop criterion checking
+        isess = tf.Session()  # used for calculate log data
         count_total = 0
         with tf.Session() as sess:
             for epoch in range(dp.MAX_EPOCHS):
@@ -352,7 +435,7 @@ class TrainingManager(tb.Initialization):
 
                         # Display logs per CHECK_STEPS step
                         if count_total % dp.CHECK_STEPS == 0:
-                            pass
+                            self.calculate_log_data(dr, data_package, isess)
                             # calculate_log_data()
 
                             # saved summary = sess.run(dr.merged_summary)
@@ -395,8 +478,6 @@ class TrainingManager(tb.Initialization):
 
         return data_package
 
-
-
     def build_initializer_graph_and_train(self, dr, data_package):
 
         dr.build_an_initializer_graph(data_package.data['H_PARA_INITIAL'])
@@ -404,6 +485,3 @@ class TrainingManager(tb.Initialization):
         self.train(dr, data_package)
 
         return data_package
-
-
-

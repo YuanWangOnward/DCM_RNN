@@ -35,8 +35,10 @@ else:
 
 tm = training_manager.TrainingManager()
 tm.N_RECURRENT_STEP = 8
-tm.N_SEGMENTS = 8
-tm.CHECK_STEPS = 1
+tm.N_SEGMENTS = 4
+tm.MAX_EPOCHS = 1
+tm.MAX_EPOCHS_INNER = 4
+tm.CHECK_STEPS = 4
 tm.IF_NODE_MODE = True
 
 
@@ -69,7 +71,8 @@ with Pool(cpu_count) as p:
     package_list = p.starmap(tm.prepare_data, iterator)
 
     # modify data if necessary
-    package_list = tm.modify_data_packages()
+    iterator = itertools.product(*[package_list, ['test'], ['test']])
+    package_list = p.starmap(tm.modify_signel_data_package, iterator)
 
     # build graph and training must be done in one function
     iterator = itertools.product(*[[dr], package_list])
