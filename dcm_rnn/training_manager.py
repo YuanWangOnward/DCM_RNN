@@ -53,17 +53,20 @@ class TrainingManager(tb.Initialization):
         self.CHECK_STEPS = self.N_SEGMENTS * self.MAX_EPOCHS_INNER
         self.LEARNING_RATE = 128 / self.N_RECURRENT_STEP
         self.DATA_SHIFT = 4
+
         self.PACKAGE_LABEL = ''  # used in parallel processing
         self.LOG_EXTRA_PREFIX = ''
+        self.IMAGE_LOG_DIR = './image_logs/'
 
-        self.data = {}
+        self.data = {'total_iteration_count': 0}
+
 
     def __dir__(self):
         return ['IF_RANDOM_H_PARA', 'IF_RANDOM_H_STATE_INIT', 'IF_NOISED_Y',
                 'IF_NODE_MODE', 'IF_IMAGE_LOG', 'IF_DATA_LOG',
                 'SNR', 'NODE_INDEX', 'SMOOTH_WEIGHT', 'N_RECURRENT_STEP', 'MAX_EPOCHS',
                 'MAX_EPOCHS_INNER', 'N_SEGMENTS', 'CHECK_STEPS', 'LEARNING_RATE', 'DATA_SHIFT',
-                'PACKAGE_LABEL', 'LOG_EXTRA_PREFIX', 'data'
+                'PACKAGE_LABEL', 'LOG_EXTRA_PREFIX', 'IMAGE_LOG_DIR', 'data'
                 ]
 
     def prepare_dcm_rnn(self, dr, tag='initializer'):
@@ -312,9 +315,10 @@ class TrainingManager(tb.Initialization):
             dp.LOG_EXTRA_PREFIX = dp.LOG_EXTRA_PREFIX + key + '_modified_'
         return data_package_list
 
-    def get_log_prefix(self, data_package, extra_prefix=''):
-        global count_total
+    def get_log_prefix(self, data_package):
         dp = data_package
+        count_total = dp.data['total_iteration_count']
+        extra_prefix = '_'.join([dp.PACKAGE_LABEL, dp.LOG_EXTRA_PREFIX])
         if dp.IF_NODE_MODE:
             node_index = dp.NODE_INDEX
         else:
@@ -395,6 +399,68 @@ class TrainingManager(tb.Initialization):
             data['loss_y_normalizer'] + dr.loss_weighting['smooth'] * data['loss_smooth_normalizer']))
         return data_package
 
+    def add_image_log(self, data_package):
+
+        dp = data_package
+        data = dp.data
+        count_total = dp.data['total_iteration_count']
+        image_log_dir = dp.IMAGE_LOG_DIR
+
+        if not os.path.exists(image_log_dir):
+            os.makedirs(image_log_dir)
+        log_file_name_prefix = self.get_log_prefix(dp)
+
+        plt.figure(figsize=(10, 10))
+        plt.subplot(2, 2, 1)
+        plt.plot(data['x_true_merged'], label='x_true')
+        plt.plot(data['x_hat_merged'].get(), '--', label='x_hat')
+        plt.xlabel('time')
+        plt.ylabel('signal')
+        plt.title('Iter = ' + str(count_total))
+        plt.legend()
+
+        if dp.IF_NOISED_Y:
+            plt.subplot(2, 2, 2)
+            plt.plot(data['y_train_merged'], label='y_train', alpha=0.5)
+            plt.plot(data['y_true_merged'], label='y_true')
+            plt.plot(data['y_hat_merged'], '--', label='y_hat')
+            plt.xlabel('time')
+            plt.ylabel('signal')
+            plt.title('Iter = ' + str(count_total))
+            plt.legend()
+        else:
+            plt.subplot(2, 2, 2)
+            plt.plot(data['y_true_merged'], label='y_true')
+            plt.plot(data['y_hat_merged'], '--', label='y_hat')
+            plt.xlabel('time')
+            plt.ylabel('signal')
+            plt.title('Iter = ' + str(count_total))
+            plt.legend()
+
+        plt.subplot(2, 2, 3)
+        plt.plot(data['y_true_merged'], label='by net_true')
+        plt.plot(data['y_hat_x_true_merged'], '--', label='by net_hat')
+        plt.xlabel('time')
+        plt.ylabel('signal')
+        plt.title('y reproduced with x_true, iter = ' + str(count_total))
+        plt.legend()
+
+        plt.subplot(2, 2, 4)
+        plt.plot(data['loss_x'], '--', label='x loss')
+        plt.plot(data['loss_y'], '-.', label='y loss')
+        # plt.plot(data['loss_smooth'], label='smooth loss')
+        plt.plot(data['loss_total'], label='total loss')
+        plt.xlabel('check point index')
+        plt.ylabel('value')
+        plt.title('Normalized loss, iter = ' + str(count_total))
+        plt.legend()
+
+        plt.tight_layout()
+        plot_file_name = image_log_dir + log_file_name_prefix + '.png'
+        plt.savefig(plot_file_name)
+        plt.close()
+
+
     def train(self, dr, data_package):
         """"""
         print('Training starts!')
@@ -406,7 +472,7 @@ class TrainingManager(tb.Initialization):
         data['loss_total'] = []
         x_hat_previous = data['x_hat_merged'].data.copy()  # for stop criterion checking
         isess = tf.Session()  # used for calculate log data
-        count_total = 0
+        data['count_total'] = 0
         with tf.Session() as sess:
             for epoch in range(dp.MAX_EPOCHS):
                 sess.run(tf.global_variables_initializer())
@@ -431,11 +497,12 @@ class TrainingManager(tb.Initialization):
                         data['x_hat_merged'].set(i_segment, sess.run(dr.x_state_stacked))
 
                         # add counting
-                        count_total += 1
+                        data['count_total'] += 1
 
                         # Display logs per CHECK_STEPS step
-                        if count_total % dp.CHECK_STEPS == 0:
+                        if data['count_total'] % dp.CHECK_STEPS == 0:
                             self.calculate_log_data(dr, data_package, isess)
+                            self.add_image_log(data_package)
                             # calculate_log_data()
 
                             # saved summary = sess.run(dr.merged_summary)

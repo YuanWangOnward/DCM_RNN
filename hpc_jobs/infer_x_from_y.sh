@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=2
+#SBATCH --ntasks=8
 #SBATCH --time=2:00:00
-#SBATCH --mem=6GB
+#SBATCH --mem=32GB
 #SBATCH --job-name=infer_x
 #SBATCH --mail-type=END
 #SBATCH --mail-user=yw1225@nyu.edu

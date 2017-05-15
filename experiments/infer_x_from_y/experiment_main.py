@@ -32,14 +32,18 @@ else:
     print("Not sure executing machine. Make sure to set PROJECT_DIR properly.")
     print("PROJECT_DIR is set as: " + PROJECT_DIR)
 
+LOCAL_DEBUGGING = False
 
 tm = training_manager.TrainingManager()
-tm.N_RECURRENT_STEP = 8
-tm.N_SEGMENTS = 4
-tm.MAX_EPOCHS = 1
-tm.MAX_EPOCHS_INNER = 4
-tm.CHECK_STEPS = 4
-tm.IF_NODE_MODE = True
+if LOCAL_DEBUGGING is True:
+    tm.N_RECURRENT_STEP = 4
+    tm.N_SEGMENTS = 4
+    tm.MAX_EPOCHS = 1
+    tm.MAX_EPOCHS_INNER = 4
+    tm.CHECK_STEPS = 4
+    tm.IF_NODE_MODE = True
+else:
+    tm.IF_NODE_MODE = True
 
 
 # load in data
@@ -59,8 +63,7 @@ configure_package = tm.prepare_distributed_configure_package()
 print('Preparing distributed data data_package done.')
 
 # modify each data_package according to each particular experimental case, store in a list
-package_list = tm.modify_configure_packages(configure_package, 'PACKAGE_LABEL', [1, 2, 3, 4])
-
+package_list = tm.modify_configure_packages(configure_package, 'SNR', range(2, 10))
 
 # start parallel processing
 cpu_count = multiprocessing.cpu_count()
