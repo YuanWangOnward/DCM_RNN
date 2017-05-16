@@ -35,7 +35,7 @@ class TrainingManager(tb.Initialization):
         # global setting
         self.IF_RANDOM_H_PARA = False
         self.IF_RANDOM_H_STATE_INIT = False
-        self.IF_NOISED_Y = False
+        self.IF_NOISED_Y = True
 
         self.IF_NODE_MODE = False
         self.IF_IMAGE_LOG = True
@@ -57,6 +57,7 @@ class TrainingManager(tb.Initialization):
         self.PACKAGE_LABEL = ''  # used in parallel processing
         self.LOG_EXTRA_PREFIX = ''
         self.IMAGE_LOG_DIR = './image_logs/'
+        self.DATA_LOG_DIR = './data_logs/'
 
         self.data = {'total_iteration_count': 0}
 
@@ -456,10 +457,19 @@ class TrainingManager(tb.Initialization):
         plt.legend()
 
         plt.tight_layout()
-        plot_file_name = image_log_dir + log_file_name_prefix + '.png'
+        plot_file_name = os.path.join(image_log_dir, log_file_name_prefix + '.png')
         plt.savefig(plot_file_name)
         plt.close()
 
+    def add_data_log(self, data_package):
+
+        dp = data_package
+        data_log_dir = dp.DATA_LOG_DIR
+        log_file_name_prefix = self.get_log_prefix(dp)
+        if not os.path.exists(data_log_dir):
+            os.makedirs(data_log_dir)
+        file_name = os.path.join(data_log_dir, log_file_name_prefix + '.pkl')
+        pickle.dump(data_package, open(file_name, "wb"))
 
     def train(self, dr, data_package):
         """"""
@@ -472,7 +482,7 @@ class TrainingManager(tb.Initialization):
         data['loss_total'] = []
         x_hat_previous = data['x_hat_merged'].data.copy()  # for stop criterion checking
         isess = tf.Session()  # used for calculate log data
-        data['count_total'] = 0
+        data['total_iteration_count'] = 0
         with tf.Session() as sess:
             for epoch in range(dp.MAX_EPOCHS):
                 sess.run(tf.global_variables_initializer())
@@ -497,12 +507,13 @@ class TrainingManager(tb.Initialization):
                         data['x_hat_merged'].set(i_segment, sess.run(dr.x_state_stacked))
 
                         # add counting
-                        data['count_total'] += 1
+                        data['total_iteration_count'] += 1
 
                         # Display logs per CHECK_STEPS step
-                        if data['count_total'] % dp.CHECK_STEPS == 0:
+                        if data['total_iteration_count'] % dp.CHECK_STEPS == 0:
                             self.calculate_log_data(dr, data_package, isess)
                             self.add_image_log(data_package)
+                            self.add_data_log(data_package)
                             # calculate_log_data()
 
                             # saved summary = sess.run(dr.merged_summary)

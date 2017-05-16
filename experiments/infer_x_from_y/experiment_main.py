@@ -74,7 +74,8 @@ with Pool(cpu_count) as p:
     package_list = p.starmap(tm.prepare_data, iterator)
 
     # modify data if necessary
-    iterator = itertools.product(*[package_list, ['test'], ['test']])
+    # iterator = itertools.product(*[package_list, ['test'], ['test']])
+    iterator = package_list
     package_list = p.starmap(tm.modify_signel_data_package, iterator)
 
     # build graph and training must be done in one function
