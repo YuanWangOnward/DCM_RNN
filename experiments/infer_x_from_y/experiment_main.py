@@ -42,8 +42,9 @@ if LOCAL_DEBUGGING is True:
     tm.MAX_EPOCHS_INNER = 4
     tm.CHECK_STEPS = 4
     tm.IF_NODE_MODE = True
+    tm.N_PACKAGES
 else:
-    tm.IF_NODE_MODE = True
+    tm.IF_NODE_MODE = False
 
 
 # load in data
@@ -63,23 +64,23 @@ configure_package = tm.prepare_distributed_configure_package()
 print('Preparing distributed data data_package done.')
 
 # modify each data_package according to each particular experimental case, store in a list
-package_list = tm.modify_configure_packages(configure_package, 'SNR', range(2, 10))
+package_list = tm.modify_configure_packages(configure_package, 'SNR', range(2, 2 + tm.N_PACKAGES))
 
 # start parallel processing
 cpu_count = multiprocessing.cpu_count()
 print('There are ' + str(cpu_count) + ' cores available.')
+tm.N_CORES = min(cpu_count, len(package_list))
 iterator = itertools.product(*[[du], [dr], package_list])
-with Pool(cpu_count) as p:
+with Pool(tm.N_CORES) as p:
     # prepare data
     package_list = p.starmap(tm.prepare_data, iterator)
 
     # modify data if necessary
-    # iterator = itertools.product(*[package_list, ['test'], ['test']])
-    iterator = package_list
-    package_list = p.starmap(tm.modify_signel_data_package, iterator)
+    # iterator = itertools.product(*[package_list, ['H_PARA_INITIAL'], [values]])
+    # package_list = p.starmap(tm.modify_signel_data_package, iterator)
 
     # build graph and training must be done in one function
     iterator = itertools.product(*[[dr], package_list])
-    output = p.starmap(tm.build_initializer_graph_and_train, iterator)
+    package_list = p.starmap(tm.build_initializer_graph_and_train, iterator)
 
 # collect results

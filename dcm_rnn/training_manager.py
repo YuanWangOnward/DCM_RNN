@@ -16,6 +16,7 @@ import copy
 import toolboxes as tb
 import tf_model as tfm
 import tensorflow as tf
+import copy
 from operator import attrgetter
 
 
@@ -58,16 +59,20 @@ class TrainingManager(tb.Initialization):
         self.LOG_EXTRA_PREFIX = ''
         self.IMAGE_LOG_DIR = './image_logs/'
         self.DATA_LOG_DIR = './data_logs/'
+        self.N_CORES = 4
+
+        self.N_PACKAGES = 8
 
         self.data = {'total_iteration_count': 0}
-
 
     def __dir__(self):
         return ['IF_RANDOM_H_PARA', 'IF_RANDOM_H_STATE_INIT', 'IF_NOISED_Y',
                 'IF_NODE_MODE', 'IF_IMAGE_LOG', 'IF_DATA_LOG',
                 'SNR', 'NODE_INDEX', 'SMOOTH_WEIGHT', 'N_RECURRENT_STEP', 'MAX_EPOCHS',
                 'MAX_EPOCHS_INNER', 'N_SEGMENTS', 'CHECK_STEPS', 'LEARNING_RATE', 'DATA_SHIFT',
-                'PACKAGE_LABEL', 'LOG_EXTRA_PREFIX', 'IMAGE_LOG_DIR', 'data'
+                'PACKAGE_LABEL', 'LOG_EXTRA_PREFIX', 'IMAGE_LOG_DIR', 'DATA_LOG_DIR', 'N_CORES',
+                'N_PACKAGES',
+                'data'
                 ]
 
     def prepare_dcm_rnn(self, dr, tag='initializer'):
@@ -178,11 +183,20 @@ class TrainingManager(tb.Initialization):
         return self.data
     '''
 
-    def prepare_distributed_configure_package(self):
+    def prepare_distributed_configure_package(self, package_number=None):
+        """
+        Pack up configure settings from TrainingManager in to several separate packages for parallel processing
+        :param package_number: total amount of packages 
+        :return: 
+        """
+        package_number = None or self.N_PACKAGES
         ddp = DistributedDataPackage()
         for name in dir(self):
             setattr(ddp, name, copy.deepcopy(getattr(self, name)))
-        return ddp
+        packages = [copy.deepcopy(ddp) for _ in range(package_number)]
+        for idx, ddp in enumerate(packages):
+            ddp.PACKAGE_LABEL = 'package_' + str(idx)
+        return packages
 
     def modify_configure_packages(self, data_package, attribute, values):
         """
@@ -199,9 +213,18 @@ class TrainingManager(tb.Initialization):
         if isinstance(data_package, DistributedDataPackage):
             data_package_list = [copy.deepcopy(data_package) for _ in range(len(values))]
         else:
-            assert len(data_package) == len(values)
-            data_package_list = data_package
-
+            if len(data_package) == len(values):
+                data_package_list = data_package
+            elif len(data_package) > len(values):
+                warnings.warn(
+                    "Data_package length is larger than provided attribute values. Tailing ones are not modified")
+                data_package_list = data_package
+            elif len(data_package) < len(values):
+                warnings.warn(
+                    "Data_package length is smaller than provided attribute values. "
+                    "Extra data packages are added, copied from the last data_package element.")
+                data_package_list = data_package + [copy.deepcopy(data_package[-1])
+                                                    for _ in range(len(values) - len(data_package))]
         for idx, dp in enumerate(data_package_list):
             assert attribute in dir(dp)
             setattr(dp, attribute, values[idx])
@@ -309,8 +332,18 @@ class TrainingManager(tb.Initialization):
         if isinstance(data_package, DistributedDataPackage):
             data_package_list = [copy.deepcopy(data_package) for _ in range(len(values))]
         else:
-            assert len(data_package) == len(values)
-            data_package_list = data_package
+            if len(data_package) == len(values):
+                data_package_list = data_package
+            elif len(data_package) > len(values):
+                warnings.warn(
+                    "Data_package length is larger than provided attribute values. Tailing ones are not modified")
+                data_package_list = data_package
+            elif len(data_package) < len(values):
+                warnings.warn(
+                    "Data_package length is smaller than provided attribute values. "
+                    "Extra data packages are added, copied from the last data_package element.")
+                data_package_list = data_package + [copy.deepcopy(data_package[-1])
+                                                    for _ in range(len(values) - len(data_package))]
         for idx, dp in enumerate(data_package_list):
             dp.data[key] = values[idx]
             dp.LOG_EXTRA_PREFIX = dp.LOG_EXTRA_PREFIX + key + '_modified_'
@@ -484,8 +517,11 @@ class TrainingManager(tb.Initialization):
         isess = tf.Session()  # used for calculate log data
         data['total_iteration_count'] = 0
         with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            self.calculate_log_data(dr, data_package, isess)
+            self.add_image_log(data_package)
+            self.add_data_log(data_package)
             for epoch in range(dp.MAX_EPOCHS):
-                sess.run(tf.global_variables_initializer())
                 h_initial_segment = data['H_STATE_INITIAL']
                 sess.run(tf.assign(dr.x_state_stacked_previous, data['x_hat_merged'].get(0)))
                 for i_segment in range(dp.N_SEGMENTS):
@@ -514,7 +550,6 @@ class TrainingManager(tb.Initialization):
                             self.calculate_log_data(dr, data_package, isess)
                             self.add_image_log(data_package)
                             self.add_data_log(data_package)
-                            # calculate_log_data()
 
                             # saved summary = sess.run(dr.merged_summary)
                             # saved dr.summary_writer.add_summary(summary, count_total)
