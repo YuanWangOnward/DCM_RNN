@@ -42,9 +42,14 @@ if LOCAL_DEBUGGING is True:
     tm.MAX_EPOCHS_INNER = 4
     tm.CHECK_STEPS = 4
     tm.IF_NODE_MODE = True
-    tm.N_PACKAGES
+    tm.N_PACKAGES = 4
 else:
     tm.IF_NODE_MODE = False
+    tm.N_PACKAGES = 1
+
+    tm.IF_RANDOM_H_PARA = False
+    tm.IF_RANDOM_H_STATE_INIT = False
+    tm.IF_NOISED_Y = False
 
 
 # load in data
@@ -65,6 +70,7 @@ print('Preparing distributed data data_package done.')
 
 # modify each data_package according to each particular experimental case, store in a list
 package_list = tm.modify_configure_packages(configure_package, 'SNR', range(2, 2 + tm.N_PACKAGES))
+# package_list = configure_package
 
 # start parallel processing
 cpu_count = multiprocessing.cpu_count()
