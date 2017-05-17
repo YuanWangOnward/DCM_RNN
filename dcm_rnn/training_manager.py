@@ -44,7 +44,7 @@ class TrainingManager(tb.Initialization):
 
         self.SNR = 3
         self.NODE_INDEX = 0
-        self.SMOOTH_WEIGHT = 0.2
+        self.SMOOTH_WEIGHT = 0.4
         self.N_RECURRENT_STEP = 64
         self.MAX_EPOCHS = 4
 
@@ -189,7 +189,7 @@ class TrainingManager(tb.Initialization):
         :param package_number: total amount of packages 
         :return: 
         """
-        package_number = None or self.N_PACKAGES
+        package_number = package_number or self.N_PACKAGES
         ddp = DistributedDataPackage()
         for name in dir(self):
             setattr(ddp, name, copy.deepcopy(getattr(self, name)))
@@ -313,7 +313,7 @@ class TrainingManager(tb.Initialization):
         :param value: one value for target key
         :return: a modified DistributedDataPackage instances
         """
-        data_package.data['key'] = value
+        data_package.data['key'] = copy.deepcopy(value)
         data_package.LOG_EXTRA_PREFIX = data_package.LOG_EXTRA_PREFIX + key + '_modified_'
         return data_package
 
@@ -345,7 +345,7 @@ class TrainingManager(tb.Initialization):
                 data_package_list = data_package + [copy.deepcopy(data_package[-1])
                                                     for _ in range(len(values) - len(data_package))]
         for idx, dp in enumerate(data_package_list):
-            dp.data[key] = values[idx]
+            dp.data[key] = copy.deepcopy(values[idx])
             dp.LOG_EXTRA_PREFIX = dp.LOG_EXTRA_PREFIX + key + '_modified_'
         return data_package_list
 
@@ -514,13 +514,15 @@ class TrainingManager(tb.Initialization):
         data['loss_smooth'] = []
         data['loss_total'] = []
         x_hat_previous = data['x_hat_merged'].data.copy()  # for stop criterion checking
-        isess = tf.Session()  # used for calculate log data
         data['total_iteration_count'] = 0
+
+        isess = tf.Session()  # used for calculate log data
+        self.calculate_log_data(dr, data_package, isess)
+        self.add_image_log(data_package)
+        self.add_data_log(data_package)
+
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
-            self.calculate_log_data(dr, data_package, isess)
-            self.add_image_log(data_package)
-            self.add_data_log(data_package)
             for epoch in range(dp.MAX_EPOCHS):
                 h_initial_segment = data['H_STATE_INITIAL']
                 sess.run(tf.assign(dr.x_state_stacked_previous, data['x_hat_merged'].get(0)))

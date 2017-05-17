@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=8
-#SBATCH --time=6:00:00
+#SBATCH --ntasks=28
+#SBATCH --time=8:00:00
 #SBATCH --mem=48GB
 #SBATCH --job-name=infer_x
 #SBATCH --mail-type=END
@@ -14,7 +14,7 @@ module load python3/intel/3.5.3
 module load tensorflow/python3.5/1.0.1
 #SBATCH --gres=gpu:1
 
-JOBNAME=NOISED
+JOBNAME=IDEAL
 RUNDIR=$SCRATCH/runs/$JOBNAME-${SLURM_JOB_ID/.*}
 SOURCEDIR=~/projects/DCM_RNN/dcm_rnn
 OUTPUTDIR=$SCRATCH/results/DCM_RNN/$JOBNAME/${SLURM_JOB_ID/.*}

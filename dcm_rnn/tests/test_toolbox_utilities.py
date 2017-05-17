@@ -93,6 +93,14 @@ class TestToolboxUtilities(TestCase):
         np.testing.assert_array_equal(
             np.take(data, range(shift, shift + merged.shape[split_dimension]), split_dimension), merged)
 
+        print('working directory is ' + os.getcwd())
+        data_path = 'dcm_rnn/resources/template0.pkl'
+        with open(data_path, 'rb') as f:
+            du = pickle.load(f)
+        recovered = tb.merge(tb.split(du.get('x'), 64, 4), 64, 4)
+        original = du.get('x')[:len(recovered)]
+        np.testing.assert_array_almost_equal(recovered, original)
+
     def test_split_index(self):
         # split_index(data_shape, n_segment, n_step=None, shift=0, split_dimension=0)
         array = np.ones((2, 8, 10))

@@ -1,5 +1,23 @@
+import sys
+sys.path.append('dcm_rnn')
 import matplotlib
 matplotlib.use('agg')
+import matplotlib.pyplot as plt
+import tensorflow as tf
+import tf_model as tfm
+import toolboxes as tb
+import numpy as np
+import os
+import pickle
+import datetime
+import warnings
+
+import random
+import training_manager
+import multiprocessing
+from multiprocessing.pool import Pool
+import itertools
+
 
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -32,16 +50,16 @@ else:
     print("Not sure executing machine. Make sure to set PROJECT_DIR properly.")
     print("PROJECT_DIR is set as: " + PROJECT_DIR)
 
-LOCAL_DEBUGGING = False
+LOCAL_DEBUGGING = True
 
 tm = training_manager.TrainingManager()
 if LOCAL_DEBUGGING is True:
     tm.N_RECURRENT_STEP = 4
-    tm.N_SEGMENTS = 64
+    tm.N_SEGMENTS = 8
     tm.MAX_EPOCHS = 1
-    tm.MAX_EPOCHS_INNER = 4
+    tm.MAX_EPOCHS_INNER = 2
     tm.CHECK_STEPS = 4
-    tm.IF_NODE_MODE = True
+    tm.IF_NODE_MODE = False
     tm.N_PACKAGES = 2
 else:
     tm.IF_NODE_MODE = False
@@ -69,11 +87,7 @@ configure_package = tm.prepare_distributed_configure_package()
 print('Preparing distributed data data_package done.')
 
 # modify each data_package according to each particular experimental case, store in a list
-if tm.IF_NOISED_Y:
-    package_list = tm.modify_configure_packages(configure_package, 'SNR', range(2, 2 + tm.N_PACKAGES))
-else:
-    package_list = configure_package
-
+package_list = tm.modify_configure_packages(configure_package, 'SNR', range(2, 2 + tm.N_PACKAGES))
 # package_list = configure_package
 
 # start parallel processing
@@ -86,11 +100,54 @@ with Pool(tm.N_CORES) as p:
     package_list = p.starmap(tm.prepare_data, iterator)
 
     # modify data if necessary
-    iterator = itertools.product(*[package_list, ['du'], [du]])
-    package_list = p.starmap(tm.modify_signel_data_package, iterator)
+    # iterator = itertools.product(*[package_list, ['H_PARA_INITIAL'], [values]])
+    # package_list = p.starmap(tm.modify_signel_data_package, iterator)
 
     # build graph and training must be done in one function
     iterator = itertools.product(*[[dr], package_list])
     package_list = p.starmap(tm.build_initializer_graph_and_train, iterator)
 
-# collect results
+data = package_list[0].data
+assert 'loss_smooth_normalizer' in data.keys()
+
+signal_length = data['x_true_merged'].data.shape[0]
+check_length = tm.N_SEGMENTS * tm.DATA_SHIFT
+
+
+# test split and merge
+recovered = tb.merge(tb.split(du.get('x'), 64, 4), 64, 4)
+original = du.get('x')[:len(recovered)]
+np.testing.assert_array_almost_equal(recovered, original)
+
+# check recorded u and processed u
+original = du.get('u')[:check_length]
+recovered = data['u_merged'][:check_length]
+np.testing.assert_array_almost_equal(recovered, original)
+plt.plot(original, '-', label="original")
+plt.plot(recovered, '*', label="processed")
+plt.show()
+
+# check recorded x_true and the original x_true
+original = du.get('u')[:check_length]
+recovered = data['u_merged'][:check_length]
+np.testing.assert_array_almost_equal(recovered, original)
+plt.plot(du.get('x')[:check_length], label="original")
+plt.plot(data['x_true_merged'][:check_length], label="processed")
+plt.show()
+
+
+
+# check recorded x_true and x_hat
+plt.plot(data['x_true_merged'][:128], label="original")
+plt.plot(data['x_hat_merged'].data[:128], label="original")
+plt.show()
+
+# check recorded x_true and the original u
+plt.plot(data['x_true_merged'][:128])
+plt.plot(du.get('u')[:128] / 4)
+plt.show()
+
+# check recorded x_true and the original u
+plt.plot(data['x_true_merged'].data[:128])
+plt.plot(du.get('u')[:128] / 4)
+plt.show()

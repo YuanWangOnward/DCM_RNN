@@ -1,5 +1,6 @@
+import sys
+sys.path.append('dcm_rnn')
 import matplotlib
-
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import tf_model as tfm
@@ -31,38 +32,17 @@ else:
     print("Not sure executing machine. Make sure to set PROJECT_DIR properly.")
     print("PROJECT_DIR is set as: " + PROJECT_DIR)
 
-
+# load in data
 print('working directory is ' + os.getcwd())
 data_path = os.path.join(PROJECT_DIR, 'experiments', 'calculate_abc_from_x', 'data.pkl')
 data_package = tb.load_template(data_path)
 data = data_package.data
 data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)
-# check recorded x_true and the original x_true
-plt.plot(du.get('x')[:128], label="original")
-plt.plot(data['x_true_merged'][:128], label="original")
-plt.show()
+signal_length = data['x_true_merged'].data.shape[0]
 
-data['u'] = du.get('u')[12: 12 + len(data['x_hat_merged'].data)]
-
-signal_length = data['x_true_merged'].shape[0]
-plt.plot(data['x_true_merged'][:, 0])
-plt.plot(du.get('x')[:signal_length, 0])
-
-np.testing.assert_array_almost_equal(tb.merge(tb.split(du.get('x'), 64, 4), 64, 4), du.get('x'))
-du.get('Wxx')
-
-w_true = tb.solve_for_effective_connection(du.get('x')[:128], du.get('u')[:128])
-w_true[0]
-
-
-w_hat = tb.solve_for_effective_connection(data['x_hat_merged'].data, data['u'])
-w_true = tb.solve_for_effective_connection(data['x_true_merged'], data['u'])
-
-
+# find minimal length, being enough to identify ABC matrices
 w_true_whole = tb.solve_for_effective_connection(du.get('x'), du.get('u'))
-
-
 for n in range(64, len(du.get('x')), 64):
     print('Now processing ' + str(n))
     w_true = tb.solve_for_effective_connection(du.get('x')[:n], du.get('u')[:n])
@@ -74,6 +54,30 @@ for n in range(64, len(du.get('x')), 64):
         print(w_true_whole[0])
         print('rmse: ' + str(tb.rmse(w_true[0], w_true_whole[0])))
         break
+check_length = n
+
+
+# calculate W
+w_hat = tb.solve_for_effective_connection(data['x_hat_merged'].data, data['u_merged'])
+w_true = tb.solve_for_effective_connection(data['x_true_merged'], data['u_merged'])
+
+
+
+
+
+# data['u'] = du.get('u')[: len(data['x_hat_merged'].data)]
+
+signal_length = data['x_true_merged'].shape[0]
+plt.plot(data['x_true_merged'][:, 0])
+plt.plot(du.get('x')[:signal_length, 0])
+
+
+w_true = tb.solve_for_effective_connection(du.get('x')[:128], du.get('u')[:128])
+w_true[0]
+
+
+
+
 
 np.testing.assert_array_almost_equal(data['x_true_merged'][:128], du.get('x')[:128], decimal=4)
 
