@@ -1,5 +1,22 @@
-import matplotlib
-matplotlib.use('agg')
+import sys
+# global setting, you need to modify it accordingly
+if '/Users/yuanwang' in sys.executable:
+    PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
+    print("It seems a local run on Yuan's laptop")
+    print("PROJECT_DIR is set as: " + PROJECT_DIR)
+    import matplotlib
+    sys.path.append('dcm_rnn')
+elif '/share/apps/python3/' in sys.executable:
+    PROJECT_DIR = '/home/yw1225/projects/DCM_RNN'
+    print("It seems a remote run on NYU HPC")
+    print("PROJECT_DIR is set as: " + PROJECT_DIR)
+    import matplotlib
+    matplotlib.use('agg')
+else:
+    PROJECT_DIR = '.'
+    print("Not sure executing machine. Make sure to set PROJECT_DIR properly.")
+    print("PROJECT_DIR is set as: " + PROJECT_DIR)
+    import matplotlib
 
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -18,19 +35,6 @@ from multiprocessing.pool import Pool
 import itertools
 
 
-# global setting, you need to modify it accordingly
-if '/Users/yuanwang' in sys.executable:
-    PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
-    print("It seems a local run on Yuan's laptop")
-    print("PROJECT_DIR is set as: " + PROJECT_DIR)
-elif '/share/apps/python3/' in sys.executable:
-    PROJECT_DIR = '/home/yw1225/projects/DCM_RNN'
-    print("It seems a remote run on NYU HPC")
-    print("PROJECT_DIR is set as: " + PROJECT_DIR)
-else:
-    PROJECT_DIR = '.'
-    print("Not sure executing machine. Make sure to set PROJECT_DIR properly.")
-    print("PROJECT_DIR is set as: " + PROJECT_DIR)
 
 LOCAL_DEBUGGING = False
 
@@ -46,11 +50,11 @@ if LOCAL_DEBUGGING is True:
 else:
     tm.IF_NODE_MODE = False
     tm.N_PACKAGES = 1
+    tm.N_SEGMENTS = 256
 
     tm.IF_RANDOM_H_PARA = False
     tm.IF_RANDOM_H_STATE_INIT = False
     tm.IF_NOISED_Y = False
-
 
 # load in data
 data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"

@@ -36,7 +36,7 @@ def create_a_template(id):
         du._secured_data['B'] = [np.array([[0, 0, 0],
                                            [0, 0, 0],
                                            [0, 0, -0.4]])]
-        du._secured_data['C'] = np.array([0.4, 0, 0]).reshape(3, 1)
+        du._secured_data['C'] = np.array([0.8, 0, 0]).reshape(3, 1)
         du._secured_data['learning_rate'] = 0.1
         du._secured_data['n_backpro'] = 12
         du.complete_data_unit(if_show_message=False, if_check_property=False)

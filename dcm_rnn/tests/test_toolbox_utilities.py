@@ -94,7 +94,7 @@ class TestToolboxUtilities(TestCase):
             np.take(data, range(shift, shift + merged.shape[split_dimension]), split_dimension), merged)
 
         print('working directory is ' + os.getcwd())
-        data_path = 'dcm_rnn/resources/template0.pkl'
+        data_path = '../resources/template0.pkl'
         with open(data_path, 'rb') as f:
             du = pickle.load(f)
         recovered = tb.merge(tb.split(du.get('x'), 64, 4), 64, 4)
@@ -140,7 +140,7 @@ class TestToolboxUtilities(TestCase):
 
     def test_solve_for_effective_connection(self):
         print('working directory is ' + os.getcwd())
-        data_path = 'dcm_rnn/resources/template0.pkl'
+        data_path = '../resources/template0.pkl'
         du = tb.load_template(data_path)
         W = tb.solve_for_effective_connection(du.get('x'), du.get('u'))
         np.testing.assert_array_almost_equal(W[0], du.get('Wxx'), decimal=5)

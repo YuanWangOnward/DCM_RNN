@@ -3,6 +3,8 @@ import tensorflow as tf
 import numpy as np
 from toolboxes import Initialization
 import toolboxes as tb
+
+
 # import pandas as pd
 # from IPython.display import display
 
@@ -127,9 +129,11 @@ class DcmRnn(Initialization):
         with tf.variable_scope(self.variable_scope_name_x_parameter):
             self.Wxx = tf.get_variable(
                 'Wxx', dtype=tf.float32, initializer=self.Wxx_init, trainable=self.trainable_flags['Wxx'])
-            self.Wxxu = [tf.get_variable('Wxxu' + '_s' + str(n), dtype=tf.float32, initializer=self.Wxxu_init[n])
+            self.Wxxu = [tf.get_variable('Wxxu' + '_s' + str(n), dtype=tf.float32, initializer=self.Wxxu_init[n],
+                                         trainable=self.trainable_flags['Wxxu'])
                          for n in range(self.n_stimuli)]
-            self.Wxu = tf.get_variable('Wxu', dtype=tf.float32, initializer=self.Wxu_init)
+            self.Wxu = tf.get_variable('Wxu', dtype=tf.float32,
+                                       initializer=self.Wxu_init, trainable=self.trainable_flags['Wxu'])
         self.x_parameters = [self.Wxx, self.Wxxu, self.Wxu]
         return self.x_parameters
 
@@ -558,8 +562,8 @@ class DcmRnn(Initialization):
         if self.if_add_optimiser:
             # define optimiser
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
-            # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
-            self.train = tf.train.AdagradOptimizer(self.learning_rate).minimize(self.loss_total)
+            self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
+            # self.train = tf.train.AdagradOptimizer(self.learning_rate).minimize(self.loss_total)
 
             # define summarizer
             self.variable_summaries(self.loss_prediction)
@@ -572,12 +576,20 @@ class DcmRnn(Initialization):
     def add_loss_sparsity(self, loss_weighting=None):
         if loss_weighting == None:
             loss_weighting = self.loss_weighting
+        '''
         loss_Wxx = tf.reduce_sum(tf.reshape(tf.abs(self.Wxx - np.identity(self.n_region, dtype=np.float32)), [-1]))
         loss_Wxxu = tf.reduce_sum(
             [tf.reduce_sum(tf.reshape(tf.abs(self.Wxxu[s]), [-1])) for s in range(self.n_stimuli)])
         loss_Wxu = tf.reduce_sum(tf.reshape(tf.abs(self.Wxu), [-1]))
         self.loss_sparsity = tf.reduce_sum([loss_weighting['Wxx'] * loss_Wxx, loss_weighting['Wxxu'] * loss_Wxxu,
                                             loss_weighting['Wxu'] * loss_Wxu], name="loss_sparsity")
+        '''
+        loss_Wxx = \
+            loss_weighting['Wxx'] * tf.reshape(tf.abs(self.Wxx - np.identity(self.n_region, dtype=np.float32)), [-1])
+        loss_Wxxu = tf.concat([loss_weighting['Wxxu'] * tf.reshape(tf.abs(self.Wxxu[s]), [-1])
+                               for s in range(self.n_stimuli)], axis=0)
+        loss_Wxu = loss_weighting['Wxu'] * tf.reshape(tf.abs(self.Wxu), [-1])
+        self.loss_sparsity = tf.reduce_mean(tf.concat([loss_Wxx, loss_Wxxu, loss_Wxu], axis=0), name="loss_sparsity")
         return self.loss_sparsity
 
     def add_loss_prior(self, h_parameters=None):
@@ -588,7 +600,7 @@ class DcmRnn(Initialization):
         mean = np.array(prior_distribution['mean'], dtype=np.float32)[mask]
         std = np.array(prior_distribution['std'], dtype=np.float32)[mask]
         temp = tf.square(tf.reshape(tf.boolean_mask(h_parameters, mask), [-1]) - mean) / tf.square(std)
-        self.loss_prior = tf.reduce_sum(temp, name="loss_prior")
+        self.loss_prior = tf.reduce_mean(temp, name="loss_prior")
         return self.loss_prior
 
     # unitilies
@@ -612,8 +624,8 @@ class DcmRnn(Initialization):
         # build operator matrices
         first_order_difference_operator = np.diag([1] * signal_length) + np.diag([-1] * (signal_length - 1), 1)
         second_order_difference_operator = np.diag([-2] * signal_length) \
-            + np.diag([1] * (signal_length - 1), -1) \
-            + np.diag([1] * (signal_length - 1), 1)
+                                           + np.diag([1] * (signal_length - 1), -1) \
+                                           + np.diag([1] * (signal_length - 1), 1)
         first_order_difference_operator[-1] = 0
         second_order_difference_operator[0] = 0
         second_order_difference_operator[-1] = 0
@@ -685,5 +697,3 @@ class DcmRnn(Initialization):
                 display(item)
         return output
     '''
-
-

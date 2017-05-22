@@ -1,36 +1,56 @@
+import sys
+
+# global setting, you need to modify it accordingly
+if '/Users/yuanwang' in sys.executable:
+    PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
+    print("It seems a local run on Yuan's laptop")
+    print("PROJECT_DIR is set as: " + PROJECT_DIR)
+    import matplotlib
+
+    sys.path.append('dcm_rnn')
+elif '/share/apps/python3/' in sys.executable:
+    PROJECT_DIR = '/home/yw1225/projects/DCM_RNN'
+    print("It seems a remote run on NYU HPC")
+    print("PROJECT_DIR is set as: " + PROJECT_DIR)
+    import matplotlib
+
+    matplotlib.use('agg')
+else:
+    PROJECT_DIR = '.'
+    print("Not sure executing machine. Make sure to set PROJECT_DIR properly.")
+    print("PROJECT_DIR is set as: " + PROJECT_DIR)
+    import matplotlib
+
+import matplotlib.pyplot as plt
 import tensorflow as tf
-import dcm_rnn.tf_model as tfm
-import dcm_rnn.toolboxes as tb
+import tf_model as tfm
+import toolboxes as tb
 import numpy as np
 import os
-import matplotlib.pyplot as plt
 import pickle
 import datetime
 import warnings
+import sys
+import random
+import training_manager
+import multiprocessing
+from multiprocessing.pool import Pool
+import itertools
 
 # global setting
 MAX_EPOCHS = 2
 CHECK_STEPS = 1
-N_PARTITIONS = 16
-N_SEGMENTS = 128
-LEARNING_RATE = 0.00001
-N_RECURRENT_STEP = 8
+N_SEGMENTS = 512
+LEARNING_RATE = 0.0002
+N_RECURRENT_STEP = 64
 DATA_SHIFT = 4
-IF_NODE_MODE = True
+IF_NODE_MODE = False
 IF_IMAGE_LOG = True
 IF_DATA_LOG = False
-LOG_EXTRA_PREFIX = 'Estimation3_'
+LOG_EXTRA_PREFIX = ''
 
 # load in data
-current_dir = os.getcwd()
-print('working directory is ' + current_dir)
-if current_dir.split('/')[-1] == "dcm_rnn":
-    os.chdir(current_dir + '/..')
-    data_path = "/resources/template0.pkl"
-elif current_dir.split('/')[-1] == "DCM_RNN":
-    data_path = "/dcm_rnn/resources/template0.pkl"
-elif current_dir.split('/')[-1] == "connectivity_inference":
-    data_path = "../../dcm_rnn/resources/template0.pkl"
+data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)
 
 # build model
@@ -40,13 +60,25 @@ dr.learning_rate = LEARNING_RATE
 dr.shift_data = DATA_SHIFT
 dr.n_recurrent_step = N_RECURRENT_STEP
 neural_parameter_initial = {}
-neural_parameter_initial['A'] = du.get('A') * 1.5
-neural_parameter_initial['B'] = du.get('B')
-neural_parameter_initial['C'] = du.get('C')
-dr.loss_weighting = {'prediction': 5., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+
+# results from previous step
+Wxx = np.array([[0.9383, 0., 0.0043],
+                [0.0451, 0.9497, 0.0139],
+                [0.0111, 0.0763, 0.9137]])
+Wxxu = np.zeros((3, 3))
+Wxxu[2, 2] = -0.02
+Wxu = np.array([0.025, 0, 0]).reshape(3, 1)
+
+neural_parameter_initial['A'] = (Wxx - np.identity(dr.n_region)) / dr.t_delta
+neural_parameter_initial['B'] = [Wxxu / dr.t_delta]
+neural_parameter_initial['C'] = Wxu / dr.t_delta
+
+dr.n_recurrent_step = 8
+dr.learning_rate = LEARNING_RATE
+dr.loss_weighting = {'prediction': 50., 'sparsity': 1, 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
 dr.trainable_flags = {'Wxx': True,
-                      'Wxxu': False,
-                      'Wxu': False,
+                      'Wxxu': True,
+                      'Wxu': True,
                       'alpha': False,
                       'E0': False,
                       'k': False,
@@ -102,9 +134,32 @@ with tf.Session() as sess:
     Wxxu = sess.run(dr.Wxxu)
     Wxu = sess.run(dr.Wxu)
 
+
 print("Optimization Finished!")
 print(loss_total_accumulated_list)
 print(loss_prediction_accumulated_list)
 print(Wxx)
 print(Wxxu[0])
 print(Wxu)
+
+signal_length = tb.merge(data['u'], N_RECURRENT_STEP, DATA_SHIFT).shape[0]
+index_range = list(range(signal_length))
+
+package = {}
+package["Wxx"] = Wxx
+package["Wxxu"] = Wxxu
+package["Wxu"] = Wxu
+package['initial_x_state'] = np.array([0, 0, 0])
+package['u'] = tb.merge(data['u'], N_RECURRENT_STEP, DATA_SHIFT)
+x_hat = du.scan_x(package)
+
+package["Wxx"] = du.get('Wxx')
+package["Wxxu"] = du.get('Wxxu')
+package["Wxu"] = du.get('Wxu')
+package['initial_x_state'] = np.array([0, 0, 0])
+package['u'] = tb.merge(data['u'], N_RECURRENT_STEP, DATA_SHIFT)
+x_true = du.scan_x(package)
+
+plt.plot(x_true)
+plt.plot(x_hat, '--')
+print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(x_hat, x_true)))

@@ -313,7 +313,7 @@ class TrainingManager(tb.Initialization):
         :param value: one value for target key
         :return: a modified DistributedDataPackage instances
         """
-        data_package.data['key'] = copy.deepcopy(value)
+        data_package.data[key] = copy.deepcopy(value)
         data_package.LOG_EXTRA_PREFIX = data_package.LOG_EXTRA_PREFIX + key + '_modified_'
         return data_package
 

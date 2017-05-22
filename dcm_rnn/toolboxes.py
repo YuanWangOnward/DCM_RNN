@@ -138,7 +138,7 @@ def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_
     return [x_splits, y_splits]
 
 
-def solve_for_effective_connection(x, u):
+def solve_for_effective_connection(x, u, prior=None):
     """
     Solve for the effective connection matrices Wxx, Wxxu, and Wxu from neural activity and stimuli
     x_t+1 = [Wxx Wxxu Wxu] * [x_t, Khatri-Rao_product(u_t, x_t), u_t]^T
@@ -146,29 +146,173 @@ def solve_for_effective_connection(x, u):
     W = YX^T(XX^T)^(-1)
     :param x: neural activity, np.array with shape [n_time_point, n_node]
     :param u: stimuli, np.array with shape [n_time_point, n_stimuli]
-    :return: return [Wxx Wxxu Wxu] where Wxxu is a list of arrays
+    :param prior: a dictionary with keys in [Wxxu, Wxu]
+    :return: return [Wxx Wxxu Wxu] where Wxxu is a list of np.arrays, others are np.array
     """
+    # parameters
     n_time_point = x.shape[0]
     n_node = x.shape[1]
     n_stimuli = u.shape[1]
+
+    # form Y
     Y = np.transpose(x[1:])
     assert Y.shape == (n_node, n_time_point - 1)
-    temp = np.asarray([np.kron(u[i], x[i]) for i in range(n_time_point)])
-    X = np.transpose(np.concatenate([x[:-1], temp[:-1], u[:-1]], axis=1))
-    assert X.shape == (n_node * (n_stimuli + 1) + n_stimuli, n_time_point-1)
+
+    # form X and modify Y
+    X = [x[:-1]]
+    Y_prior = np.zeros(Y.shape)
+    xu = np.asarray([np.kron(u[i], x[i]) for i in range(n_time_point)])
+    if prior is not None:
+        if 'Wxxu' in prior.keys():
+            Y_prior += np.matmul(np.concatenate(prior['Wxxu'], axis=1), np.transpose(xu[:-1]))
+        else:
+            X.append(xu[:-1])
+        if 'Wxu' in prior.keys():
+            Y_prior += np.matmul(prior['Wxu'], np.transpose(u[:-1]))
+        else:
+            X.append(u[:-1])
+    else:
+        X.append(xu[:-1])
+        X.append(u[:-1])
+
+    Y = Y - Y_prior
+    X = np.transpose(np.concatenate(X, axis=1))
+
+    # solve linear equation
     temp1 = np.matmul(Y, np.transpose(X))
-    assert temp1.shape == (n_node, n_node * (n_stimuli + 1) + n_stimuli)
-    temp2 = np.linalg.pinv(np.matmul(X, np.transpose(X)))
-    assert temp2.shape == (n_node * (n_stimuli + 1) + n_stimuli, n_node * (n_stimuli + 1) + n_stimuli)
+    # assert temp1.shape == (n_node, n_node * (n_stimuli + 1) + n_stimuli)
+    temp = np.matmul(X, np.transpose(X))
+    print("Matrix condition number: " + str(np.linalg.cond(temp)))
+    if np.linalg.cond(temp) < 1 / sys.float_info.epsilon:
+        temp2 = np.linalg.inv(temp)
+    else:
+        warnings.warn("Ill conditioned equations")
+        temp2 = np.linalg.pinv(temp)
+    # assert temp2.shape == (n_node * (n_stimuli + 1) + n_stimuli, n_node * (n_stimuli + 1) + n_stimuli)
     W = np.matmul(temp1, temp2)
-    assert W.shape == (n_node, n_node * (n_stimuli + 1) + n_stimuli)
+
+    # collect results
     Wxx = W[:, :n_node]
-    Wxxu = []
-    for s in range(n_stimuli):
-        Wxxu.append(W[:, (s + 1) * n_node:(s + 2) * n_node])
-    Wxu = W[:, -n_stimuli:]
+    if prior is not None:
+        if 'Wxxu' in prior.keys():
+            Wxxu = copy.deepcopy(prior['Wxxu'])
+        else:
+            Wxxu = []
+            for s in range(n_stimuli):
+                Wxxu.append(W[:, (s + 1) * n_node:(s + 2) * n_node])
+        if 'Wxu' in prior.keys():
+            Wxu = copy.deepcopy(prior['Wxu'])
+        else:
+            Wxu = W[:, -n_stimuli:]
+    else:
+        Wxxu = []
+        for s in range(n_stimuli):
+            Wxxu.append(W[:, (s + 1) * n_node:(s + 2) * n_node])
+        Wxu = W[:, -n_stimuli:]
     return [Wxx, Wxxu, Wxu]
 
+def ista(A, Y, alpha_mask=1, support=None, prior=None):
+    """
+    An implementation of the Iterative Soft Thresholding Algorithm (ista).
+    It solves min_X 1/2||AX-Y\\^2_2 + ||alpha_mask.X||_1
+    X^(k+1) = st(x^k - (1/L)AT(AX^k - Y), alpha_mask/L
+    The (smallest) Lipschitz constant of the gradient ∇f is L(f) = λ_max(A^T*A)
+    :param A: the mixing matrix
+    :param Y: the target signal
+    :param alpha_mask: a scalar or a np.array, if a scalar, the sparsity penalty is the same for each element of X; 
+                       if a np.array, it should have the same shape of X, which means the sparsity penalty of each
+                       element of X is different.
+    :param support: a binary np.array of the same shape of X. If an element is 0, the element in X at the corresponding
+                    location is fixed as zeros; otherwise, can be any value. 
+    :param prior: a binary np.array of the same shape of X. Sparsity is with respect to value in prior
+    :return: X, a np.array of coefficients
+    """
+
+    def soft_thresh(x, l, prior):
+        return np.sign(x - prior) * np.maximum(np.abs(x - prior) - l, 0.) + prior
+
+    # confirm the shape of X
+    n_row = A.shape[1]
+    n_col = Y.shape[1]
+    if isinstance(alpha_mask, np.ndarray):
+        assert alpha_mask.shape == (n_row, n_col)
+    if support is not None:
+        assert support.shape == (n_row, n_col)
+    else:
+        support = np.ones((n_row, n_col))
+    if prior is not None:
+        assert prior.shape == (n_row, n_col)
+    else:
+        prior = np.zeros((n_row, n_col))
+
+    # find the Lipschitz constant
+    L = max(sp.linalg.eigh(np.matmul(np.transpose(A), A), eigvals_only=True))
+    step_size = 1 / L
+    MAX_ITERATION = 500
+
+    X_k = prior
+    loss_list = []
+    loss = mse(np.matmul(A, X_k), Y) + np.sum((alpha_mask * X_k).flatten())
+    loss_list.append(loss)
+
+    for iter in range(MAX_ITERATION):
+
+        temp = np.matmul(A, X_k) - Y
+        gradient = np.matmul(np.transpose(A), temp)
+
+        # gredient descent
+        X_temp = X_k - support * step_size * gradient
+
+        # soft thresholding
+        X_kp1 = soft_thresh(X_temp, alpha_mask / L, prior)
+
+        # confirm support
+        X_kp1 = support * X_kp1
+
+        # show error
+        loss = mse(np.matmul(A, X_kp1), Y) * np.sum((alpha_mask * X_kp1).flatten())
+        loss_list.append(loss)
+        # print(loss)
+
+
+        # check stop
+        if rmse(X_k, X_kp1) < 0.0001:
+            print('.')
+            break
+        else:
+            # for next step
+            print('.', end='', flush=True)
+            X_k = X_kp1
+
+    if iter == MAX_ITERATION - 1:
+        warnings.warn("Hit MAX_ITERATION")
+
+    print('', end='', flush=True)
+    plt.plot(np.log(loss_list))
+    plt.xlabel('Iteration index')
+    plt.ylabel('Total loss (ln)')
+    return X_kp1
+
+
+def setup_module():
+    if '/Users/yuanwang' in sys.executable:
+        PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
+        print("It seems a local run on Yuan's laptop")
+        print("PROJECT_DIR is set as: " + PROJECT_DIR)
+        import matplotlib
+        sys.path.append('dcm_rnn')
+    elif '/share/apps/python3/' in sys.executable:
+        PROJECT_DIR = '/home/yw1225/projects/DCM_RNN'
+        print("It seems a remote run on NYU HPC")
+        print("PROJECT_DIR is set as: " + PROJECT_DIR)
+        import matplotlib
+        matplotlib.use('agg')
+    else:
+        PROJECT_DIR = '.'
+        print("Not sure executing machine. Make sure to set PROJECT_DIR properly.")
+        print("PROJECT_DIR is set as: " + PROJECT_DIR)
+        import matplotlib
+    return PROJECT_DIR
 
 
 class OrderedDict(collections.OrderedDict):
