@@ -38,11 +38,11 @@ from multiprocessing.pool import Pool
 import itertools
 
 # global setting
-MAX_EPOCHS = 2
+MAX_EPOCHS = 32
 CHECK_STEPS = 1
-N_SEGMENTS = 512
-LEARNING_RATE = 0.0002
-N_RECURRENT_STEP = 64
+N_SEGMENTS = 32
+N_RECURRENT_STEP = 32
+LEARNING_RATE = 0.1 / N_RECURRENT_STEP
 DATA_SHIFT = 4
 IF_NODE_MODE = False
 IF_IMAGE_LOG = True
@@ -62,18 +62,19 @@ dr.n_recurrent_step = N_RECURRENT_STEP
 neural_parameter_initial = {}
 
 # results from previous step
-Wxx = np.array([[0.9383, 0., 0.0043],
-                [0.0451, 0.9497, 0.0139],
-                [0.0111, 0.0763, 0.9137]])
+Wxx = np.array([[0.9576, 0.0069, -0.0097],
+                [0.0496, 0.9375, 0.0252],
+                [0.0182, 0.0415, 0.9458], ]
+               )
 Wxxu = np.zeros((3, 3))
-Wxxu[2, 2] = -0.02
-Wxu = np.array([0.025, 0, 0]).reshape(3, 1)
+Wxxu[2, 2] = -0.0112
+Wxu = np.array([0.0341, 0, 0]).reshape(3, 1)
 
 neural_parameter_initial['A'] = (Wxx - np.identity(dr.n_region)) / dr.t_delta
 neural_parameter_initial['B'] = [Wxxu / dr.t_delta]
 neural_parameter_initial['C'] = Wxu / dr.t_delta
 
-dr.n_recurrent_step = 8
+dr.n_recurrent_step = N_RECURRENT_STEP
 dr.learning_rate = LEARNING_RATE
 dr.loss_weighting = {'prediction': 50., 'sparsity': 1, 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
 dr.trainable_flags = {'Wxx': True,
@@ -100,16 +101,32 @@ n_segment = min([len(data[x]) for x in data.keys()])
 for k in data.keys():
     data[k] = data[k][: min([n_segment, N_SEGMENTS])]
 
+Wxx_previous = Wxx
+np.set_printoptions(precision=4)
+W = {'Wxx': [], 'Wxxu': [], 'Wxu': []}
+Wxx_initial = Wxx
+Wxxu_initial = Wxxu
+Wxu_initial = Wxu
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     loss_total_accumulated_list = []
     loss_prediction_accumulated_list = []
     for epoch in range(MAX_EPOCHS):
+
         x_state_initial = dr.set_initial_neural_state_as_zeros(dr.n_region).astype(np.float32)
         h_state_initial = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
         loss_total_accumulated = 0
         loss_prediction_accumulated = 0
         for i in range(len(data['u'])):
+
+            Wxx_previous = sess.run(dr.Wxx)
+
+            if i == 0:
+                sess.run([tf.assign(dr.Wxx, Wxx_initial),
+                         tf.assign(dr.Wxu, Wxu_initial)])
+                # sess.run([tf.assign(dr.Wxxu[i], Wxxu_initial[i]) for i in range(dr.n_stimuli)])
+
+
             _, loss_total, loss_prediction, x_state_initial, h_state_initial = \
                 sess.run([dr.train, dr.loss_total, dr.loss_prediction, dr.x_connector, dr.h_connector],
                          feed_dict={
@@ -118,9 +135,30 @@ with tf.Session() as sess:
                              dr.h_state_initial: h_state_initial,
                              dr.y_true: data['y'][i]
                          })
-            print("Index:", '%04d' % i, "loss_prediction=", "{:.9f}".format(loss_prediction))
+            # print("Index:", '%04d' % i, "loss_prediction=", "{:.9f}".format(loss_prediction))
+
+            if i == 0:
+                Wxx_initial = sess.run(dr.Wxx)
+                # Wxxu_initial = sess.run(dr.Wxxu)
+                Wxu_initial = sess.run(dr.Wxu)
+
+
+            Wxx_current = sess.run(dr.Wxx)
+            # project Wxx to the stable transition matrix set
+            Wxx, if_projected = dr.project_wxx(Wxx_previous, Wxx_current)
+
+            if if_projected:
+                sess.run(tf.assign(dr.Wxx, Wxx))
+            # print(Wxx)
+
+            print('.', end='', flush=True)
             Wxx = sess.run(dr.Wxx)
-            print(Wxx)
+            Wxxu = sess.run(dr.Wxxu)
+            Wxu = sess.run(dr.Wxu)
+            W['Wxx'].append(Wxx)
+            W['Wxxu'].append(Wxxu)
+            W['Wxu'].append(Wxu)
+
             loss_total_accumulated += loss_total
             loss_prediction_accumulated += loss_prediction
         loss_total_accumulated_list.append(loss_total_accumulated)
@@ -129,11 +167,11 @@ with tf.Session() as sess:
             print("Epoch:", '%04d' % epoch, "loss_total=", "{:.9f}".format(loss_total_accumulated),
                   "loss_prediction=", "{:.9f}".format(loss_prediction_accumulated))
             Wxx = sess.run(dr.Wxx)
+            print('.')
             print(Wxx)
     Wxx = sess.run(dr.Wxx)
     Wxxu = sess.run(dr.Wxxu)
     Wxu = sess.run(dr.Wxu)
-
 
 print("Optimization Finished!")
 print(loss_total_accumulated_list)
@@ -163,3 +201,6 @@ x_true = du.scan_x(package)
 plt.plot(x_true)
 plt.plot(x_hat, '--')
 print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(x_hat, x_true)))
+
+
+plt.plot([val[1, 2] for val in W['Wxx']])

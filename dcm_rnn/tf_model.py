@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 from toolboxes import Initialization
 import toolboxes as tb
+import warnings
 
 
 # import pandas as pd
@@ -493,6 +494,42 @@ class DcmRnn(Initialization):
     def check_parameter_consistency(self):
         pass
 
+    def project_wxx(self, wxx_previous, wxx_current, MAX_TEST_STEPS=8):
+        """
+        In the optimization process, the neural connection Wxx, may run out of its domain of 
+        definiton. The function projects them back to it back.
+        :param wxx_previous: value of wxx before updating
+        :param wxx_current: value of wxx after updating
+        :return: 
+        """
+        # w, _ = np.linalg.eig(wxx_previous)
+        # if max(w.real) > 1:
+        #     raise ValueError('wxx_previous is not proper!')
+
+        if np.isnan(wxx_current).any():
+            warnings.warn("wxx_current contains NaN. wxx not updated!")
+            wxx = wxx_previous
+        else:
+
+            wxx_delta = (wxx_current - wxx_previous) / MAX_TEST_STEPS
+            for i in range(MAX_TEST_STEPS, -1, -1):
+                wxx = wxx_previous + wxx_delta * i
+                w, _ = np.linalg.eig(wxx)
+                if max(w.real) > 1:
+                    continue
+                else:
+                    break
+
+            if i == 0:
+                warnings.warn("wxx not updated!")
+            if i < MAX_TEST_STEPS:
+                print('wxx is projected')
+
+        return [wxx, i < MAX_TEST_STEPS]
+
+
+
+
     def build_main_graph(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
         """
         The main graph of dcm_rnn, used to infer effective connectivity given fMRI signal and stimuli.
@@ -562,7 +599,15 @@ class DcmRnn(Initialization):
         if self.if_add_optimiser:
             # define optimiser
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
-            self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
+            # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
+
+            self.opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+            self.grads_and_vars = self.opt.compute_gradients(self.loss_total, tf.trainable_variables())
+            self.capped_grads_and_vars = self.grads_and_vars
+                #[(MyCapper(gv[0]), gv[1]) for gv in grads_and_vars]
+            self.opt.apply_gradients(self.capped_grads_and_vars)
+
+
             # self.train = tf.train.AdagradOptimizer(self.learning_rate).minimize(self.loss_total)
 
             # define summarizer

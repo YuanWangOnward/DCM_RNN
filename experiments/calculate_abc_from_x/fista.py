@@ -49,7 +49,7 @@ def reproduce_x(w_hat, w_true, if_plot=True):
 
 # load in data
 print('working directory is ' + os.getcwd())
-data_path = os.path.join(PROJECT_DIR, 'experiments', 'calculate_abc_from_x', 'data_long.pkl')
+data_path = os.path.join(PROJECT_DIR, 'experiments', 'calculate_abc_from_x', 'data.pkl')
 data_package = tb.load_template(data_path)
 data = data_package.data
 # data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
@@ -66,16 +66,21 @@ np.testing.assert_array_almost_equal(du.get('x')[index_range], data['x_true_merg
 x = data['x_hat_merged'].data[index_range]
 u = data['u_merged'][index_range]
 xu = np.asarray([np.kron(u[i], x[i]) for i in range(len(index_range))])
+np.set_printoptions(precision=4)
 
 """     --------------------     """
 # fit with support and element wise sparse penalty
 Y = np.transpose(x[1:])
 X = np.transpose(np.concatenate([x[:-1], xu[:-1], u[:-1]], axis=1))
 
-alpha_mask = np.ones((3, 7)) * 0.01
+alpha_mask = np.ones((3, 7)) * 0.02
+alpha_mask[0, 6] = 0.01
+alpha_mask[:, 3:6] = 1
+alpha_mask[2, 5] = 0.01
+alpha_mask[:, 6] = 1
 alpha_mask[0, 6] = 0.01
 
-support = np.zeros((3, 7))
+support = np.ones((3, 7))
 support[:, 0:3] = 1
 support[2, 5] = 1
 support[0, 6] = 1
@@ -189,6 +194,7 @@ print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(data['x_hat_merged'].data[in
 print('mse x_hat vs x_true:' + str(tb.mse(data['x_true_merged'][index_range], x_hat_rep)))
 
 '''
+'''
 """-------------------------------"""
 # fit with sparsity penalty and without Wxxu and Wxu
 n_time_point = x.shape[0]
@@ -253,7 +259,7 @@ x_hat_rep, x_true_rep = reproduce_x(w_hat, w_true, if_plot=False)
 plt.plot(data['x_hat_merged'].data[index_range])
 plt.plot(x_hat_rep, '--')
 print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(data['x_hat_merged'].data[index_range], x_hat_rep)))
-
+'''
 
 '''
 """     --------------------     """
