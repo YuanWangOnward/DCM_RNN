@@ -601,6 +601,7 @@ class DcmRnn(Initialization):
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
             # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
 
+
             self.opt = tf.train.GradientDescentOptimizer(self.learning_rate)
             self.grads_and_vars = self.opt.compute_gradients(self.loss_total, tf.trainable_variables())
             self.capped_grads_and_vars = self.grads_and_vars
