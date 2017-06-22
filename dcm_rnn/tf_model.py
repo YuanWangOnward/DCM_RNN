@@ -280,12 +280,11 @@ class DcmRnn(Initialization):
             Wxu = tf.get_variable("Wxu")
         x_parameter = [Wxx, Wxxu, Wxu]
 
+        with tf.variable_scope(self.variable_scope_name_x):
+            self.x_whole = [self.x_state_initial]
         for i in range(len(u)):
             with tf.variable_scope(self.variable_scope_name_x):
-                if i == 0:
-                    self.x_whole = [self.x_state_initial]
-                else:
-                    self.x_whole.append(self.add_one_cell_x(u[i - 1], self.x_whole[i - 1], x_parameter))
+                self.x_whole.append(self.add_one_cell_x(u[i - 1], self.x_whole[i - 1], x_parameter))
 
         # label x whole into different parts
         self.x_extended = self.x_whole[self.shift_u_x: len(u)]
@@ -335,7 +334,7 @@ class DcmRnn(Initialization):
                     self.h_whole.append(tf.stack(h_temp, 0))
 
         # label h whole into different parts
-        self.h_prelude = self.h_whole[: self.shift_x_y]
+        # self.h_prelude = self.h_whole[: self.shift_x_y]
         self.h_state_predicted = self.h_whole[self.shift_x_y: self.shift_x_y + self.n_recurrent_step]
         self.h_monitor = self.h_whole[:self.n_recurrent_step]
         self.h_connector = self.h_whole[self.shift_data]

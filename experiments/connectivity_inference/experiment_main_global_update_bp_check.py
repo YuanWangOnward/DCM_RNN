@@ -43,10 +43,10 @@ np.set_printoptions(precision=4)
 MAX_EPOCHS = 1
 CHECK_STEPS = 1
 N_SEGMENTS = 64
-N_RECURRENT_STEP = 1
+N_RECURRENT_STEP = 16
 LEARNING_RATE = 0.01 / N_RECURRENT_STEP
-DATA_SHIFT = 1
-IF_NODE_MODE = True
+DATA_SHIFT = 8
+# IF_NODE_MODE = True
 IF_IMAGE_LOG = False
 IF_DATA_LOG = False
 LOG_EXTRA_PREFIX = ''
@@ -105,7 +105,7 @@ dr.build_main_graph(neural_parameter_initial=neural_parameter_initial)
 # prepare data
 data = {'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
         'y': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y),
-        'h': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data)}
+        'h': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1)}
 n_segment = min([len(data[x]) for x in data.keys()])
 for k in data.keys():
     data[k] = data[k][: min([n_segment, N_SEGMENTS])]
@@ -122,13 +122,17 @@ sess.run(tf.assign(dr.Wxx, temp))
 loss_total_accumulated_list = []
 loss_prediction_accumulated_list = []
 
-MAX_UPDATE = 0.01
-STEP_SIZE = 0.05
+MAX_UPDATE = 0.001
+STEP_SIZE = 0.005
 
 MAX_EPOCHS = 1
 # loss_chage
 for epoch in range(MAX_EPOCHS):
     loss_chage = []
+    x_previous_list = []
+    y_previous_list = []
+    x_after_list = []
+    y_after_list = []
     gradents = []
     x_state_initial = dr.set_initial_neural_state_as_zeros(dr.n_region).astype(np.float32)
     h_state_initial = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region).astype(np.float32)
@@ -139,13 +143,19 @@ for epoch in range(MAX_EPOCHS):
         x_state_initial_previous = copy.deepcopy(x_state_initial)
         h_state_initial_previous = copy.deepcopy(h_state_initial)
         # sess.run(dr.Wxu)
-        loss_previous = sess.run(dr.loss_total,
+        loss_previous, x_previous, y_previous = sess.run([dr.loss_total,
+                                    dr.x_monitor,
+                                    #dr.h_monitor,
+                                    #dr.h_state_predicted,
+                                    dr.y_predicted],
                                  feed_dict={
                                      dr.u_placeholder: data['u'][i],
                                      dr.x_state_initial: x_state_initial_previous,
                                      dr.h_state_initial: h_state_initial_previous,
                                      dr.y_true: data['y'][i]
                                  })
+        x_previous_list.append(x_previous)
+        y_previous_list.append(y_previous)
 
         grads_and_vars, loss_total, loss_prediction, x_state_initial, h_state_initial = \
             sess.run([dr.grads_and_vars, dr.loss_total, dr.loss_prediction, dr.x_connector, dr.h_connector],
@@ -165,19 +175,25 @@ for epoch in range(MAX_EPOCHS):
              processed_gradient[2][1]))
 
         # apply gradient
-        sess.run(tf.assign(dr.Wxx, processed_gradient[0][0] + processed_gradient[0][1]))
-        sess.run(tf.assign(dr.Wxxu[0], processed_gradient[1][0] + processed_gradient[1][1]))
-        sess.run(tf.assign(dr.Wxu, processed_gradient[2][0] + processed_gradient[2][1]))
+        sess.run(tf.assign(dr.Wxx, -processed_gradient[0][0] + processed_gradient[0][1]))
+        sess.run(tf.assign(dr.Wxxu[0], -processed_gradient[1][0] + processed_gradient[1][1]))
+        sess.run(tf.assign(dr.Wxu, -processed_gradient[2][0] + processed_gradient[2][1]))
 
         # calculate loss again
         # sess.run(dr.Wxu)
-        loss_current = sess.run(dr.loss_total,
+        loss_current, x_after, y_after = sess.run([dr.loss_total,
+                                    dr.x_monitor,
+                                    #dr.h_monitor,
+                                    #dr.h_state_predicted,
+                                    dr.y_predicted],
                                 feed_dict={
                                     dr.u_placeholder: data['u'][i],
                                     dr.x_state_initial: x_state_initial_previous,
                                     dr.h_state_initial: h_state_initial_previous,
                                     dr.y_true: data['y'][i]
                                 })
+        x_after_list.append(x_after)
+        y_after_list.append(y_after)
 
         loss_chage.append(loss_current - loss_previous)
 
@@ -215,11 +231,17 @@ du_hat._secured_data['h'] = du_hat.scan_h(parameter_package)
 parameter_package = du_hat.collect_parameter_for_y_scan()
 du_hat._secured_data['y'] = du_hat.scan_y(parameter_package)
 
+
 plt.plot(du.get('y')[index_range])
 plt.plot(du_hat.get('y')[index_range], '--')
-plt.plot(tb.merge(data['y'], N_RECURRENT_STEP, DATA_SHIFT)[index_range], '*', alpha=0.7)
+plt.plot(y_previous_display, '-', alpha=0.6)
+# plt.plot(tb.merge(data['y'], N_RECURRENT_STEP, DATA_SHIFT)[index_range], '*', alpha=0.7)
 print('mse x_hat vs x_true:' + str(tb.mse(du.get('y')[index_range], du_hat.get('y')[index_range])))
+y_previous_display = du_hat.get('y')[index_range]
+
 
 # plt.plot([val[1, 2] for val in W['Wxx']])
-plt.plot(np.asarray([val[0][0].flatten() for val in gradents]))
-plt.plot(loss_prediction_accumulated_list)
+# plt.plot(np.asarray([val[0][0].flatten() for val in gradents]))
+# plt.plot(loss_prediction_accumulated_list)
+plt.figure()
+plt.plot(loss_chage)
