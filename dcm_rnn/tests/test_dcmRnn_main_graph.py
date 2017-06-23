@@ -10,14 +10,43 @@ import random
 
 
 class TestDcmRnnMainGraph(TestCase):
+    CLASS_IS_SETUP = False
+
+    dr = DcmRnn()
+    print(os.getcwd())
+    data_path = '../resources/template0.pkl'
+    du = tb.load_template(data_path)
+    dr.collect_parameters(du)
+    neural_parameter_initial = {'A': du.get('A'), 'B': du.get('B'), 'C': du.get('C')}
+
+
     def setUp(self):
+        # If it was not setup yet, do it
+        '''
+        if not self.CLASS_IS_SETUP:
+            print('Setting up testing environment.')
+            # run the real setup
+            self.setupClass()
+            # remember that it was setup already
+            self.__class__.CLASS_IS_SETUP = True
+        '''
+        pass
+
+    def setupClass(self):
+        '''
+
         tf.reset_default_graph()
         self.dr = DcmRnn()
         print(os.getcwd())
-        data_path = 'dcm_rnn/resources/template0.pkl'
+        data_path = '../resources/template0.pkl'
         self.du = tb.load_template(data_path)
         self.dr.collect_parameters(self.du)
         self.neural_parameter_initial = {'A': self.du.get('A'), 'B': self.du.get('B'), 'C': self.du.get('C')}
+        '''
+        pass
+
+    def tearDown(self):
+        pass
 
     def test_main_graph_optimization(self):
         du = self.du
@@ -68,9 +97,8 @@ class TestDcmRnnMainGraph(TestCase):
         print(loss_total_list)
         self.assertLess(loss_total_list[-1], loss_total_list[0])
 
-
-    def test_build_main_graph(self):
-        self.dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial)
+    # def test_build_main_graph(self):
+    #   self.dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial)
 
     def test_main_graph_forward_pass(self):
         du = self.du
@@ -194,6 +222,13 @@ class TestDcmRnnMainGraph(TestCase):
     def test_show_all_variable_value(self):
         self.dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial)
 
+    def test_(self):
+        print(self.CLASS_IS_SETUP)
+
+    def test_1(self):
+        print(type(self.dr))
+        du = self.du
+        print(du.get('Wxx'))
 
 
 

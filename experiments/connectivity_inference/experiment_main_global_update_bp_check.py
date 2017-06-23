@@ -42,10 +42,10 @@ np.set_printoptions(precision=4)
 # global setting
 MAX_EPOCHS = 1
 CHECK_STEPS = 1
-N_SEGMENTS = 64
-N_RECURRENT_STEP = 16
+N_SEGMENTS = 1
+N_RECURRENT_STEP = 8
 LEARNING_RATE = 0.01 / N_RECURRENT_STEP
-DATA_SHIFT = 8
+DATA_SHIFT = 4
 # IF_NODE_MODE = True
 IF_IMAGE_LOG = False
 IF_DATA_LOG = False
@@ -103,14 +103,27 @@ dr.trainable_flags = {'Wxx': True,
 dr.build_main_graph(neural_parameter_initial=neural_parameter_initial)
 
 # prepare data
-data = {'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
-        'y': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y),
-        'h': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1)}
+# for debug, pick one segment
+extra_shift = 128
+data = {'u': tb.split(du.get('u'), dr.n_recurrent_step, n_step=dr.shift_data, shift=extra_shift),
+        'x': tb.split(du.get('x'), dr.n_recurrent_step, n_step=dr.shift_data, shift=extra_shift),
+        'h': tb.split(du.get('h'), dr.n_recurrent_step, n_step=dr.shift_data, shift=1 + extra_shift),
+        'y': tb.split(du.get('y'), dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y + extra_shift)}
 n_segment = min([len(data[x]) for x in data.keys()])
 for k in data.keys():
     data[k] = data[k][: min([n_segment, N_SEGMENTS])]
 
+
+
 sess = tf.InteractiveSession()
+
+# first, check with
+sess.run(tf.global_variables_initializer())
+
+
+
+
+
 
 sess.run(tf.global_variables_initializer())
 temp = du.get('Wxx')

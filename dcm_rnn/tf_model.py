@@ -263,10 +263,10 @@ class DcmRnn(Initialization):
         h_state_next = tf.stack(h_state_next, 0)
         return h_state_next
 
-    def add_neural_layer(self, u, x_state_initial=None):
+    def add_neural_layer(self, u_extend, x_state_initial=None):
         """
         
-        :param u: input stimuli 
+        :param u_extend: input stimuli 
         :param x_state_initial: 
         :return: 
         """
@@ -280,21 +280,24 @@ class DcmRnn(Initialization):
             Wxu = tf.get_variable("Wxu")
         x_parameter = [Wxx, Wxxu, Wxu]
 
-        with tf.variable_scope(self.variable_scope_name_x):
-            self.x_whole = [self.x_state_initial]
-        for i in range(len(u)):
+        # with tf.variable_scope(self.variable_scope_name_x):
+        #     self.x_whole = [self.x_state_initial]
+        for i in range(len(u_extend)):
             with tf.variable_scope(self.variable_scope_name_x):
-                self.x_whole.append(self.add_one_cell_x(u[i - 1], self.x_whole[i - 1], x_parameter))
+                if i == 0:
+                    self.x_whole = [self.x_state_initial]
+                else:
+                    self.x_whole.append(self.add_one_cell_x(u_extend[i - 1], self.x_whole[i - 1], x_parameter))
 
         # label x whole into different parts
-        self.x_extended = self.x_whole[self.shift_u_x: len(u)]
-        self.x_state_predicted = self.x_whole[self.shift_u_x: self.shift_u_x + self.n_recurrent_step]
+        self.x_extended = self.x_whole[self.shift_u_x: self.shift_u_x + self.n_recurrent_step + self.shift_x_y]
+        self.x_predicted = self.x_whole[self.shift_u_x: self.shift_u_x + self.n_recurrent_step]
         self.x_monitor = self.x_whole[:self.n_recurrent_step]
         self.x_connector = self.x_whole[self.shift_data]
 
         with tf.variable_scope(self.variable_scope_name_x_stacked):
             self.x_extended_stacked = tf.stack(self.x_extended, 0, name='x_extended_stacked')
-            self.x_state_predicted_stacked = tf.stack(self.x_state_predicted, 0, name='x_predicted_stack')
+            self.x_predicted_stacked = tf.stack(self.x_predicted, 0, name='x_predicted_stack')
             self.x_state_monitor_stacked = tf.stack(self.x_monitor, 0, name='x_monitor_stack')
 
     def add_hemodynamic_layer(self, x_extended=None, h_state_initial=None):
