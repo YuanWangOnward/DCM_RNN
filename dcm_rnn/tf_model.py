@@ -297,15 +297,15 @@ class DcmRnn(Initialization):
 
         with tf.variable_scope(self.variable_scope_name_x_stacked):
             self.x_extended_stacked = tf.stack(self.x_extended, 0, name='x_extended_stacked')
-            self.x_predicted_stacked = tf.stack(self.x_predicted, 0, name='x_predicted_stack')
-            self.x_state_monitor_stacked = tf.stack(self.x_monitor, 0, name='x_monitor_stack')
+            self.x_predicted_stacked = tf.stack(self.x_predicted, 0, name='x_predicted_stacked')
+            self.x_monitor_stacked = tf.stack(self.x_monitor, 0, name='x_monitor_stacked')
 
     def add_hemodynamic_layer(self, x_extended=None, h_state_initial=None):
         """
         Conceptually, hemodynamic layer consists of five parts:
         # format: h_initial_segment[region, 4]
         # format: h_prelude[self.shift_x_y][region, 4]
-        # format: h_state_predicted[self.n_recurrent_step][region, 4]
+        # format: h_predicted[self.n_recurrent_step][region, 4]
         # format: h_connector[region, 4]
         # format: h_state_predicted_stacked[self.n_recurrent_step, region, 4]
         :param x_extended:
@@ -338,12 +338,12 @@ class DcmRnn(Initialization):
 
         # label h whole into different parts
         # self.h_prelude = self.h_whole[: self.shift_x_y]
-        self.h_state_predicted = self.h_whole[self.shift_x_y: self.shift_x_y + self.n_recurrent_step]
+        self.h_predicted = self.h_whole[self.shift_x_y: self.shift_x_y + self.n_recurrent_step]
         self.h_monitor = self.h_whole[:self.n_recurrent_step]
         self.h_connector = self.h_whole[self.shift_data]
 
         with tf.variable_scope(self.variable_scope_name_h_stacked):
-            self.h_state_predicted_stacked = tf.stack(self.h_state_predicted, 0, name='h_predicted_stack')
+            self.h_state_predicted_stacked = tf.stack(self.h_predicted, 0, name='h_predicted_stack')
             self.h_state_monitor_stacked = tf.stack(self.h_monitor, 0, name='h_monitor_stack')
 
     def phi_o(self, h_state_current):
@@ -379,7 +379,7 @@ class DcmRnn(Initialization):
         return y
 
     def add_output_layer(self, h_state_predicted=None):
-        h_state_predicted = h_state_predicted or self.h_state_predicted
+        h_state_predicted = h_state_predicted or self.h_predicted
         self.y_predicted = []
 
         for i in range(0, self.n_recurrent_step):
@@ -441,7 +441,7 @@ class DcmRnn(Initialization):
 
         # build model
         self.add_hemodynamic_layer(self.x_extended, self.h_state_initial)
-        self.add_output_layer(self.h_state_predicted)
+        self.add_output_layer(self.h_predicted)
 
         # define loss_prediction
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
@@ -586,7 +586,7 @@ class DcmRnn(Initialization):
         self.add_hemodynamic_layer(self.x_extended, self.h_state_initial)
 
         # output layer
-        self.add_output_layer(self.h_state_predicted)
+        self.add_output_layer(self.h_predicted)
 
         # define loss_total
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")

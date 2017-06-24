@@ -18,7 +18,8 @@ class TestDcmRnnMainGraph(TestCase):
     du = tb.load_template(data_path)
     dr.collect_parameters(du)
     neural_parameter_initial = {'A': du.get('A'), 'B': du.get('B'), 'C': du.get('C')}
-
+    dr.build_main_graph(neural_parameter_initial=neural_parameter_initial)
+    isess = tf.InteractiveSession()
 
     def setUp(self):
         # If it was not setup yet, do it
@@ -30,7 +31,7 @@ class TestDcmRnnMainGraph(TestCase):
             # remember that it was setup already
             self.__class__.CLASS_IS_SETUP = True
         '''
-        pass
+        self.isess.run(tf.global_variables_initializer())
 
     def setupClass(self):
         '''
@@ -143,28 +144,28 @@ class TestDcmRnnMainGraph(TestCase):
     def test_main_graph_loss(self):
         du = self.du
         dr = self.dr
+        isess = self.isess
 
         # prepare data
-        # split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_h):
         data = {'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
                 'x': tb.split(du.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
                 'h': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
                 'y': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)}
 
-        # build model
+        # configure model
         h_prior = self.dr.get_expanded_hemodynamic_parameter_prior_distributions(self.dr.n_region)
         mean = h_prior['mean'].astype(np.float32)
         std = h_prior['std'].astype(np.float32)
         h_parameters_initial = mean + std
         dr.loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
-        dr.if_add_optimiser = False
-        dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial,
-                            hemodynamic_parameter_initial=h_parameters_initial)
+        # dr.if_add_optimiser = False
+        # dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial,
+        #                     hemodynamic_parameter_initial=h_parameters_initial)
 
 
         # run forward
-        isess = tf.InteractiveSession()
-        isess.run(tf.global_variables_initializer())
+        # isess = tf.InteractiveSession()
+        # isess.run(tf.global_variables_initializer())
 
         for i in [random.randint(16, len(data['y'])) for _ in range(16)]:
             loss_prediction, loss_sparsity, loss_prior, loss_total = \

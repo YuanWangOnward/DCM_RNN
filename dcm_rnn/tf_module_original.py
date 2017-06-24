@@ -284,7 +284,7 @@ class DCM_RNN:
                             trainable=False) \
             for n in range(n_region)]
 
-        # format: h_state_predicted[region][time]
+        # format: h_predicted[region][time]
         self.h_state_predicted = [[] for _ in range(n_region)]
         for n in range(n_region):
             self.h_state_predicted[n].append(self.h_state_initial[n])
@@ -547,7 +547,7 @@ class Utilities:
             for n in range(dr.n_region):
                 # concatenate h_current_segment in to list of 3 element, each a np.narray
                 h_current_segment[n] = np.squeeze(np.asarray(h_current_segment[n])).transpose()
-                # h_state_predicted[n].append(h_current_segment[n])
+                # h_predicted[n].append(h_current_segment[n])
                 if i == 0:
                     h_state_predicted[n] = h_current_segment[n]
                 else:

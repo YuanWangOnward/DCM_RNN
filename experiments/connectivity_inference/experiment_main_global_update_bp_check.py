@@ -82,8 +82,6 @@ neural_parameter_initial['A'] = (Wxx - np.identity(dr.n_region)) / dr.t_delta
 neural_parameter_initial['B'] = [Wxxu / dr.t_delta]
 neural_parameter_initial['C'] = Wxu / dr.t_delta
 
-dr.n_recurrent_step = N_RECURRENT_STEP
-dr.learning_rate = LEARNING_RATE
 dr.loss_weighting = {'prediction': 50., 'sparsity': 0., 'prior': 0., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
 dr.trainable_flags = {'Wxx': True,
                       'Wxxu': True,
@@ -159,7 +157,7 @@ for epoch in range(MAX_EPOCHS):
         loss_previous, x_previous, y_previous = sess.run([dr.loss_total,
                                     dr.x_monitor,
                                     #dr.h_monitor,
-                                    #dr.h_state_predicted,
+                                    #dr.h_predicted,
                                     dr.y_predicted],
                                  feed_dict={
                                      dr.u_placeholder: data['u'][i],
@@ -197,7 +195,7 @@ for epoch in range(MAX_EPOCHS):
         loss_current, x_after, y_after = sess.run([dr.loss_total,
                                     dr.x_monitor,
                                     #dr.h_monitor,
-                                    #dr.h_state_predicted,
+                                    #dr.h_predicted,
                                     dr.y_predicted],
                                 feed_dict={
                                     dr.u_placeholder: data['u'][i],
