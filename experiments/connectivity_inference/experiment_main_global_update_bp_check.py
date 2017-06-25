@@ -36,6 +36,8 @@ import multiprocessing
 from multiprocessing.pool import Pool
 import itertools
 import copy
+import importlib
+importlib.reload(tfm)
 
 np.set_printoptions(precision=4)
 

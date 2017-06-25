@@ -40,8 +40,11 @@ def save_data(data_path, data):
         pickle.dump(data, f)
 
 
-def mse(value_hat, value_true):
-    mse = ((value_hat.flatten() - value_true.flatten()) ** 2).mean()
+def mse(value_hat, value_true=None):
+    if value_true is not None:
+        mse = ((value_hat.flatten() - value_true.flatten()) ** 2).mean()
+    else:
+        mse = (value_hat.flatten() ** 2).mean()
     return mse
 
 def rmse(value_hat, value_true):

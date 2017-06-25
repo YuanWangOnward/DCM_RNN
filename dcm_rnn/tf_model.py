@@ -4,6 +4,7 @@ import numpy as np
 from toolboxes import Initialization
 import toolboxes as tb
 import warnings
+import pandas as pd
 
 
 # import pandas as pd
@@ -69,7 +70,7 @@ class DcmRnn(Initialization):
         self.variable_scope_name_y = variable_scope_name_y or 'cell_y'
         self.variable_scope_name_y_stacked = variable_scope_name_y_stacked or 'y_stacked'
 
-        self.variable_scope_name_loss = variable_scope_name_loss or 'loss_total'
+        self.variable_scope_name_loss = variable_scope_name_loss or 'loss'
 
         self.log_directory = log_directory or './logs'
 
@@ -327,7 +328,7 @@ class DcmRnn(Initialization):
             # do evolving calculation
             with tf.variable_scope(self.variable_scope_name_h):
                 if i == 0:
-                    self.h_whole = [self.h_state_initial]
+                    self.h_whole = [h_state_initial]
                 else:
                     h_temp = []
                     for i_region in range(self.n_region):
@@ -432,11 +433,11 @@ class DcmRnn(Initialization):
         # y layer state: initial(port in), and connector(port out)
         with tf.variable_scope(self.variable_scope_name_h_initial):
             # no matter how much shift_x_y is, we only need h_state of one time point as the connector
-            self.h_state_initial_default = \
+            self.h_state_initial_initial = \
                 self.set_initial_hemodynamic_state_as_inactivated(n_node=self.n_region).astype(np.float32)
             self.h_state_initial = \
                 tf.get_variable('h_initial_segment',
-                                initializer=self.h_state_initial_default,
+                                initializer=self.h_state_initial_initial,
                                 trainable=False)
 
         # build model
@@ -531,7 +532,6 @@ class DcmRnn(Initialization):
 
 
 
-
     def build_main_graph(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
         """
         The main graph of dcm_rnn, used to infer effective connectivity given fMRI signal and stimuli.
@@ -576,19 +576,18 @@ class DcmRnn(Initialization):
         # h layer
         self.h_parameters = self.create_shared_variables_h(self.hemodynamic_parameter_initial)
         with tf.variable_scope(self.variable_scope_name_h_initial):
-            # no matter how much shift_x_y is, we only need h_state of one time point as the connector
-            self.h_state_initial_default = \
+            self.h_state_initial_initial = \
                 self.set_initial_hemodynamic_state_as_inactivated(n_node=self.n_region).astype(np.float32)
             self.h_state_initial = \
                 tf.get_variable('h_initial_segment',
-                                initializer=self.h_state_initial_default,
+                                initializer=self.h_state_initial_initial,
                                 trainable=False)
         self.add_hemodynamic_layer(self.x_extended, self.h_state_initial)
 
         # output layer
         self.add_output_layer(self.h_predicted)
 
-        # define loss_total
+        # define loss
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
             self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
@@ -637,6 +636,9 @@ class DcmRnn(Initialization):
         loss_Wxxu = tf.concat([loss_weighting['Wxxu'] * tf.reshape(tf.abs(self.Wxxu[s]), [-1])
                                for s in range(self.n_stimuli)], axis=0)
         loss_Wxu = loss_weighting['Wxu'] * tf.reshape(tf.abs(self.Wxu), [-1])
+        self.loss_sparsity_Wxx = tf.reduce_sum(loss_Wxx)
+        self.loss_sparsity_Wxxu = tf.reduce_sum(loss_Wxxu)
+        self.loss_sparsity_Wxu = tf.reduce_sum(loss_Wxu)
         self.loss_sparsity = tf.reduce_mean(tf.concat([loss_Wxx, loss_Wxxu, loss_Wxu], axis=0), name="loss_sparsity")
         return self.loss_sparsity
 
@@ -650,6 +652,35 @@ class DcmRnn(Initialization):
         temp = tf.square(tf.reshape(tf.boolean_mask(h_parameters, mask), [-1]) - mean) / tf.square(std)
         self.loss_prior = tf.reduce_mean(temp, name="loss_prior")
         return self.loss_prior
+
+    # TODO: update_loss_weight_in_graph
+    def update_loss_weight_in_graph(self, loss_weighting_updated):
+        """
+        Update loss weighting factor in tensorflow graph
+        :param loss_weighting_updated: 
+        :return: 
+        """
+        for key in loss_weighting_updated.keys():
+            if key in self.loss_weighting.keys():
+                # with tf.variable_scope(self.variable_scope_name_loss):
+                #    self.loss_weighting[key] = loss_weighting_updated[key]
+                pass
+
+            else:
+                raise ValueError(str(key) + ' is not a proper key.')
+
+    def update_h_parameters_in_graph(self, sess, h_parameters_updated):
+        """
+        :param sess: 
+        :param h_parameters_updated: a 2d matrix of size( n_region, n_h_parameters)
+        :return:
+        """
+        sess.run(tf.assign(self.h_parameters, h_parameters_updated))
+
+
+
+
+
 
     # unitilies
     def mse(self, tensor1, tensor2=0., name=None):
@@ -704,7 +735,7 @@ class DcmRnn(Initialization):
             tf.summary.scalar('min', tf.reduce_min(tensor))
             tf.summary.histogram('histogram', tensor)
 
-    '''
+
     def show_all_variable_value(self, isess, visFlag=False):
         output = []
         output_buff = pd.DataFrame()
@@ -742,6 +773,9 @@ class DcmRnn(Initialization):
         if visFlag:
             for item in output:
                 print(item.name)
-                display(item)
+                print(item)
         return output
-    '''
+
+
+
+
