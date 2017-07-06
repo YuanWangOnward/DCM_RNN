@@ -8,15 +8,16 @@ import tensorflow as tf
 import os
 import random
 import copy
+import warnings
 
 
 class TestDcmRnnMainGraph(TestCase):
     MAX_EPOCHS = 1
     CHECK_STEPS = 1
-    N_SEGMENTS = 128
-    N_RECURRENT_STEP = 8
+    N_SEGMENTS = 64
+    N_RECURRENT_STEP = 4
     LEARNING_RATE = 0.01 / N_RECURRENT_STEP
-    DATA_SHIFT = 4
+    DATA_SHIFT = 2
     N_TEST_SAMPLE_MAX = 32
 
     print(os.getcwd())
@@ -56,6 +57,9 @@ class TestDcmRnnMainGraph(TestCase):
         'h_predicted': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y),
         'y_true': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y),
         'y_true_float_corrected': []}
+
+    for k in data.keys():
+        data[k] = data[k][: N_SEGMENTS]
 
     for i in range(len(data['y_true'])):
         parameter_package = du.collect_parameter_for_y_scan()
@@ -192,30 +196,197 @@ class TestDcmRnnMainGraph(TestCase):
         isess = self.isess
         data = self.data
 
+        STEP_SIZE = 0.1
+
+        def apply_and_check(isess, grads_and_vars, step_size):
+            isess.run([tf.assign(dr.Wxx, -grads_and_vars[0][0] * step_size + grads_and_vars[0][1]),
+                       tf.assign(dr.Wxxu[0], -grads_and_vars[1][0] * step_size + grads_and_vars[1][1]),
+                       tf.assign(dr.Wxu, -grads_and_vars[2][0] * step_size + grads_and_vars[2][1])])
+            loss_prediction = isess.run([dr.loss_prediction],
+                                        feed_dict={
+                                            dr.u_placeholder: data['u'][i],
+                                            dr.x_state_initial: data['x_initial'][i][0, :],
+                                            dr.h_state_initial: data['h_initial'][i][0, :, :],
+                                            dr.y_true: data['y_true_float_corrected'][i]
+                                        })
+            return loss_prediction
+
         for r in range(1):
             for c in range(1):
                 Wxx = du.get('Wxx')
                 if Wxx[r, c] != 0.:
-                    Wxx[r, c] = Wxx[r, c] * 1.1
+                    Wxx[r, c] = Wxx[r, c] * 0.9
                     isess.run(tf.assign(dr.Wxx, Wxx))
 
                     gradient_sum = 0
-                    for i in range(len(data['y_true_float_corrected'])):
-                        grads_and_vars, loss_prediction = \
-                            isess.run([dr.grads_and_vars, dr.loss_prediction],
-                                      feed_dict={
-                                          dr.u_placeholder: data['u'][i],
-                                          dr.x_state_initial: data['x_initial'][i][0, :],
-                                          dr.h_state_initial: data['h_initial'][i][0, :,
-                                                              :],
-                                          dr.y_true: data['y_true_float_corrected'][i]
-                                      })
-                        gradient_sum += grads_and_vars[0][0]
-                        # print('r=' + str(r) + ' c=' + str(c) + ' i=' + str(i) +
-                        #       ' loss_prediction=' + str(loss_prediction))
-                        # print(grads_and_vars[0][0])
+                    checking_loss = []
+                    for epoch in range(self.MAX_EPOCHS):
+                        for i in [random.randint(0, len(data['y_true_float_corrected']))
+                                  for _ in range(self.N_TEST_SAMPLE)]:
+                        # for i in range(len(data['y_true_float_corrected'])):
 
-                        # updating with back-tracking
+                            print('current processing ' + str(i))
+                            grads_and_vars, loss_prediction = \
+                                isess.run([dr.grads_and_vars, dr.loss_prediction],
+                                          feed_dict={
+                                              dr.u_placeholder: data['u'][i],
+                                              dr.x_state_initial: data['x_initial'][i][0, :],
+                                              dr.h_state_initial: data['h_initial'][i][0, :, :],
+                                              dr.y_true: data['y_true_float_corrected'][i]
+                                          })
+                            gradient_sum += grads_and_vars[0][0]
+                            # print('r=' + str(r) + ' c=' + str(c) + ' i=' + str(i) +
+                            #       ' loss_prediction=' + str(loss_prediction))
+                            # print(grads_and_vars[0][0])
 
+                            # updating with back-tracking
+                            step_size = STEP_SIZE
+                            loss_prediction_original = loss_prediction
+                            loss_prediction = apply_and_check(isess, grads_and_vars, step_size)
+
+                            count = 0
+                            while (loss_prediction > loss_prediction_original):
+                                count += 1
+                                if count == 16:
+                                    step_size = 0
+                                else:
+                                    step_size = step_size / 2
+                                print('step_size=' + str(step_size))
+                                loss_prediction = apply_and_check(isess, grads_and_vars, step_size)
+
+                            checking_loss.append(loss_prediction_original - loss_prediction)
+                            print(checking_loss[-1])
 
                     print(gradient_sum)
+                    print(grads_and_vars[0][1])
+                    print(grads_and_vars[1][1])
+                    print(grads_and_vars[2][1])
+                    # print(loss_differences)
+
+    def test_optimization(self):
+        du = self.du
+        dr = self.dr
+        isess = self.isess
+        data = self.data
+
+        STEP_SIZE = 0.25
+
+        def apply_and_check(isess, grads_and_vars, step_size, u, x_connector, h_connector, y_true):
+            isess.run([tf.assign(dr.Wxx, -grads_and_vars[0][0] * step_size + grads_and_vars[0][1]),
+                       tf.assign(dr.Wxxu[0], -grads_and_vars[1][0] * step_size + grads_and_vars[1][1]),
+                       tf.assign(dr.Wxu, -grads_and_vars[2][0] * step_size + grads_and_vars[2][1])])
+            loss_prediction, x_connector, h_connector \
+                = isess.run([dr.loss_prediction, dr.x_connector, dr.h_connector],
+                            feed_dict={
+                                dr.u_placeholder: u,
+                                dr.x_state_initial: x_connector,
+                                dr.h_state_initial: h_connector,
+                                dr.y_true: y_true
+                            })
+            return [loss_prediction, x_connector, h_connector]
+
+        def check_transition_matrix(Wxx):
+            w, v = np.linalg.eig(Wxx)
+            if max(w.real) < 1:
+                return True
+            else:
+                return False
+
+        for r in range(1):
+            for c in range(1):
+                Wxx = du.get('Wxx')
+                if Wxx[r, c] != 0.:
+                    Wxx[r, c] = Wxx[r, c] * 0.9
+                    isess.run(tf.assign(dr.Wxx, Wxx))
+
+                    gradient_sum = 0
+                    checking_loss = []
+                    for epoch in range(self.MAX_EPOCHS):
+                        x_connector_current = dr.set_initial_neural_state_as_zeros(dr.n_region)
+                        h_connector_current = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region)
+                        for i in range(len(data['y_true_float_corrected'])):
+                            print('current processing ' + str(i))
+                            #print('u:')
+                            #print(data['u'][i])
+                            #print('x_initial:')
+                            #print(x_connector_current)
+                            #print('h_initial:')
+                            #print(h_connector_current)
+                            #print('y_true:')
+                            #print(data['y_true_float_corrected'][i])
+
+
+                            grads_and_vars, x_connector, h_connector, loss_prediction = \
+                                isess.run([dr.grads_and_vars, dr.x_connector, dr.h_connector, dr.loss_prediction],
+                                          feed_dict={
+                                              dr.u_placeholder: data['u'][i],
+                                              dr.x_state_initial: x_connector_current,
+                                              dr.h_state_initial: h_connector_current,
+                                              dr.y_true: data['y_true_float_corrected'][i]
+                                          })
+                            loss_prediction_original = loss_prediction
+                            gradient_sum += grads_and_vars[0][0]
+                            # print('r=' + str(r) + ' c=' + str(c) + ' i=' + str(i) +
+                            #       ' loss_prediction=' + str(loss_prediction))
+                            # for item in grads_and_vars:
+                            #    print(item)
+
+
+                            # updating with back-tracking
+                            step_size = STEP_SIZE
+                            loss_prediction, x_connector, h_connector = \
+                                apply_and_check(isess, grads_and_vars, step_size, data['u'][i],
+                                                              x_connector_current,
+                                                              h_connector_current,
+                                                              data['y_true_float_corrected'][i])
+
+                            count = 0
+                            while (loss_prediction > loss_prediction_original):
+                                count += 1
+                                if count == 16:
+                                    step_size = 0
+                                else:
+                                    step_size = step_size / 2
+                                print('step_size=' + str(step_size))
+                                loss_prediction, x_connector, h_connector = \
+                                    apply_and_check(isess, grads_and_vars,
+                                                    step_size, data['u'][i], x_connector_current,
+                                                    h_connector_current, data['y_true_float_corrected'][i])
+
+                            Wxx = isess.run(dr.Wxx)
+                            stable_flag = check_transition_matrix(Wxx)
+                            while not stable_flag:
+                                count += 1
+                                if count == 16:
+                                    step_size = 0
+                                else:
+                                    step_size = step_size / 2
+                                warnings.warn('not stable')
+                                print('step_size=' + str(step_size))
+                                Wxx = -grads_and_vars[0][0] * step_size + grads_and_vars[0][1]
+                                stable_flag = check_transition_matrix(Wxx)
+                            isess.run([tf.assign(dr.Wxx, -grads_and_vars[0][0] * step_size + grads_and_vars[0][1]),
+                                       tf.assign(dr.Wxxu[0],
+                                                 -grads_and_vars[1][0] * step_size + grads_and_vars[1][1]),
+                                       tf.assign(dr.Wxu, -grads_and_vars[2][0] * step_size + grads_and_vars[2][1])])
+
+
+                            x_connector_current = x_connector
+                            h_connector_current = h_connector
+                            checking_loss.append(loss_prediction_original - loss_prediction)
+                            Wxxu, Wxu = isess.run([dr.Wxxu[0], dr.Wxu])
+
+                            print(np.linalg.norm(data['y_true_float_corrected'][i].flatten()))
+                            print(checking_loss[-1])
+                            print(Wxx)
+                            print(Wxxu)
+                            #print(Wxx + Wxxu)
+                            print(Wxu)
+
+
+                    print('optimization finished.')
+                    # print(gradient_sum)
+                    print(grads_and_vars[0][1])
+                    print(grads_and_vars[1][1])
+                    print(grads_and_vars[2][1])
+                    # print(loss_differences)

@@ -1372,7 +1372,7 @@ class Scanner:
         max_var = max(variance)
 
         '''
-        fx = np.fft.fft(x, axis=0) / np.sqrt(x.shape[0])
+        fx = np.fft.fft(x, x_axis=0) / np.sqrt(x.shape[0])
         low_frequency_range = int(x.shape[0]/20)
         low_frequency_energy = 1
         energy_persentage = 1

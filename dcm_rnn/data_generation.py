@@ -107,17 +107,17 @@ plt.clf()
 plt.subplot(3,1,1)
 plt.plot(x[:, ii])
 plt.subplot(3,1,2)
-x_demeaned = x - np.mean(x, axis=0)
+x_demeaned = x - np.mean(x, x_axis=0)
 plt.plot(x_demeaned[:, ii])
 plt.subplot(3,1,3)
 plt.plot(abs(fx[:, ii]))
 
 x = du._secured_data['x']
-x_demeaned = x - np.mean(x, axis=0)
-fx = np.fft.fft(x_demeaned, axis=0) / np.sqrt(x.shape[0])
+x_demeaned = x - np.mean(x, x_axis=0)
+fx = np.fft.fft(x_demeaned, x_axis=0) / np.sqrt(x.shape[0])
 low_frequency_range = range(-int(x.shape[0]/200), int(x.shape[0]/200))
-low_frequency_energy = np.linalg.norm(fx[low_frequency_range, :], axis = 0)
-energy_persentage = low_frequency_energy / np.linalg.norm(fx, axis = 0)
+low_frequency_energy = np.linalg.norm(fx[low_frequency_range, :], x_axis = 0)
+energy_persentage = low_frequency_energy / np.linalg.norm(fx, x_axis = 0)
 print(energy_persentage)
 
 

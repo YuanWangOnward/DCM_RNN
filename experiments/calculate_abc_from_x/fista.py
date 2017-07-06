@@ -113,7 +113,7 @@ print('mse x_hat vs x_true:' + str(tb.mse(data['x_true_merged'][index_range], x_
 
 '''
 Y = np.transpose(x[1:])
-X = np.transpose(np.concatenate([x[:-1], xu[:-1], u[:-1]], axis=1))
+X = np.transpose(np.concatenate([x[:-1], xu[:-1], u[:-1]], x_axis=1))
 
 # fitting
 clf = linear_model.Lasso(alpha=0.000005)
@@ -141,7 +141,7 @@ print('mse x_hat vs x_true:' + str(tb.mse(data['x_true_merged'][index_range], x_
 # form Y
 Y = x[1:] - x[: -1]
 xu = np.asarray([np.kron(u[i], x[i]) for i in range(n_time_point)])
-X = np.concatenate([x[:-1], xu[:-1], u[:-1]], axis=1)
+X = np.concatenate([x[:-1], xu[:-1], u[:-1]], x_axis=1)
 
 # fitting
 clf = linear_model.Lasso(alpha=0.000001, tol=0.000001, max_iter=2000)
@@ -169,7 +169,7 @@ xu = np.asarray([np.kron(u[i], x[i]) for i in range(n_time_point)])
 w_xx_f = 1.
 w_xxu_f = 100.
 w_xu_f = 1.
-X = np.concatenate([x[:-1] / w_xx_f, xu[:-1] / w_xxu_f, u[:-1] / w_xu_f], axis=1)
+X = np.concatenate([x[:-1] / w_xx_f, xu[:-1] / w_xxu_f, u[:-1] / w_xu_f], x_axis=1)
 
 # fitting
 clf = linear_model.Lasso(alpha=0.00001, tol=0.000001, max_iter=2000)
@@ -218,7 +218,7 @@ for xxu in xxu_list:
         Y = x[1:] \
             - np.transpose(np.matmul(Wxxu, np.transpose(xu_[:-1]))) \
             - np.transpose(np.matmul(Wxu, np.transpose(u[:-1])))
-        X = np.concatenate([x[:-1]], axis=1)
+        X = np.concatenate([x[:-1]], x_axis=1)
 
         # fitting
         clf = linear_model.Lasso(alpha=0.000005)
@@ -242,7 +242,7 @@ Wxu = np.array([result['xu'], 0, 0]).reshape(3, 1)
 Y = x[1:] \
     - np.transpose(np.matmul(Wxxu, np.transpose(xu_[:-1]))) \
     - np.transpose(np.matmul(Wxu, np.transpose(u[:-1])))
-X = np.concatenate([x[:-1]], axis=1)
+X = np.concatenate([x[:-1]], x_axis=1)
 
 # fitting
 clf = linear_model.Lasso(alpha=0.000005)
@@ -270,7 +270,7 @@ Wxu = np.array([0.25, 0, 0]).reshape(3, 1)
 Y = x[1:] \
     - np.transpose(np.matmul(Wxxu, np.transpose(xu_[:-1]))) \
     - np.transpose(np.matmul(Wxu, np.transpose(u[:-1])))
-X = np.concatenate([x[:-1]], axis=1)
+X = np.concatenate([x[:-1]], x_axis=1)
 
 # fitting
 clf = linear_model.Lasso(alpha=0.000005)
