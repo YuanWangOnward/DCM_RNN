@@ -1,3 +1,4 @@
+# add mask to gradient
 import sys
 
 # global setting, you need to modify it accordingly
@@ -37,14 +38,21 @@ import multiprocessing
 from multiprocessing.pool import Pool
 import itertools
 import copy
+import pandas as pd
 
-MAX_EPOCHS = 1
+
+MAX_EPOCHS = 8
 CHECK_STEPS = 1
-N_SEGMENTS = 32
-N_RECURRENT_STEP = 64
+N_SEGMENTS = 128
+N_RECURRENT_STEP = 128
+# STEP_SIZE = 0.002 # for 32
+# STEP_SIZE = 0.5
+# STEP_SIZE = 0.001 # for 64
+# STEP_SIZE = 0.001 # 128
+STEP_SIZE = 0.0005 # for 256
+DATA_SHIFT = int(N_RECURRENT_STEP / 4)
 LEARNING_RATE = 0.01 / N_RECURRENT_STEP
-DATA_SHIFT = 4
-N_TEST_SAMPLE_MAX = 32
+
 
 print(os.getcwd())
 PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
@@ -57,7 +65,7 @@ dr.learning_rate = LEARNING_RATE
 dr.shift_data = DATA_SHIFT
 dr.n_recurrent_step = N_RECURRENT_STEP
 neural_parameter_initial = {'A': du.get('A'), 'B': du.get('B'), 'C': du.get('C')}
-dr.loss_weighting = {'prediction': 1., 'sparsity': 0., 'prior': 0., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+dr.loss_weighting = {'prediction': 1., 'sparsity': 0.1, 'prior': 0., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
 dr.trainable_flags = {'Wxx': True,
                       'Wxxu': True,
                       'Wxu': True,
@@ -93,7 +101,7 @@ for i in range(len(data['y_true'])):
     parameter_package['h'] = data['h_predicted'][i].astype(np.float32)
     data['y_true_float_corrected'].append(du.scan_y(parameter_package))
 
-N_TEST_SAMPLE = min(N_TEST_SAMPLE_MAX, len(data['y_true_float_corrected']))
+N_TEST_SAMPLE = min(N_SEGMENTS, len(data['y_true_float_corrected']))
 
 isess = tf.InteractiveSession()
 
@@ -115,6 +123,8 @@ def apply_and_check(isess, grads_and_vars, step_size, u, x_connector, h_connecto
 
 def check_transition_matrix(Wxx):
     w, v = np.linalg.eig(Wxx)
+    # w1, v1 = np.linalg.eig(Wxx + Wxxu)
+    # w2, v2 = np.linalg.eig(Wxx + Wxxu + np.diag(Wxu, 0))
     if max(w.real) < 1:
         return True
     else:
@@ -122,18 +132,39 @@ def check_transition_matrix(Wxx):
 
 
 isess.run(tf.global_variables_initializer())
-STEP_SIZE = 0.001
-Wxx = du.get('Wxx')
 
-Wxx[0, 0] = Wxx[0, 0] * 0.9
-isess.run(tf.assign(dr.Wxx, Wxx))
 
-gradient_sum = 0
-checking_loss = []
+'''
+Wxx = np.array([[0.9576, 0.0069, -0.0097],
+                [0.0496, 0.9375, 0.0252],
+                [0.0182, 0.0415, 0.9458], ])
+Wxxu = np.zeros((3, 3))
+Wxxu[2, 2] = -0.0112
+Wxu = np.array([0.0341, 0, 0]).reshape(3, 1)
+'''
+Wxx = np.identity(3) * (1 - 1.6 * du.get('t_delta'))
+Wxxu = np.zeros((3, 3))
+Wxu = np.array([0., 0., 0.]).reshape(3, 1)
+
+mask = {dr.Wxx.name: np.ones((dr.n_region, dr.n_region)),
+        dr.Wxxu[0].name: np.zeros((dr.n_region, dr.n_region)),
+        dr.Wxu.name: np.zeros(dr.n_region).reshape(3, 1)}
+mask[dr.Wxxu[0].name][2, 2] = 1
+mask[dr.Wxu.name][0] = 1
+
+isess.run([tf.assign(dr.Wxx, Wxx),
+           tf.assign(dr.Wxxu[0], Wxxu),
+           tf.assign(dr.Wxu, Wxu)])
+
+
+loss_differences = []
+loss_totals = []
 y_before_train = []
 y_after_train = []
 x_connectors = []
 h_connectors = []
+gradients = []
+step_sizes = []
 for epoch in range(MAX_EPOCHS):
     x_connector_current = dr.set_initial_neural_state_as_zeros(dr.n_region)
     h_connector_current = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region)
@@ -149,19 +180,28 @@ for epoch in range(MAX_EPOCHS):
         # print(data['y_true_float_corrected'][i])
 
 
-        grads_and_vars, x_connector, h_connector, loss_prediction, y_predicted_before_training = \
-            isess.run([dr.grads_and_vars, dr.x_connector, dr.h_connector, dr.loss_prediction, dr.y_predicted],
+        grads_and_vars, x_connector, h_connector, loss_prediction, loss_total, y_predicted_before_training = \
+            isess.run([dr.grads_and_vars, dr.x_connector, dr.h_connector,
+                       dr.loss_prediction, dr.loss_total, dr.y_predicted],
                       feed_dict={
                           dr.u_placeholder: data['u'][i],
                           dr.x_state_initial: x_connector_current,
                           dr.h_state_initial: h_connector_current,
                           dr.y_true: data['y_true_float_corrected'][i]
                       })
+        # apply mask to gradients
+        variable_names = [v.name for v in tf.trainable_variables()]
+        for idx in range(len(grads_and_vars)):
+            variable_name = variable_names[idx]
+            grads_and_vars[idx] = (grads_and_vars[idx][0] * mask[variable_name], grads_and_vars[idx][1])
+
+
         loss_prediction_original = loss_prediction
-        gradient_sum += grads_and_vars[0][0]
+        gradients.append(grads_and_vars)
         y_before_train.append(y_predicted_before_training)
         x_connectors.append(x_connector_current)
         h_connectors.append(h_connector_current)
+        loss_totals.append(loss_total)
 
         # print('r=' + str(r) + ' c=' + str(c) + ' i=' + str(i) +
         #       ' loss_prediction=' + str(loss_prediction))
@@ -178,23 +218,11 @@ for epoch in range(MAX_EPOCHS):
                             data['y_true_float_corrected'][i])
 
         count = 0
-        while (loss_prediction > loss_prediction_original):
-            count += 1
-            if count == 16:
-                step_size = 0
-            else:
-                step_size = step_size / 2
-            print('step_size=' + str(step_size))
-            loss_prediction, x_connector, h_connector = \
-                apply_and_check(isess, grads_and_vars,
-                                step_size, data['u'][i], x_connector_current,
-                                h_connector_current, data['y_true_float_corrected'][i])
-
         Wxx = isess.run(dr.Wxx)
         stable_flag = check_transition_matrix(Wxx)
         while not stable_flag:
             count += 1
-            if count == 16:
+            if count == 20:
                 step_size = 0
             else:
                 step_size = step_size / 2
@@ -202,6 +230,24 @@ for epoch in range(MAX_EPOCHS):
             print('step_size=' + str(step_size))
             Wxx = -grads_and_vars[0][0] * step_size + grads_and_vars[0][1]
             stable_flag = check_transition_matrix(Wxx)
+
+        while (loss_prediction > loss_prediction_original or np.isnan(loss_prediction)):
+            count += 1
+            if count == 20:
+                step_size = 0.
+            else:
+                step_size = step_size / 2
+            print('step_size=' + str(step_size))
+            loss_prediction, x_connector, h_connector = \
+                apply_and_check(isess, grads_and_vars,
+                                step_size, data['u'][i], x_connector_current,
+                                h_connector_current, data['y_true_float_corrected'][i])
+            if step_size == 0.0:
+                break
+
+
+
+
         isess.run([tf.assign(dr.Wxx, -grads_and_vars[0][0] * step_size + grads_and_vars[0][1]),
                    tf.assign(dr.Wxxu[0],
                              -grads_and_vars[1][0] * step_size + grads_and_vars[1][1]),
@@ -215,86 +261,71 @@ for epoch in range(MAX_EPOCHS):
                                                    dr.y_true: data['y_true_float_corrected'][i]
                                                })
         y_after_train.append(y_predicted_after_training)
-
+        step_sizes.append(step_size)
         x_connector_current = x_connector
         h_connector_current = h_connector
-        checking_loss.append(loss_prediction_original - loss_prediction)
+        loss_differences.append(loss_prediction_original - loss_prediction)
         Wxx, Wxxu, Wxu = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu])
 
-        print(np.linalg.norm(data['y_true_float_corrected'][i].flatten()))
-        print(checking_loss[-1])
+        print(loss_totals[-1])
+        print(loss_differences[-1])
         print(Wxx)
         print(Wxxu)
         # print(Wxx + Wxxu)
         print(Wxu)
 
 print('optimization finished.')
-# print(gradient_sum)
-# print(grads_and_vars[0][1])
-# print(grads_and_vars[1][1])
-# print(grads_and_vars[2][1])
-# print(loss_differences)
 
-i = 0
 
-y_predicted_before_training = isess.run(dr.y_predicted,
-                                       feed_dict={
-                                           dr.u_placeholder: data['u'][i],
-                                           dr.x_state_initial: x_connectors[i],
-                                           dr.h_state_initial: h_connectors[i],
-                                           dr.y_true: data['y_true_float_corrected'][i],
-                                           dr.Wxx: du.get('Wxx'),
-                                           dr.Wxxu[0]: du.get('Wxxu')[0],
-                                           dr.Wxu: du.get('Wxu')
-                                       })
 
-y_predicted_after_training = isess.run(dr.y_predicted,
-                                       feed_dict={
-                                           dr.u_placeholder: data['u'][i],
-                                           dr.x_state_initial: x_connectors[i],
-                                           dr.h_state_initial: h_connectors[i],
-                                           dr.y_true: data['y_true_float_corrected'][i],
-                                           dr.Wxx: Wxx,
-                                           dr.Wxxu[0]: Wxxu,
-                                           dr.Wxu: Wxu
-                                       })
+# check gradients
+grad_sum_wxx = sum([val[0][0] for val in gradients])
+grad_sum_wxxu = sum([val[1][0] for val in gradients])
+grad_sum_wxu = sum([val[2][0] for val in gradients])
+print('Wxx')
+print('Wxxu')
+print('Wxu')
 
+
+# visually check y in each segmentation, single node
 i = 0
 plt.close()
-plt.plot(y_before_train[i], '--')
-plt.plot(y_after_train[i], '-.')
-plt.plot(data['y_true_float_corrected'][i], alpha=0.5)
-print(checking_loss[i])
+plt.plot([val[0] for val in y_before_train[i]], '--', label='y_hat_before_training')
+plt.plot([val[0] for val in y_after_train[i]], '-.', label='y_hat_after_training')
+plt.plot([val[0] for val in data['y_true_float_corrected'][i]], alpha=0.5, label='y_true')
+plt.legend(loc=0)
+plt.xlabel('time index')
+plt.ylabel('value')
+print(loss_differences[i])
 i = i + 1
 
-for i in range(len(y_before_train)):
-    delta = np.array(y_before_train[i]) - np.array(y_after_train[i])
-    norm = np.linalg.norm(delta.flatten())
-    print(norm)
-    print(checking_loss[i])
-    print('\n')
 
-'''
-Wxx_hat = Wxx
-Wxxu_hat = Wxxu
-Wxu_hat = Wxu
+# visually check y in each segmentation, three nodes
+i = 0
+plt.close()
+plt.plot(y_before_train[i], '--', label='y_hat_before_training')
+plt.plot(y_after_train[i], '-.', label='y_hat_after_training')
+plt.plot(data['y_true_float_corrected'][i], alpha=0.5, label='y_true')
+plt.legend()
+print(loss_differences[i])
+i = i + 1
 
-du_hat = copy.deepcopy(du)
-du_hat._secured_data['Wxx'] = Wxx_hat
-du_hat._secured_data['Wxxu'] = [Wxxu_hat]
-du_hat._secured_data['Wxu'] = Wxu_hat
-parameter_package = du_hat.collect_parameter_for_x_scan()
-du_hat._secured_data['x'] = du_hat.scan_x(parameter_package)
-parameter_package = du_hat.collect_parameter_for_h_scan()
-du_hat._secured_data['h'] = du_hat.scan_h(parameter_package)
-parameter_package = du_hat.collect_parameter_for_y_scan()
-du_hat._secured_data['y'] = du_hat.scan_y(parameter_package)
 
-signal_length = tb.merge(data['u'], N_RECURRENT_STEP, DATA_SHIFT).shape[0]
-index_range = list(range(signal_length))
-plt.plot(du.get('y')[index_range])
-plt.plot(du_hat.get('y')[index_range], '--')
-# plt.plot(tb.merge(data['y_true_float_corrected'], N_RECURRENT_STEP, DATA_SHIFT)[index_range], '*', alpha=0.7)
-print('mse x_hat vs x_true:' + str(tb.mse(du.get('y')[index_range], du_hat.get('y')[index_range])))
+# check loss
+df = pd.DataFrame()
+df['loss_total'] = loss_totals
+df['loss_delta'] = loss_differences
+df['improvement_persentage'] = df['loss_delta'] / df['loss_total']
+x_axis = range(len(df))
+plt.bar(x_axis, df['loss_total'], label='loss_total')
+plt.bar(x_axis, df['loss_delta'], label='loss_detal', color='green')
+plt.legend()
+# filename = '/Users/yuanwang/Desktop/DCM_RNN_progress/BP.csv'
+# df.to_csv(filename)
 
-'''
+
+print(du.get('Wxx'))
+print(du.get('Wxxu'))
+print(du.get('Wxu'))
+
+plt.hist(step_sizes, bins=128)
