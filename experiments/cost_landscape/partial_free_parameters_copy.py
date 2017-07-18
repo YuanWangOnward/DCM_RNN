@@ -52,7 +52,7 @@ def run1(configure):
     plt.xlabel(x_label)
     plt.ylabel('mse')
 
-    # store data
+    # store SPM_data
     stored_data = {}
     du.refresh_data()
     stored_data['du'] = du
@@ -117,7 +117,7 @@ def run2(configure):
     plt.plot(annotate_xy[0], annotate_xy[1], 'bo')
     plt.xlabel(x_label)
     plt.ylabel(y_label)
-    # store data
+    # store SPM_data
     stored_data = {}
     du.refresh_data()
     stored_data['du'] = du
@@ -166,7 +166,7 @@ def run_n(configure):
         metric[value] = tb.mse(du.get('y'), y_true)
     du.refresh_data()
 
-    # store data
+    # store SPM_data
     stored_data = {}
     du.refresh_data()
     stored_data['du'] = du
@@ -199,7 +199,7 @@ if __name__ == '__main__':
         if VERBOSE:
             print("Input directory: " + INPUT_DIR)
     else:
-        raise ValueError("Please specify the input directory which contains input data.")
+        raise ValueError("Please specify the input directory which contains input SPM_data.")
     if args.output:
         OUTPUT_DIR = args.output
         if VERBOSE:

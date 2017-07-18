@@ -8,7 +8,7 @@ mean = np.array([0.0, 0.0, 0.0])
 cov = np.array([[1.0, -0.5, 0.8], [-0.5, 1.1, 0.0], [0.8, 0.0, 1.0]])
 data = np.random.multivariate_normal(mean, cov, 50)
 
-# regular grid covering the domain of the data
+# regular grid covering the domain of the SPM_data
 X, Y = np.meshgrid(np.arange(-3.0, 3.0, 0.5), np.arange(-3.0, 3.0, 0.5))
 XX = X.flatten()
 YY = Y.flatten()

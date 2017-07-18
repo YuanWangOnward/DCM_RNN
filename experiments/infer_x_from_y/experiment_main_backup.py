@@ -55,7 +55,7 @@ def prepare_data(max_segments=None, node_index=None):
     else:
         NOISE = np.zeros(du.get('y').shape)
 
-    ## saved line. SEQUENCE_LENGTH = dr.n_recurrent_step + (len(data['x_true']) - 1) * dr.shift_data
+    ## saved line. SEQUENCE_LENGTH = dr.n_recurrent_step + (len(SPM_data['x_true']) - 1) * dr.shift_data
     data['y_train'] = tb.split(du.get('y') + NOISE, dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)
     max_segments_natural = len(data['y_train'])
     data['y_true'] = tb.split(du.get('y'), dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)[:max_segments_natural]
@@ -65,7 +65,7 @@ def prepare_data(max_segments=None, node_index=None):
 
     if max_segments is not None:
         if max_segments > max_segments_natural:
-            warnings.warn("max_segments is larger than the length of available data", UserWarning)
+            warnings.warn("max_segments is larger than the length of available SPM_data", UserWarning)
         else:
             data['u'] = data['u'][:max_segments]
             data['x_true'] = data['x_true'][:max_segments]
@@ -80,7 +80,7 @@ def prepare_data(max_segments=None, node_index=None):
         data['y_train'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_train']]
         H_STATE_INITIAL = H_STATE_INITIAL[node_index].reshape(1, 4)
 
-    # collect merged data (without split and merge, it can be tricky to cut proper part from du)
+    # collect merged SPM_data (without split and merge, it can be tricky to cut proper part from du)
     data['u_merged'] = tb.merge(data['u'], dr.n_recurrent_step, dr.shift_data)
     data['x_true_merged'] = tb.merge(data['x_true'], dr.n_recurrent_step, dr.shift_data)
     # x_hat is with extra wrapper for easy modification with a single index
@@ -133,7 +133,7 @@ def calculate_log_data():
         dr.run_initializer_graph(isess, H_STATE_INITIAL, data['x_hat'])
 
     # collect results
-    # segmented data
+    # segmented SPM_data
     data['x_hat'] = data['x_hat']
     data['x_true'] = data['x_true']
 
@@ -146,7 +146,7 @@ def calculate_log_data():
     data['y_hat_x_true'] = data['y_hat_x_true']
     data['y_hat'] = y_hat_log
 
-    # merged data
+    # merged SPM_data
     data['x_true_merged'] = data['x_true_merged']
     data['x_hat_merged'] = data['x_hat_merged']
 
@@ -215,7 +215,7 @@ def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
     plt.subplot(2, 2, 4)
     plt.plot(data['loss_x'], '--', label='x loss')
     plt.plot(data['loss_y'], '-.', label='y loss')
-    # plt.plot(data['loss_smooth'], label='smooth loss')
+    # plt.plot(SPM_data['loss_smooth'], label='smooth loss')
     plt.plot(data['loss_total'], label='total loss')
     plt.xlabel('check point index')
     plt.ylabel('value')
@@ -279,14 +279,14 @@ SMOOTH_WEIGHT = 0.2
 N_RECURRENT_STEP = 64
 MAX_EPOCHS = 4
 MAX_EPOCHS_INNER = 4
-N_SEGMENTS = 128  # total amount of data segments
+N_SEGMENTS = 128  # total amount of SPM_data segments
 # CHECK_STEPS = 4
 CHECK_STEPS = N_SEGMENTS * MAX_EPOCHS_INNER
 LEARNING_RATE = 128 / N_RECURRENT_STEP
 DATA_SHIFT = 4
 LOG_EXTRA_PREFIX = ''
 
-# load in data
+# load in SPM_data
 current_dir = os.getcwd()
 print('working directory is ' + current_dir)
 if current_dir.split('/')[-1] == "dcm_rnn":
@@ -302,7 +302,7 @@ else:
     # on HPC
     data_path = "/home/yw1225/projects/DCM_RNN/dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)
-print('Loading data done.')
+print('Loading SPM_data done.')
 
 # build model
 dr = tfm.DcmRnn()
@@ -329,7 +329,7 @@ else:
 dr.build_an_initializer_graph(hemodynamic_parameter_initial=H_PARA_INITIAL)
 print('Building tf model done.')
 
-# prepare data
+# prepare SPM_data
 data = {}
 isess = tf.InteractiveSession()     # for calculate loss during training
 if IF_NODE_MODE:
@@ -355,7 +355,7 @@ with tf.Session() as sess:
         for i_segment in range(N_SEGMENTS):
 
             for epoch_inner in range(MAX_EPOCHS_INNER):
-                # assign proper data
+                # assign proper SPM_data
                 if IF_NODE_MODE is True:
                     sess.run([tf.assign(dr.x_state_stacked,
                                         data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)),
@@ -392,13 +392,13 @@ with tf.Session() as sess:
 
                     '''
                     # check stop criterion
-                    relative_change = tb.rmse(x_hat_previous, data['x_hat_merged'].get())
+                    relative_change = tb.rmse(x_hat_previous, SPM_data['x_hat_merged'].get())
                     if relative_change < dr.stop_threshold:
                         print('Relative change: ' + str(relative_change))
                         print('Stop criterion met, stop training')
                     else:
-                        # x_hat_previous = copy.deepcopy(data['x_hat_merged'])
-                        x_hat_previous = data['x_hat_merged'].get().copy()
+                        # x_hat_previous = copy.deepcopy(SPM_data['x_hat_merged'])
+                        x_hat_previous = SPM_data['x_hat_merged'].get().copy()
                     '''
 
             # prepare for next segment

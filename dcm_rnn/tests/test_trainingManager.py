@@ -9,7 +9,7 @@ class TestTrainingManager(TestCase):
         self.tm = training_manager.TrainingManager()
         self.tm.N_PACKAGES = 1
         self.PROJECT_DIR = tb.setup_module()
-        # load in data
+        # load in SPM_data
         data_path = self.PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
         self.du = tb.load_template(data_path)
         self.dr = tfm.DcmRnn()

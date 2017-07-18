@@ -8,7 +8,7 @@ def train(self, dr, data_package):
     data['loss_smooth'] = []
     data['loss_total'] = []
     x_hat_previous = data['x_hat_merged'].data.copy()  # for stop criterion checking
-    isess = tf.Session()  # used for calculate log data
+    isess = tf.Session()  # used for calculate log SPM_data
     data['total_iteration_count'] = 0
 
     with tf.Session() as sess:
@@ -23,7 +23,7 @@ def train(self, dr, data_package):
             for i_segment in range(dp.N_SEGMENTS):
 
                 for epoch_inner in range(dp.MAX_EPOCHS_INNER):
-                    # assign proper data
+                    # assign proper SPM_data
                     if dp.IF_NODE_MODE is True:
                         sess.run([tf.assign(dr.x_state_stacked,
                                             data['x_hat_merged'].get(i_segment).reshape(dr.n_recurrent_step, 1)),
@@ -52,9 +52,9 @@ def train(self, dr, data_package):
 
                         '''
                         print("Total iteration:", '%04d' % count_total, "loss_y=",
-                              "{:.9f}".format(data['loss_y'][-1]))
+                              "{:.9f}".format(SPM_data['loss_y'][-1]))
                         print("Total iteration:", '%04d' % count_total, "loss_x=",
-                              "{:.9f}".format(data['loss_x'][-1]))
+                              "{:.9f}".format(SPM_data['loss_x'][-1]))
 
                         if IF_IMAGE_LOG:
                             add_image_log(extra_prefix=LOG_EXTRA_PREFIX)
@@ -64,13 +64,13 @@ def train(self, dr, data_package):
                         '''
                         '''
                         # check stop criterion
-                        relative_change = tb.rmse(x_hat_previous, data['x_hat_merged'].get())
+                        relative_change = tb.rmse(x_hat_previous, SPM_data['x_hat_merged'].get())
                         if relative_change < dr.stop_threshold:
                             print('Relative change: ' + str(relative_change))
                             print('Stop criterion met, stop training')
                         else:
-                            # x_hat_previous = copy.deepcopy(data['x_hat_merged'])
-                            x_hat_previous = data['x_hat_merged'].get().copy()
+                            # x_hat_previous = copy.deepcopy(SPM_data['x_hat_merged'])
+                            x_hat_previous = SPM_data['x_hat_merged'].get().copy()
                         '''
 
                 # prepare for next segment
@@ -84,6 +84,6 @@ def train(self, dr, data_package):
 
     print("Optimization Finished!")
 
-    # data['y_hat_log'] = y_hat_log
+    # SPM_data['y_hat_log'] = y_hat_log
 
     return data_package

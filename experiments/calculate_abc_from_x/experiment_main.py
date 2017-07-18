@@ -53,7 +53,7 @@ def reproduce_x(w_hat, w_true):
     return [x_hat, x_true]
 
 
-# load in data
+# load in SPM_data
 print('working directory is ' + os.getcwd())
 data_path = os.path.join(PROJECT_DIR, 'experiments', 'calculate_abc_from_x', 'data_ideal.pkl')
 data_package = tb.load_template(data_path)
@@ -93,7 +93,7 @@ plt.plot(du.get('x')[index_range])
 # solve_for_effective_connection(x, u, prior=None):
 # Y = W*X
 # T^T = X^T * W^T
-# x = data['x_hat_merged'].data[index_range]
+# x = SPM_data['x_hat_merged'].SPM_data[index_range]
 x = data['x_true_merged'][index_range]
 u = data['u_merged'][index_range]
 prior = None
@@ -201,7 +201,7 @@ prior_true = {'Wxxu': [Wxxu], 'Wxu': np.array([0.025, 0, 0]).reshape(3, 1)}
 w_hat = tb.solve_for_effective_connection(
     data['x_hat_merged'].data[index_range], data['u_merged'][index_range], prior_hat)
 # w_hat = tb.solve_for_effective_connection(
-#     data['x_true_merged'][index_range], data['u_merged'][index_range], prior_hat)
+#     SPM_data['x_true_merged'][index_range], SPM_data['u_merged'][index_range], prior_hat)
 w_true = tb.solve_for_effective_connection(
     data['x_true_merged'][index_range], data['u_merged'][index_range], prior_true)
 reproduce_x(w_hat, w_true, False)

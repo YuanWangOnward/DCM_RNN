@@ -64,7 +64,7 @@ def take_value(array, rc_locations):
 
 def split(data, n_segment, n_step=None, shift=0, split_dimension=0):
     """
-    Split a large array data into list of segments with step size n_step, ignoring the beginning shift points
+    Split a large array SPM_data into list of segments with step size n_step, ignoring the beginning shift points
     :param data:
     :param n_segment:
     :param n_step:
@@ -1294,8 +1294,8 @@ class ParameterGraph:
 
     def get_all_para_names(self):
         """
-        Get all parameter names in r DataUnit.
-        :return: r list of parameter names, sorted by parameter level
+        Get all parameter node_names in r DataUnit.
+        :return: r list of parameter node_names, sorted by parameter level
         """
         para_level = self.get_para_level_mapping()
         return sorted(para_level.keys(), key=lambda key: para_level[key])

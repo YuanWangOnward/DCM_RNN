@@ -47,9 +47,9 @@ def reproduce_x(w_hat, w_true, if_plot=True):
 
     return [x_hat, x_true]
 
-# load in data
+# load in SPM_data
 print('working directory is ' + os.getcwd())
-data_path = os.path.join(PROJECT_DIR, 'experiments', 'calculate_abc_from_x', 'data.pkl')
+data_path = os.path.join(PROJECT_DIR, 'experiments', 'calculate_abc_from_x', 'SPM_data.pkl')
 data_package = tb.load_template(data_path)
 data = data_package.data
 # data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
@@ -58,11 +58,11 @@ du = data['key']
 signal_length = data['x_true_merged'].data.shape[0]
 index_range = range(0, int(signal_length * 3 / 4))
 
-# check whether du and data match
+# check whether du and SPM_data match
 np.testing.assert_array_almost_equal(du.get('u')[index_range], data['u_merged'][index_range])
 np.testing.assert_array_almost_equal(du.get('x')[index_range], data['x_true_merged'][index_range])
 
-# short hand for data
+# short hand for SPM_data
 x = data['x_hat_merged'].data[index_range]
 u = data['u_merged'][index_range]
 xu = np.asarray([np.kron(u[i], x[i]) for i in range(len(index_range))])
@@ -127,11 +127,11 @@ print(du.get('Wxx'))
 w_hat = [clf.coef_[:, :3] * w_xx_f, [Wxxu], Wxu]
 w_true = [du.get('Wxx'), du.get('Wxxu'), du.get('Wxu')]
 x_hat_rep, x_true_rep = reproduce_x(w_hat, w_true, if_plot=False)
-plt.plot(data['x_hat_merged'].data[index_range])
+plt.plot(SPM_data['x_hat_merged'].SPM_data[index_range])
 plt.plot(x_hat_rep, '--')
-print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(data['x_hat_merged'].data[index_range], x_hat_rep)))
+print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(SPM_data['x_hat_merged'].SPM_data[index_range], x_hat_rep)))
 
-print('mse x_hat vs x_true:' + str(tb.mse(data['x_true_merged'][index_range], x_hat_rep)))
+print('mse x_hat vs x_true:' + str(tb.mse(SPM_data['x_true_merged'][index_range], x_hat_rep)))
 
 
 
@@ -156,10 +156,10 @@ print(du.get('Wxu'))
 w_hat = [clf.coef_[:, :3] + np.identity(3), [clf.coef_[:, 3:6]], clf.coef_[:, 6].reshape(3, 1)]
 w_true = [du.get('Wxx'), du.get('Wxxu'), du.get('Wxu')]
 x_hat_rep, x_true_rep = reproduce_x(w_hat, w_true, if_plot=False)
-plt.plot(data['x_hat_merged'].data[index_range])
+plt.plot(SPM_data['x_hat_merged'].SPM_data[index_range])
 plt.plot(x_hat_rep, '--')
-print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(data['x_hat_merged'].data[index_range], x_hat_rep)))
-print('mse x_hat vs x_true:' + str(tb.mse(data['x_true_merged'][index_range], x_hat_rep)))
+print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(SPM_data['x_hat_merged'].SPM_data[index_range], x_hat_rep)))
+print('mse x_hat vs x_true:' + str(tb.mse(SPM_data['x_true_merged'][index_range], x_hat_rep)))
 
 """-------------------------------"""
 # fit with varying sparsity penalty
@@ -188,10 +188,10 @@ w_hat = [clf.coef_[:, :3] * w_xx_f + np.identity(3),
          clf.coef_[:, 6].reshape(3, 1) * w_xu_f ]
 w_true = [du.get('Wxx'), du.get('Wxxu'), du.get('Wxu')]
 x_hat_rep, x_true_rep = reproduce_x(w_hat, w_true, if_plot=False)
-plt.plot(data['x_hat_merged'].data[index_range])
+plt.plot(SPM_data['x_hat_merged'].SPM_data[index_range])
 plt.plot(x_hat_rep, '--')
-print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(data['x_hat_merged'].data[index_range], x_hat_rep)))
-print('mse x_hat vs x_true:' + str(tb.mse(data['x_true_merged'][index_range], x_hat_rep)))
+print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(SPM_data['x_hat_merged'].SPM_data[index_range], x_hat_rep)))
+print('mse x_hat vs x_true:' + str(tb.mse(SPM_data['x_true_merged'][index_range], x_hat_rep)))
 
 '''
 '''
@@ -228,7 +228,7 @@ for xxu in xxu_list:
         w_hat = [clf.coef_[:, :3] * w_xx_f, [Wxxu], Wxu]
         w_true = [du.get('Wxx'), du.get('Wxxu'), du.get('Wxu')]
         x_hat_rep, x_true_rep = reproduce_x(w_hat, w_true, if_plot=False)
-        mse = tb.mse(data['x_hat_merged'].data[index_range], x_hat_rep)
+        mse = tb.mse(SPM_data['x_hat_merged'].SPM_data[index_range], x_hat_rep)
         if mse < result['mse']:
             result['mse'] = mse
             result['xxu'] =xxu
@@ -256,9 +256,9 @@ print(du.get('Wxx'))
 w_hat = [clf.coef_[:, :3] * w_xx_f, [Wxxu], Wxu]
 w_true = [du.get('Wxx'), du.get('Wxxu'), du.get('Wxu')]
 x_hat_rep, x_true_rep = reproduce_x(w_hat, w_true, if_plot=False)
-plt.plot(data['x_hat_merged'].data[index_range])
+plt.plot(SPM_data['x_hat_merged'].SPM_data[index_range])
 plt.plot(x_hat_rep, '--')
-print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(data['x_hat_merged'].data[index_range], x_hat_rep)))
+print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(SPM_data['x_hat_merged'].SPM_data[index_range], x_hat_rep)))
 '''
 
 '''
@@ -284,23 +284,23 @@ print(du.get('Wxx'))
 w_hat = [clf.coef_[:, :3] * w_xx_f, [Wxxu], Wxu]
 w_true = [du.get('Wxx'), du.get('Wxxu'), du.get('Wxu')]
 x_hat_rep, x_true_rep = reproduce_x(w_hat, w_true, if_plot=False)
-plt.plot(data['x_hat_merged'].data[index_range])
+plt.plot(SPM_data['x_hat_merged'].SPM_data[index_range])
 plt.plot(x_hat_rep, '--')
-print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(data['x_hat_merged'].data[index_range], x_hat_rep)))
+print('mse x_hat vs x_hat_reproduced:' + str(tb.mse(SPM_data['x_hat_merged'].SPM_data[index_range], x_hat_rep)))
 
 
 
 
 
 
-print('mse x_hat vs x_true:' + str(tb.mse(data['x_true_merged'][index_range], x_hat_rep)))
+print('mse x_hat vs x_true:' + str(tb.mse(SPM_data['x_true_merged'][index_range], x_hat_rep)))
 
 
 
 
 """ -------------------"""
 
-# create data
+# create SPM_data
 X = np.random.rand(128, 4)
 W_true = np.random.rand(4, 2)
 W_true[W_true < 0.5] = 0

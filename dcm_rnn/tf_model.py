@@ -5,7 +5,7 @@ from toolboxes import Initialization
 import toolboxes as tb
 import warnings
 import pandas as pd
-
+from collections import Iterable
 
 # import pandas as pd
 # from IPython.display import display
@@ -126,7 +126,7 @@ class DcmRnn(Initialization):
         self.Wxx_init = np.array(self.A, dtype=np.float32) * self.t_delta + \
                         np.eye(self.n_region, self.n_region, 0, dtype=np.float32)
         self.Wxxu_init = [np.array(m, dtype=np.float32) * self.t_delta for m in self.B]
-        self.Wxu_init = np.array(self.C, dtype=np.float32).reshape(self.n_region, 1) * self.t_delta
+        self.Wxu_init = np.array(self.C, dtype=np.float32).reshape(self.n_region, self.n_stimuli) * self.t_delta
 
         with tf.variable_scope(self.variable_scope_name_x_parameter):
             self.Wxx = tf.get_variable(
@@ -152,7 +152,7 @@ class DcmRnn(Initialization):
                 for para in initial_values.columns:
                     temp = tf.get_variable(para + '_r' + str(idx_r),
                                            dtype=tf.float32,
-                                           initializer=initial_values[para][region_label],
+                                           initializer=np.array(initial_values[para][region_label], dtype=np.float32),
                                            trainable=self.trainable_flags[para])
                     temp_list.append(temp)
                 temp_tensor = tf.stack(temp_list, 0)
@@ -587,7 +587,7 @@ class DcmRnn(Initialization):
         # output layer
         self.add_output_layer(self.h_predicted)
 
-        # define loss
+        # define loss and optimizer
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.n_recurrent_step, self.n_region], name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
             self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
@@ -598,17 +598,14 @@ class DcmRnn(Initialization):
                                              self.loss_weighting['prior'] * self.loss_prior],
                                             name='loss_total')
         if self.if_add_optimiser:
-            # define optimiser
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
             # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
 
 
             self.opt = tf.train.GradientDescentOptimizer(self.learning_rate)
             self.grads_and_vars = self.opt.compute_gradients(self.loss_total, tf.trainable_variables())
-            self.capped_grads_and_vars = self.grads_and_vars
-                #[(MyCapper(gv[0]), gv[1]) for gv in grads_and_vars]
-            self.opt.apply_gradients(self.capped_grads_and_vars)
-
+            self.processed_grads_and_vars = self.grads_and_vars
+            self.opt.apply_gradients(self.processed_grads_and_vars)
 
             # self.train = tf.train.AdagradOptimizer(self.learning_rate).minimize(self.loss_total)
 
@@ -619,6 +616,39 @@ class DcmRnn(Initialization):
             self.variable_summaries(self.loss_total)
             self.merged_summary = tf.summary.merge_all()
             self.summary_writer = tf.summary.FileWriter(self.log_directory, tf.get_default_graph())
+
+    def setup_support_mask(self, masks):
+        """
+        Set up support mask for the trainable variable in the computation graph.
+        If a value in any variable is not supported, it's not updated in the back propagation process.
+        It's a trainable flag for withn each variable than tf trainable flag which is for each variable globally.
+        :param masks:
+        :return:
+        """
+        # support mask should be written in variable name in the graph
+        # assume variables are all fully supported
+        self.support_in_graph = {v.name: np.ones([int(d) for d in v.get_shape()]) for v in tf.trainable_variables()}
+
+        # merge input masks info
+        for key, val in masks.items():
+            if key in [v.name for v in tf.trainable_variables()]:
+                self.support_in_graph[key] = val
+            elif getattr(self, key).name in [v.name for v in tf.trainable_variables()]:
+                self.support_in_graph[getattr(self, key).name] = val
+            else:
+                raise KeyError(str(key) + ' is not a proper key')
+        return self.support_in_graph
+
+    def update_variables_in_graph(self, sess, variable_names, variable_values):
+        if isinstance(variable_names, str):
+            sess.run(tf.assign(variable_names, variable_values))
+        elif isinstance(variable_names, Iterable):
+            assert len(variable_names) == len(variable_values)
+            assign_ops = []
+            for key, val in zip(variable_names, variable_values):
+                assign_ops.append(tf.assign(key, val))
+            sess.run(assign_ops)
+
 
     def add_loss_sparsity(self, loss_weighting=None):
         if loss_weighting == None:

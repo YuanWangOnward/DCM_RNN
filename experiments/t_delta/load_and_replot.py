@@ -18,7 +18,7 @@ if __name__ == '__main__':
         INPUT_DIR = args.input
         print("Input directory is " + INPUT_DIR)
     else:
-        raise ValueError("Please specify the input directory which contains data bases.")
+        raise ValueError("Please specify the input directory which contains SPM_data bases.")
     if args.output:
         OUTPUT_DIR = args.output
         print("Output directory is " + OUTPUT_DIR)
@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     database_files = os.listdir(INPUT_DIR)
     database_files = [os.path.join(INPUT_DIR, file) for file in database_files if file.endswith(".pkl")]
-    print("There are " + str(len(database_files)) + " data files found.")
+    print("There are " + str(len(database_files)) + " SPM_data files found.")
 
     rMSEs = []
     for file in database_files:
