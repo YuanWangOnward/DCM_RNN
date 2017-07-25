@@ -1,4 +1,3 @@
-# add mask to gradient
 import sys
 
 # global setting, you need to modify it accordingly
@@ -70,8 +69,8 @@ def regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters):
     del du_hat._secured_data['h']
     del du_hat._secured_data['y']
 
-    du_hat.complete_data_unit(start_categorty=1, if_check_property=False, if_show_message=True)
-    return du_hat._secured_data['y']
+    du_hat.complete_data_unit(start_categorty=1, if_check_property=False, if_show_message=False)
+    return du_hat
 
 
 def apply_and_check(isess, grads_and_vars, step_size, u, x_connector, h_connector, y_true):
@@ -156,12 +155,17 @@ dr.trainable_variables_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINA
 # y_hat are re-generated after each global updating
 # gradients of each segments are calculated all according to this y_hat
 # namely, Wxx, Wxxu, and Wxu are not updated in each segment
-Wxx = np.identity(3) * (1 - 1.6 * du.get('t_delta'))
+Wxx = np.identity(3) * (1 - 1. * du.get('t_delta'))
 Wxxu = np.zeros((3, 3))
 Wxu = np.array([0., 0., 0.]).reshape(3, 1)
+h_parameters = dr.get_standard_hemodynamic_parameters(dr.n_region)
 
-# y_regenerated = regenerate_data(du, Wxx, Wxxu, Wxu)
+du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, np.array(h_parameters))
 
+data_hat ={
+    'x_initial': tb.split(du_hat.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
+    'h_initial': tb.split(du_hat.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
+}
 data = {
     'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
     'x_initial': tb.split(du.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
@@ -185,8 +189,8 @@ N_TEST_SAMPLE = min(N_SEGMENTS, len(data['y_true_float_corrected']))
 isess = tf.InteractiveSession()
 
 isess.run(tf.global_variables_initializer())
-
 dr.update_variables_in_graph(isess, dr.x_parameter_nodes, [Wxx, Wxxu, Wxu])
+
 
 loss_differences = []
 loss_totals = []
@@ -209,8 +213,10 @@ for epoch in range(MAX_EPOCHS):
                        dr.loss_prediction, dr.loss_total, dr.y_predicted],
                       feed_dict={
                           dr.u_placeholder: data['u'][i],
-                          dr.x_state_initial: x_connector_current,
-                          dr.h_state_initial: h_connector_current,
+                          # dr.x_state_initial: x_connector_current,
+                          # dr.h_state_initial: h_connector_current,
+                          dr.x_state_initial: data_hat['x_initial'][i][0, :],
+                          dr.h_state_initial: data_hat['h_initial'][i][0, :, :],
                           dr.y_true: data['y_true_float_corrected'][i]
                       })
 
@@ -225,14 +231,15 @@ for epoch in range(MAX_EPOCHS):
         loss_totals.append(loss_total)
 
         # prepare for next segment
-        x_connector_current = x_connector
-        h_connector_current = h_connector
+        # x_connector_current = x_connector
+        # h_connector_current = h_connector
     print('.')
 
     # updating with back-tracking
     ## collect statistics before updating
     Wxx, Wxxu, Wxu, h_parameters = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameters])
-    y_hat_original = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
+    du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
+    y_hat_original = du_hat.get('y')
     loss_prediction_original = tb.mse(y_hat_original, du.get('y'))
 
     ## sum gradients
@@ -243,10 +250,16 @@ for epoch in range(MAX_EPOCHS):
 
     step_size = STEP_SIZE
     count = 0
-    loss_prediction = float('inf')
 
     dr.update_variables_in_graph(isess, dr.trainable_variables_nodes,
                                  [-val[0] * step_size + val[1] for val in grads_and_vars])
+    Wxx, Wxxu, Wxu, h_parameters = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameters])
+    try:
+        du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
+        y_hat = du_hat.get('y')
+        loss_prediction = tb.mse(y_hat, du.get('y'))
+    except:
+        loss_prediction = float('inf')
 
     Wxx = isess.run(dr.Wxx)
     stable_flag = check_transition_matrix(Wxx)
@@ -268,19 +281,28 @@ for epoch in range(MAX_EPOCHS):
         else:
             step_size = step_size / 2
         print('step_size=' + str(step_size))
-        dr.update_variables_in_graph(isess, dr.trainable_variables_nodes,
-                                     [-val[0] * step_size + val[1] for val in grads_and_vars])
-        Wxx, Wxxu, Wxu, h_parameters = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameters])
-        y_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
-        loss_prediction = tb.mse(y_hat, du.get('y'))
+        try:
+            dr.update_variables_in_graph(isess, dr.trainable_variables_nodes,
+                                         [-val[0] * step_size + val[1] for val in grads_and_vars])
+            Wxx, Wxxu, Wxu, h_parameters = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameters])
+            du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
+            y_hat = du_hat.get('y')
+            loss_prediction = tb.mse(y_hat, du.get('y'))
+        except:
+            pass
         if step_size == 0.0:
             break
 
     loss_differences.append(loss_prediction_original - loss_prediction)
     step_sizes.append(step_size)
 
+    # regenerate connector data
+    data_hat['x_initial'] = tb.split(du_hat.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0)
+    data_hat['h_initial'] = tb.split(du_hat.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1)
+
 
     print(step_size)
+    print(loss_prediction_original)
     print(loss_differences[-1])
     print(Wxx)
     print(Wxxu)
@@ -289,58 +311,6 @@ for epoch in range(MAX_EPOCHS):
 
 print('optimization finished.')
 
-i = 2
+i = 0
 plt.plot(y_hat[:, i], '--')
 plt.plot(du.get('y')[:, i])
-
-# check gradients
-grad_sum_wxx = sum([val[0][0] for val in gradients])
-grad_sum_wxxu = sum([val[1][0] for val in gradients])
-grad_sum_wxu = sum([val[2][0] for val in gradients])
-print('Wxx')
-print('Wxxu')
-print('Wxu')
-
-
-# visually check y in each segmentation, single node
-i = 0
-plt.close()
-plt.plot([val[0] for val in y_before_train[i]], '--', label='y_hat_before_training')
-plt.plot([val[0] for val in y_after_train[i]], '-.', label='y_hat_after_training')
-plt.plot([val[0] for val in data['y_true_float_corrected'][i]], alpha=0.5, label='y_true')
-plt.legend(loc=0)
-plt.xlabel('time index')
-plt.ylabel('value')
-print(loss_differences[i])
-i = i + 1
-
-
-# visually check y in each segmentation, three nodes
-i = 0
-plt.close()
-plt.plot(y_before_train[i], '--', label='y_hat_before_training')
-plt.plot(y_after_train[i], '-.', label='y_hat_after_training')
-plt.plot(data['y_true_float_corrected'][i], alpha=0.5, label='y_true')
-plt.legend()
-print(loss_differences[i])
-i = i + 1
-
-
-# check loss
-df = pd.DataFrame()
-df['loss_total'] = loss_totals
-df['loss_delta'] = loss_differences
-df['improvement_persentage'] = df['loss_delta'] / df['loss_total']
-x_axis = range(len(df))
-plt.bar(x_axis, df['loss_total'], label='loss_total')
-plt.bar(x_axis, df['loss_delta'], label='loss_detal', color='green')
-plt.legend()
-# filename = '/Users/yuanwang/Desktop/DCM_RNN_progress/BP.csv'
-# df.to_csv(filename)
-
-
-print(du.get('Wxx'))
-print(du.get('Wxxu'))
-print(du.get('Wxu'))
-
-plt.hist(step_sizes, bins=128)

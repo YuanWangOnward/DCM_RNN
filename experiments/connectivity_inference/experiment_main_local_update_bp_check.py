@@ -14,6 +14,7 @@ elif '/share/apps/python3/' in sys.executable:
     print("It seems a remote run on NYU HPC")
     print("PROJECT_DIR is set as: " + PROJECT_DIR)
     import matplotlib
+
     matplotlib.use('agg')
 else:
     PROJECT_DIR = '.'
@@ -38,55 +39,32 @@ from multiprocessing.pool import Pool
 import itertools
 import copy
 import pandas as pd
-from scipy.interpolate import interp1d
-import importlib
 
-
-DATA_DIR = os.path.join(PROJECT_DIR, 'dcm_rnn', 'resources', 'SPM_data_attention.pkl')
-
-MAX_EPOCHS = 1
+MAX_EPOCHS = 16
 CHECK_STEPS = 1
-N_SEGMENTS = 600
-N_RECURRENT_STEP = 4
-STEP_SIZE = 1e-5
-# STEP_SIZE = 0.001  # 128
+N_SEGMENTS = 128
+N_RECURRENT_STEP = 128
+# STEP_SIZE = 0.002 # for 32
+# STEP_SIZE = 0.5
+# STEP_SIZE = 0.001 # for 64
+STEP_SIZE = 0.001 # 128
+# STEP_SIZE = 0.0005 # for 256
 DATA_SHIFT = int(N_RECURRENT_STEP / 4)
-TARGET_TEMPORAL_RESOLUTION = 1. / 16
-
-# load SPM attention SPM_data from resources
-SPM_data = pickle.load(open(DATA_DIR, 'rb'))
-
-# process SPM_data,
-# up sample u and y to 16 frame/second
-# shift y's so that they are around 0 when there is no input
-t_total = SPM_data['TR'] * SPM_data['y'].shape[0]
-t_axis_original = np.linspace(0, t_total, t_total / SPM_data['TR'], endpoint=True)
-t_axis_new = np.linspace(0, t_total, t_total / TARGET_TEMPORAL_RESOLUTION, endpoint=True)
-SPM_data['y_upsampled'] = np.zeros((len(t_axis_new), SPM_data['y'].shape[1]))
-for i in range(SPM_data['y'].shape[1]):
-    interpolate_func = interp1d(t_axis_original, SPM_data['y'][:, i], kind='cubic')
-    SPM_data['y_upsampled'][:, i] = interpolate_func(t_axis_new)
-SPM_data['u_upsampled'] = np.zeros((len(t_axis_new), SPM_data['u'].shape[1]))
-for i in range(SPM_data['u'].shape[1]):
-    interpolate_func = interp1d(t_axis_original, SPM_data['u'][:, i])
-    SPM_data['u_upsampled'][:, i] = interpolate_func(t_axis_new)
-temporal_mask = SPM_data['u_upsampled'][:, 0] < 0.5
-temp = copy.deepcopy(SPM_data['y_upsampled'])
-mean_values = np.mean(temp[temporal_mask, :], axis=0)
-mean_values = np.repeat(mean_values.reshape([1, 3]), SPM_data['y_upsampled'].shape[0], axis=0)
-SPM_data['y_upsampled'] = SPM_data['y_upsampled'] - mean_values
+LEARNING_RATE = 0.01 / N_RECURRENT_STEP
 
 
-# build dcm_rnn model
-importlib.reload(tfm)
-tf.reset_default_graph()
+print(os.getcwd())
+PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
+data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
+du = tb.load_template(data_path)
+
 dr = tfm.DcmRnn()
-dr.n_region = 3
-dr.t_delta = TARGET_TEMPORAL_RESOLUTION
-dr.n_stimuli = 3
+dr.collect_parameters(du)
+dr.learning_rate = LEARNING_RATE
 dr.shift_data = DATA_SHIFT
 dr.n_recurrent_step = N_RECURRENT_STEP
-dr.loss_weighting = {'prediction': 1., 'sparsity': 0.1, 'prior': 0.1, 'Wxx': 1., 'Wxxu': 0., 'Wxu': 0.}
+neural_parameter_initial = {'A': du.get('A'), 'B': du.get('B'), 'C': du.get('C')}
+dr.loss_weighting = {'prediction': 1., 'sparsity': 0.1, 'prior': 0.1, 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
 dr.trainable_flags = {'Wxx': True,
                       'Wxxu': True,
                       'Wxu': True,
@@ -102,40 +80,40 @@ dr.trainable_flags = {'Wxx': True,
                       'theta0': False,
                       'x_h_coupling': False
                       }
-A = np.eye(dr.n_region) * (-0.01)
-B = [np.zeros((dr.n_region, dr.n_region))] * dr.n_region
-C = np.zeros((dr.n_region, dr.n_stimuli))
-C[0, 0] = 0
-neural_parameter_initial = {'A': A, 'B': B, 'C': C}
-hemodynamic_parameter_initial = dr.get_standard_hemodynamic_parameters(dr.n_region).astype(np.float32)
-hemodynamic_parameter_initial['x_h_coupling'] = 1.
-dr.build_main_graph(neural_parameter_initial=neural_parameter_initial,
-                    hemodynamic_parameter_initial=hemodynamic_parameter_initial)
+dr.build_main_graph(neural_parameter_initial=neural_parameter_initial)
 
 # process after building the main graph
 mask = {dr.Wxx.name: np.ones((dr.n_region, dr.n_region)),
         dr.Wxxu[0].name: np.zeros((dr.n_region, dr.n_region)),
-        dr.Wxxu[1].name: np.zeros((dr.n_region, dr.n_region)),
-        dr.Wxxu[2].name: np.zeros((dr.n_region, dr.n_region)),
-        dr.Wxu.name: np.zeros((dr.n_region, dr.n_stimuli)).reshape(dr.n_region, dr.n_stimuli)}
-mask[dr.Wxx.name][0, 2] = 0
-mask[dr.Wxx.name][2, 0] = 0
-mask[dr.Wxxu[1].name][1, 0] = 1
-mask[dr.Wxxu[2].name][0, 1] = 1
-mask[dr.Wxu.name][0, 0] = 1
+        dr.Wxu.name: np.zeros(dr.n_region).reshape(3, 1)}
+mask[dr.Wxxu[0].name][2, 2] = 1
+mask[dr.Wxu.name][0] = 1
 dr.support_masks = dr.setup_support_mask(mask)
 dr.x_parameter_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                                     scope=dr.variable_scope_name_x_parameter)]
+                    scope=dr.variable_scope_name_x_parameter)]
 dr.trainable_variables_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 
-# prepare SPM_data for training
+
 data = {
-    'u': tb.split(SPM_data['u_upsampled'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
-    'y': tb.split(SPM_data['y_upsampled'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y),
-}
+    'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
+    'x_initial': tb.split(du.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
+    'h_initial': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
+    'x_whole': tb.split(du.get('x'), n_segment=dr.n_recurrent_step + dr.shift_u_x, n_step=dr.shift_data, shift=0),
+    'h_whole': tb.split(du.get('h'), n_segment=dr.n_recurrent_step + dr.shift_x_y, n_step=dr.shift_data, shift=1),
+    'h_predicted': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y),
+    'y_true': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y),
+    'y_true_float_corrected': []}
 for k in data.keys():
     data[k] = data[k][: N_SEGMENTS]
-N_TEST_SAMPLE = min(N_SEGMENTS, len(data['y']))
+
+for i in range(len(data['y_true'])):
+    parameter_package = du.collect_parameter_for_y_scan()
+    parameter_package['h'] = data['h_predicted'][i].astype(np.float32)
+    data['y_true_float_corrected'].append(du.scan_y(parameter_package))
+
+N_TEST_SAMPLE = min(N_SEGMENTS, len(data['y_true_float_corrected']))
+
+isess = tf.InteractiveSession()
 
 
 def apply_and_check(isess, grads_and_vars, step_size, u, x_connector, h_connector, y_true):
@@ -152,6 +130,7 @@ def apply_and_check(isess, grads_and_vars, step_size, u, x_connector, h_connecto
                     })
     return [loss_prediction, x_connector, h_connector]
 
+
 def check_transition_matrix(Wxx):
     w, v = np.linalg.eig(Wxx)
     if max(w.real) < 1:
@@ -159,10 +138,23 @@ def check_transition_matrix(Wxx):
     else:
         return False
 
-isess = tf.InteractiveSession(config=tf.ConfigProto(intra_op_parallelism_threads=4))
+
 isess.run(tf.global_variables_initializer())
 
-# isess.run(tf.assign(dr.Wxx, np.zeros((dr.n_region, dr.n_region))))
+
+'''
+Wxx = np.array([[0.9576, 0.0069, -0.0097],
+                [0.0496, 0.9375, 0.0252],
+                [0.0182, 0.0415, 0.9458], ])
+Wxxu = np.zeros((3, 3))
+Wxxu[2, 2] = -0.0112
+Wxu = np.array([0.0341, 0, 0]).reshape(3, 1)
+'''
+Wxx = np.identity(3) * (1 - 1.6 * du.get('t_delta'))
+Wxxu = np.zeros((3, 3))
+Wxu = np.array([0., 0., 0.]).reshape(3, 1)
+dr.update_variables_in_graph(isess, dr.x_parameter_nodes, [Wxx, Wxxu, Wxu])
+
 
 loss_differences = []
 loss_totals = []
@@ -175,7 +167,7 @@ step_sizes = []
 for epoch in range(MAX_EPOCHS):
     x_connector_current = dr.set_initial_neural_state_as_zeros(dr.n_region)
     h_connector_current = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region)
-    for i in range(len(data['y'])):
+    for i in range(len(data['y_true_float_corrected'])):
         print('current processing ' + str(i))
 
         grads_and_vars, x_connector, h_connector, loss_prediction, loss_total, y_predicted_before_training = \
@@ -185,7 +177,7 @@ for epoch in range(MAX_EPOCHS):
                           dr.u_placeholder: data['u'][i],
                           dr.x_state_initial: x_connector_current,
                           dr.h_state_initial: h_connector_current,
-                          dr.y_true: data['y'][i]
+                          dr.y_true: data['y_true_float_corrected'][i]
                       })
 
         # apply mask to gradients
@@ -208,7 +200,7 @@ for epoch in range(MAX_EPOCHS):
             apply_and_check(isess, grads_and_vars, step_size, data['u'][i],
                             x_connector_current,
                             h_connector_current,
-                            data['y'][i])
+                            data['y_true_float_corrected'][i])
 
         count = 0
         Wxx = isess.run(dr.Wxx)
@@ -234,7 +226,7 @@ for epoch in range(MAX_EPOCHS):
             loss_prediction, x_connector, h_connector = \
                 apply_and_check(isess, grads_and_vars,
                                 step_size, data['u'][i], x_connector_current,
-                                h_connector_current, data['y'][i])
+                                h_connector_current, data['y_true_float_corrected'][i])
             if step_size == 0.0:
                 break
 
@@ -246,15 +238,14 @@ for epoch in range(MAX_EPOCHS):
                                                    dr.u_placeholder: data['u'][i],
                                                    dr.x_state_initial: x_connector_current,
                                                    dr.h_state_initial: h_connector_current,
-                                                   dr.y_true: data['y'][i]
+                                                   dr.y_true: data['y_true_float_corrected'][i]
                                                })
-
         y_after_train.append(y_predicted_after_training)
         step_sizes.append(step_size)
         x_connector_current = x_connector
         h_connector_current = h_connector
         loss_differences.append(loss_prediction_original - loss_prediction)
-        Wxx, Wxxu, Wxu = isess.run([dr.Wxx, dr.Wxxu, dr.Wxu])
+        Wxx, Wxxu, Wxu = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu])
 
         print(loss_totals[-1])
         print(loss_differences[-1])
@@ -266,36 +257,55 @@ for epoch in range(MAX_EPOCHS):
 print('optimization finished.')
 
 
-du_hat = tb.DataUnit()
-du_hat._secured_data['n_node'] = 3
-du_hat._secured_data['n_stimuli'] = 3
-Wxx = np.zeros((dr.n_region, dr.n_region))
-Wxx = np.eye(dr.n_region) * -0.02
-du_hat._secured_data['A'] = (Wxx - np.eye(du_hat.get('n_node'))) / dr.t_delta
-du_hat._secured_data['B'] = [m / dr.t_delta for m in Wxxu]
-Wxu[0, 0] = 0.005
-du_hat._secured_data['C'] = Wxu / dr.t_delta
-du_hat._secured_data['t_delta'] = dr.t_delta
-du_hat._secured_data['u'] = SPM_data['u_upsampled']
-du_hat._secured_data['t_scan'] = len(SPM_data['u_upsampled']) * dr.t_delta
-hemodynamic_parameter = du_hat.get_standard_hemodynamic_parameters(dr.n_region)
-temp = isess.run(dr.h_parameters)
-for c in range(temp.shape[1]):
-    hemodynamic_parameter[hemodynamic_parameter.columns[c]] = temp[:, c]
-du_hat._secured_data['hemodynamic_parameter'] = hemodynamic_parameter
-du_hat._secured_data['initial_x_state'] = du_hat.set_initial_neural_state_as_zeros(dr.n_region)
-du_hat._secured_data['initial_h_state'] = du_hat.set_initial_hemodynamic_state_as_inactivated(dr.n_region)
-du_hat.complete_data_unit(start_categorty=2, if_check_property=False, if_show_message=True)
 
+# check gradients
+grad_sum_wxx = sum([val[0][0] for val in gradients])
+grad_sum_wxxu = sum([val[1][0] for val in gradients])
+grad_sum_wxu = sum([val[2][0] for val in gradients])
+print('Wxx')
+print('Wxxu')
+print('Wxu')
+
+
+# visually check y in each segmentation, single node
 i = 0
-plt.plot(SPM_data['y_upsampled'][:, i]);
-plt.plot(SPM_data['u_upsampled'][:, i], '--');
-plt.plot(du_hat.get('y')[:, i]);
-plt.plot(du_hat.get('x')[:, i], '.-');
+plt.close()
+plt.plot([val[0] for val in y_before_train[i]], '--', label='y_hat_before_training')
+plt.plot([val[0] for val in y_after_train[i]], '-.', label='y_hat_after_training')
+plt.plot([val[0] for val in data['y_true_float_corrected'][i]], alpha=0.5, label='y_true')
+plt.legend(loc=0)
+plt.xlabel('time index')
+plt.ylabel('value')
+print(loss_differences[i])
+i = i + 1
 
-plt.plot(du_hat.get('x')[500:1000, 0]);
-plt.plot(du_hat.get('h')[800:820, 0, :]);
+
+# visually check y in each segmentation, three nodes
+i = 0
+plt.close()
+plt.plot(y_before_train[i], '--', label='y_hat_before_training')
+plt.plot(y_after_train[i], '-.', label='y_hat_after_training')
+plt.plot(data['y_true_float_corrected'][i], alpha=0.5, label='y_true')
+plt.legend()
+print(loss_differences[i])
+i = i + 1
 
 
+# check loss
+df = pd.DataFrame()
+df['loss_total'] = loss_totals
+df['loss_delta'] = loss_differences
+df['improvement_persentage'] = df['loss_delta'] / df['loss_total']
+x_axis = range(len(df))
+plt.bar(x_axis, df['loss_total'], label='loss_total')
+plt.bar(x_axis, df['loss_delta'], label='loss_detal', color='green')
+plt.legend()
+# filename = '/Users/yuanwang/Desktop/DCM_RNN_progress/BP.csv'
+# df.to_csv(filename)
 
 
+print(du.get('Wxx'))
+print(du.get('Wxxu'))
+print(du.get('Wxu'))
+
+plt.hist(step_sizes, bins=128)

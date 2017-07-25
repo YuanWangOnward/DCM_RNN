@@ -291,7 +291,6 @@ print('mse x_hat vs x_true:' + str(tb.mse(x_hat, x_true)))
 plt.show()
 '''
 
-
 du_hat._secured_data['Wxx'] = Wxx
 du_hat._secured_data['Wxxu'] = Wxxu
 du_hat._secured_data['Wxu'] = Wxu
