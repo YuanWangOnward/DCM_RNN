@@ -8,7 +8,7 @@ if '/Users/yuanwang' in sys.executable:
     import matplotlib
 
     sys.path.append('dcm_rnn')
-elif '/share/apps/python3/' in sys.executable:
+elif '/home/yw1225' in sys.executable:
     PROJECT_DIR = '/home/yw1225/projects/DCM_RNN'
     print("It seems a remote run on NYU HPC")
     print("PROJECT_DIR is set as: " + PROJECT_DIR)
@@ -38,6 +38,7 @@ from multiprocessing.pool import Pool
 import itertools
 import copy
 import pandas as pd
+import progressbar
 
 def regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters):
     du_hat = copy.deepcopy(du)
@@ -96,7 +97,7 @@ def check_transition_matrix(Wxx):
         return False
 
 
-MAX_EPOCHS = 8
+MAX_EPOCHS = 120
 CHECK_STEPS = 1
 N_SEGMENTS = 1024
 N_RECURRENT_STEP = 64
@@ -111,11 +112,12 @@ DATA_SHIFT = 1
 LEARNING_RATE = 0.01 / N_RECURRENT_STEP
 
 
-print(os.getcwd())
-PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
+print('current working directory is ' + os.getcwd())
+# PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
 data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)
 
+print('building model')
 dr = tfm.DcmRnn()
 dr.collect_parameters(du)
 dr.learning_rate = LEARNING_RATE
@@ -151,7 +153,6 @@ dr.x_parameter_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARI
                     scope=dr.variable_scope_name_x_parameter)]
 dr.trainable_variables_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 
-
 # y_hat are re-generated after each global updating
 # gradients of each segments are calculated all according to this y_hat
 # namely, Wxx, Wxxu, and Wxu are not updated in each segment
@@ -185,13 +186,14 @@ for i in range(len(data['y_true'])):
 
 N_TEST_SAMPLE = min(N_SEGMENTS, len(data['y_true_float_corrected']))
 
+print('start session')
 # start session
 isess = tf.InteractiveSession()
 
 isess.run(tf.global_variables_initializer())
 dr.update_variables_in_graph(isess, dr.x_parameter_nodes, [Wxx, Wxxu, Wxu])
 
-
+print('start inference')
 loss_differences = []
 loss_totals = []
 y_before_train = []
@@ -204,10 +206,12 @@ for epoch in range(MAX_EPOCHS):
     x_connector_current = dr.set_initial_neural_state_as_zeros(dr.n_region)
     h_connector_current = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region)
     gradients = []
+
+    bar = progressbar.ProgressBar(max_value=N_TEST_SAMPLE)
     for i in range(len(data['y_true_float_corrected'])):
         # print('current processing ' + str(i))
-        print('.', end='')
-
+        # print('.', end='')
+        # bar.update(i)
         grads_and_vars, x_connector, h_connector, loss_prediction, loss_total, y_predicted_before_training = \
             isess.run([dr.grads_and_vars, dr.x_connector, dr.h_connector,
                        dr.loss_prediction, dr.loss_total, dr.y_predicted],
@@ -233,7 +237,6 @@ for epoch in range(MAX_EPOCHS):
         # prepare for next segment
         # x_connector_current = x_connector
         # h_connector_current = h_connector
-    print('.')
 
     # updating with back-tracking
     ## collect statistics before updating
