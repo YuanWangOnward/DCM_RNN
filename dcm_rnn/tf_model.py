@@ -7,6 +7,7 @@ import warnings
 import pandas as pd
 from collections import Iterable
 
+
 # import pandas as pd
 # from IPython.display import display
 
@@ -90,6 +91,8 @@ class DcmRnn(Initialization):
                                 'theta0': False,
                                 'x_h_coupling': False
                                 }
+
+        self.batch_size = 128
 
     def collect_parameters(self, du):
         """
@@ -180,6 +183,30 @@ class DcmRnn(Initialization):
         h_state_augmented.append(tmp)
         return h_state_augmented
 
+    def phi_h_parallel(self, h_state_current, alpha, E0):
+        """
+        Used to map hemodynamic states into higher dimension
+        :param h_state_current: [batch_size, 4]
+        :param alpha:
+        :param E0:
+        :return: [batch_size, 7]
+        """
+        h_state_augmented = []
+        for i in range(4):
+            h_state_augmented.append(h_state_current[:, i])
+
+        h_state_augmented.append(tf.pow(h_state_current[:, 2], tf.div(1., alpha)))
+
+        h_state_augmented.append(tf.multiply(tf.div(h_state_current[:, 3], h_state_current[:, 2]),
+                                             h_state_augmented[4]))
+
+        tmp = tf.subtract(1., tf.pow(tf.subtract(1., E0), tf.div(1., h_state_current[:, 1])))
+        tmp = tf.multiply(tf.div(tmp, E0), h_state_current[:, 1])
+        h_state_augmented.append(tmp)
+
+        h_state_augmented = tf.stack(h_state_augmented, axis=1)
+        return h_state_augmented
+
     def get_h_para_tensor_for_one_region(self, i_region):
         """
         Get hemodynamic parameter tensors for a particular region
@@ -219,6 +246,31 @@ class DcmRnn(Initialization):
         else:
             tmp3 = tf.matmul(Wxu, u_current)
         return tf.squeeze(tmp1 + tmp2 + tmp3)
+
+    def add_one_cell_x_parallel(self, u_current, x_state_previous, x_parameter):
+        """
+        Model the evolving of neural activity x.
+        :param u_current:
+        :param x_state_previous:
+        :return:
+        """
+        n_stimuli = self.n_stimuli
+        Wxx = x_parameter[0]
+        Wxxu = x_parameter[1]
+        Wxu = x_parameter[2]
+
+        temp_x = tf.reshape(tf.transpose(x_state_previous), [self.n_region, -1])
+        temp_u = tf.reshape(tf.transpose(u_current), [self.n_stimuli, -1])
+
+        temp1 = tf.reshape(tf.transpose(tf.matmul(Wxx, temp_x)), [self.batch_size, self.n_region])
+
+        temp2 = [tf.reshape(tf.transpose(tf.matmul(Wxxu[n], temp_u[n, :] * temp_x)),
+                            [self.batch_size, self.n_region]) for n in range(n_stimuli)]
+        temp2 = tf.add_n(temp2)
+
+        temp3 = tf.reshape(tf.transpose(tf.matmul(Wxu, temp_u)), [self.batch_size, self.n_region])
+
+        return temp1 + temp2 + temp3
 
     def add_one_cell_h(self, h_state_current, x_state_current, h_parameter):
         """
@@ -264,6 +316,51 @@ class DcmRnn(Initialization):
         h_state_next = tf.stack(h_state_next, 0)
         return h_state_next
 
+    def add_one_cell_h_parallel(self, h_state_current, x_state_current, h_parameter):
+        """
+        Model the evolving of hemodynamic states {s,f,v,q} for one brain region
+        This is independent for each region
+        Here x_state_current is r scalar for r particular region
+        :param h_state_current: [batch_size, 4]
+        :param x_state_current: [batch_size]
+        :param h_parameter: a dictionary with all hemodynamic parameter
+        :return: [batch_size, 4]
+        """
+        # with tf.variable_scope(self.variable_scope_name_h, reuse=True):
+        alpha = h_parameter["alpha"]
+        k = h_parameter["k"]
+        E0 = h_parameter["E0"]
+        gamma = h_parameter["gamma"]
+        tao = h_parameter["tao"]
+        x_h_coupling = h_parameter["x_h_coupling"]
+        t_delta = self.t_delta
+
+        h_state_augmented = self.phi_h_parallel(h_state_current, alpha, E0)
+        h_state_next = []
+        # s
+        tmp1 = tf.multiply(t_delta, x_h_coupling * x_state_current)
+        tmp2 = tf.multiply(tf.subtract(tf.multiply(t_delta, k), 1.), h_state_augmented[:, 0])
+        tmp3 = tf.multiply(t_delta, tf.multiply(gamma, tf.subtract(h_state_augmented[:, 1], 1.)))
+        tmp = tf.subtract(tmp1, tf.add(tmp2, tmp3))
+        h_state_next.append(tmp)
+        # f
+        tmp = tf.add(h_state_augmented[:, 1], tf.multiply(t_delta, h_state_augmented[:, 0]))
+        h_state_next.append(tmp)
+        # v
+        tmp = t_delta * h_state_augmented[:, 1] / tao \
+              - t_delta / tao * h_state_augmented[:,  4] \
+              + h_state_augmented[:, 2]
+        h_state_next.append(tmp)
+        # q
+        tmp = h_state_augmented[:, 3] \
+              + t_delta / tao * h_state_augmented[:, 6] \
+              - t_delta / tao * h_state_augmented[:, 5]
+        h_state_next.append(tmp)
+        # concantenate into a tensor
+
+        h_state_next = tf.stack(h_state_next, 1)
+        return h_state_next
+
     def add_neural_layer(self, u_extend, x_state_initial=None):
         """
         
@@ -300,6 +397,40 @@ class DcmRnn(Initialization):
             self.x_extended_stacked = tf.stack(self.x_extended, 0, name='x_extended_stacked')
             self.x_predicted_stacked = tf.stack(self.x_predicted, 0, name='x_predicted_stacked')
             self.x_monitor_stacked = tf.stack(self.x_monitor, 0, name='x_monitor_stacked')
+
+    def add_neural_layer_parallel(self, u_extend, x_state_initial=None):
+        """
+        :param u_extend: input stimuli
+        :param x_state_initial:
+        :return:
+        """
+        if x_state_initial is None:
+            x_state_initial = self.x_state_initial
+        n_stimuli = self.n_stimuli
+
+        with tf.variable_scope(self.variable_scope_name_x_parameter, reuse=True):
+            Wxx = tf.get_variable("Wxx")
+            Wxxu = [tf.get_variable("Wxxu_s" + str(n)) for n in range(n_stimuli)]
+            Wxu = tf.get_variable("Wxu")
+        x_parameter = [Wxx, Wxxu, Wxu]
+
+        for i in range(len(u_extend)):
+            with tf.variable_scope(self.variable_scope_name_x):
+                if i == 0:
+                    self.x_whole = [x_state_initial]
+                else:
+                    self.x_whole.append(self.add_one_cell_x_parallel(u_extend[i - 1], self.x_whole[i - 1], x_parameter))
+
+        # label x whole into different parts
+        self.x_extended = self.x_whole[self.shift_u_x: self.shift_u_x + self.n_recurrent_step + self.shift_x_y]
+        self.x_predicted = self.x_whole[self.shift_u_x: self.shift_u_x + self.n_recurrent_step]
+        self.x_monitor = self.x_whole[:self.n_recurrent_step]
+        self.x_connector = self.x_whole[self.shift_data]
+
+        with tf.variable_scope(self.variable_scope_name_x_stacked):
+            self.x_extended_stacked = tf.stack(self.x_extended, 1, name='x_extended_stacked')
+            self.x_predicted_stacked = tf.stack(self.x_predicted, 1, name='x_predicted_stacked')
+            self.x_monitor_stacked = tf.stack(self.x_monitor, 1, name='x_monitor_stacked')
 
     def add_hemodynamic_layer(self, x_extended=None, h_state_initial=None):
         """
@@ -347,6 +478,49 @@ class DcmRnn(Initialization):
             self.h_state_predicted_stacked = tf.stack(self.h_predicted, 0, name='h_predicted_stack')
             self.h_state_monitor_stacked = tf.stack(self.h_monitor, 0, name='h_monitor_stack')
 
+    def add_hemodynamic_layer_parallel(self, x_extended=None, h_state_initial=None):
+        """
+        Conceptually, hemodynamic layer consists of five parts:
+        # format: h_initial_segment[batch_size, 1, region, 4]
+        # format: h_state_predicted_stacked[batch_size, self.n_recurrent_step, region, 4]
+        :param x_extended:
+        :param h_state_initial:
+        :return:
+        """
+        if x_extended is None:
+            x_extended = self.x_extended
+        if h_state_initial is None:
+            h_state_initial = self.h_state_initial
+
+        # calculate a large h layer with extended x state and then slicing to each parts
+        for i in range(0, len(x_extended)):
+            # load in shared parameters
+            with tf.variable_scope(self.variable_scope_name_h_parameter, reuse=True):
+                para_packages = []
+                for i_region in range(self.n_region):
+                    para_packages.append(self.get_h_para_tensor_for_one_region(i_region))
+            # do evolving calculation
+            with tf.variable_scope(self.variable_scope_name_h):
+                if i == 0:
+                    self.h_whole = [h_state_initial]
+                else:
+                    h_temp = []
+                    for i_region in range(self.n_region):
+                        h_temp.append(self.add_one_cell_h_parallel(
+                            self.h_whole[i - 1][:, i_region, :], x_extended[i - 1][:, i_region],
+                            para_packages[i_region]))
+                    self.h_whole.append(tf.stack(h_temp, 1))
+
+        # label h whole into different parts
+        # self.h_prelude = self.h_whole[: self.shift_x_y]
+        self.h_predicted = self.h_whole[self.shift_x_y: self.shift_x_y + self.n_recurrent_step]
+        self.h_monitor = self.h_whole[:self.n_recurrent_step]
+        self.h_connector = self.h_whole[self.shift_data]
+
+        with tf.variable_scope(self.variable_scope_name_h_stacked):
+            self.h_state_predicted_stacked = tf.stack(self.h_predicted, 1, name='h_predicted_stack')
+            self.h_state_monitor_stacked = tf.stack(self.h_monitor, 1, name='h_monitor_stack')
+
     def phi_o(self, h_state_current):
         """
         Used to map hemodynamic states into higher dimension to calculate fMRI signal
@@ -354,6 +528,17 @@ class DcmRnn(Initialization):
         :return:
         """
         o_state_augmented = [h_state_current[i + 2] for i in range(2)]
+        tmp = tf.div(o_state_augmented[1], o_state_augmented[0])
+        o_state_augmented.append(tmp)
+        return o_state_augmented
+
+    def phi_o_parallel(self, h_state_current):
+        """
+        Used to map hemodynamic states into higher dimension to calculate fMRI signal
+        :param h_state_current: [batch_size, 4]
+        :return:
+        """
+        o_state_augmented = [h_state_current[:, i + 2] for i in range(2)]
         tmp = tf.div(o_state_augmented[1], o_state_augmented[0])
         o_state_augmented.append(tmp)
         return o_state_augmented
@@ -379,6 +564,27 @@ class DcmRnn(Initialization):
 
         return y
 
+    def output_mapping_parallel(self, h_state_current, parameter_package):
+
+        E0 = parameter_package['E0']
+        epsilon = parameter_package['epsilon']
+        V0 = parameter_package['V0']
+        TE = parameter_package['TE']
+        r0 = parameter_package['r0']
+        theta0 = parameter_package['theta0']
+
+        k1 = 4.3 * theta0 * E0 * TE
+        k2 = epsilon * r0 * E0 * TE
+        k3 = 1 - epsilon
+
+        o_state_augmented = self.phi_o_parallel(h_state_current)
+
+        y = V0 * k1 * (1 - o_state_augmented[1]) \
+            + V0 * k2 * (1 - o_state_augmented[2]) \
+            + V0 * k3 * (1 - o_state_augmented[0])
+
+        return y
+
     def add_output_layer(self, h_state_predicted=None):
         h_state_predicted = h_state_predicted or self.h_predicted
         self.y_predicted = []
@@ -396,6 +602,26 @@ class DcmRnn(Initialization):
                 self.y_predicted.append(y_temp)
         with tf.variable_scope(self.variable_scope_name_y_stacked):
             self.y_predicted_stacked = tf.stack(self.y_predicted, 0, name='y_predicted_stack')
+
+    def add_output_layer_parallel(self, h_state_predicted=None):
+        h_state_predicted = h_state_predicted or self.h_predicted
+        self.y_predicted = []
+
+        for i in range(0, self.n_recurrent_step):
+            with tf.variable_scope(self.variable_scope_name_h_parameter, reuse=True):
+                para_packages = []
+                for i_region in range(self.n_region):
+                    para_packages.append(self.get_h_para_tensor_for_one_region(i_region))
+            with tf.variable_scope(self.variable_scope_name_y):
+                y_temp = []
+                for i_region in range(self.n_region):
+                    y_temp.append(self.output_mapping_parallel(
+                        h_state_predicted[i][:, i_region, :], para_packages[i_region]))
+                y_temp = tf.stack(y_temp, 1)
+                self.y_predicted.append(y_temp)
+        with tf.variable_scope(self.variable_scope_name_y_stacked):
+            self.y_predicted_stacked = tf.stack(self.y_predicted, 1, name='y_predicted_stack')
+
 
     def build_an_initializer_graph(self, hemodynamic_parameter_initial=None):
         """
@@ -530,14 +756,12 @@ class DcmRnn(Initialization):
 
         return [wxx, i < MAX_TEST_STEPS]
 
-
-
     def build_main_graph(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
         """
         The main graph of dcm_rnn, used to infer effective connectivity given fMRI signal and stimuli.
-        :param neural_parameter_initial: 
-        :param hemodynamic_parameter_initial: 
-        :return: 
+        :param neural_parameter_initial:
+        :param hemodynamic_parameter_initial:
+        :return:
         """
 
         self.neural_parameter_initial = neural_parameter_initial
@@ -649,7 +873,6 @@ class DcmRnn(Initialization):
                 assign_ops.append(tf.assign(key, val))
             sess.run(assign_ops)
 
-
     def add_loss_sparsity(self, loss_weighting=None):
         if loss_weighting == None:
             loss_weighting = self.loss_weighting
@@ -683,22 +906,6 @@ class DcmRnn(Initialization):
         self.loss_prior = tf.reduce_mean(temp, name="loss_prior")
         return self.loss_prior
 
-    # TODO: update_loss_weight_in_graph
-    def update_loss_weight_in_graph(self, loss_weighting_updated):
-        """
-        Update loss weighting factor in tensorflow graph
-        :param loss_weighting_updated: 
-        :return: 
-        """
-        for key in loss_weighting_updated.keys():
-            if key in self.loss_weighting.keys():
-                # with tf.variable_scope(self.variable_scope_name_loss):
-                #    self.loss_weighting[key] = loss_weighting_updated[key]
-                pass
-
-            else:
-                raise ValueError(str(key) + ' is not a proper key.')
-
     def update_h_parameters_in_graph(self, sess, h_parameters_updated):
         """
         :param sess: 
@@ -707,9 +914,99 @@ class DcmRnn(Initialization):
         """
         sess.run(tf.assign(self.h_parameters, h_parameters_updated))
 
+    def build_main_graph_parallel(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
+        """
+        The main graph of dcm_rnn, used to infer effective connectivity given fMRI signal and stimuli.
+        Trainable variables are updated after collecting gradients from all segments.
+        In each segment, x, and h connectors are pre-calculated, so that gradient of each segment can be calculated
+        independently, feed in as a batch.s
+        :param neural_parameter_initial:
+        :param hemodynamic_parameter_initial:
+        :return:
+        """
+
+        self.neural_parameter_initial = neural_parameter_initial
+        if hemodynamic_parameter_initial is None:
+            self.hemodynamic_parameter_initial = \
+                self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
+        else:
+            self.hemodynamic_parameter_initial = hemodynamic_parameter_initial
+
+        self.check_parameter_consistency()
+
+        # input stimuli u
+        with tf.variable_scope(self.variable_scope_name_u_stacked):
+            self.u_placeholder = \
+                tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.n_recurrent_step, self.n_stimuli],
+                               name='u_placeholder')
+        self.u = []
+        for n in range(self.n_recurrent_step):
+            with tf.variable_scope(self.variable_scope_name_u):
+                self.u.append(self.u_placeholder[:, n, :])
+        self.u_tailing = []
+        for n in range(self.shift_u_y):
+            self.u_tailing.append(tf.constant(np.zeros((self.batch_size, 1, self.n_stimuli), dtype=np.float32),
+                                              dtype=np.float32,
+                                              name='u_tailing_' + str(n)))
+        self.u_extended = self.u
+        self.u_extended.extend(self.u_tailing)
+
+        # x layer
+        self.x_parameters = self.create_shared_variables_x(self.neural_parameter_initial)
+        x_state_initial = np.tile(self.set_initial_neural_state_as_zeros(self.n_region).astype(np.float32),
+                                  (self.batch_size, 1))
+        self.x_state_initial = tf.get_variable('x_initial', initializer=x_state_initial, trainable=False)
+        self.add_neural_layer_parallel(self.u_extended, self.x_state_initial)
+
+        # h layer
+        self.h_parameters = self.create_shared_variables_h(self.hemodynamic_parameter_initial)
+        with tf.variable_scope(self.variable_scope_name_h_initial):
+            h_state_initial = \
+                self.set_initial_hemodynamic_state_as_inactivated(n_node=self.n_region).astype(np.float32)
+            h_state_initial = np.expand_dims(h_state_initial, 0)
+            h_state_initial = np.tile(h_state_initial, (self.batch_size, 1, 1))
+            self.h_state_initial = \
+                tf.get_variable('h_initial_segment',
+                                initializer=h_state_initial,
+                                trainable=False)
+        self.add_hemodynamic_layer_parallel(self.x_extended, self.h_state_initial)
+
+        # output layer
+        self.add_output_layer_parallel(self.h_predicted)
 
 
+        # define loss and optimizer
+        self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.n_recurrent_step, self.n_region],
+                                     name="y_true")
+        with tf.variable_scope(self.variable_scope_name_loss):
+            self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
+            self.loss_sparsity = self.add_loss_sparsity()
+            self.loss_prior = self.add_loss_prior(self.h_parameters)
+            self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
+                                             self.loss_weighting['sparsity'] * self.loss_sparsity,
+                                             self.loss_weighting['prior'] * self.loss_prior],
+                                            name='loss_total')
 
+
+        if self.if_add_optimiser:
+            # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
+            # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
+
+
+            self.opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+            self.grads_and_vars = self.opt.compute_gradients(self.loss_total, tf.trainable_variables())
+            self.processed_grads_and_vars = self.grads_and_vars
+            self.opt.apply_gradients(self.processed_grads_and_vars)
+
+            # self.train = tf.train.AdagradOptimizer(self.learning_rate).minimize(self.loss_total)
+
+            # define summarizer
+            self.variable_summaries(self.loss_prediction)
+            self.variable_summaries(self.loss_sparsity)
+            self.variable_summaries(self.loss_prior)
+            self.variable_summaries(self.loss_total)
+            self.merged_summary = tf.summary.merge_all()
+            self.summary_writer = tf.summary.FileWriter(self.log_directory, tf.get_default_graph())
 
 
     # unitilies
@@ -765,7 +1062,6 @@ class DcmRnn(Initialization):
             tf.summary.scalar('min', tf.reduce_min(tensor))
             tf.summary.histogram('histogram', tensor)
 
-
     def show_all_variable_value(self, isess, visFlag=False):
         output = []
         output_buff = pd.DataFrame()
@@ -805,7 +1101,3 @@ class DcmRnn(Initialization):
                 print(item.name)
                 print(item)
         return output
-
-
-
-
