@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import subprocess
 import pickle
 import copy
+from numba import jit
 
 def cdr(relative_path, if_print=False):
     file_path = os.path.dirname(os.path.realpath(__file__))
@@ -1331,6 +1332,7 @@ class Scanner:
         self.h_value_low = h_value_low or 0.125
         self.h_value_high = h_value_high or 8
 
+
     def scan_x(self, parameter_package):
         """
         Calculate x, namely neural activity
@@ -1356,6 +1358,7 @@ class Scanner:
             tmp3 = np.matmul(Wxu, u[i - 1, :])
             x[i, :] = tmp1 + tmp2 + tmp3
         return x
+
 
     def if_proper_x(self, x):
         """
@@ -1424,6 +1427,23 @@ class Scanner:
         h_state_augmented[6] = (1 - (1 - E0) ** (1 / h_state_current[1])) / (E0) * h_state_current[1]
         return h_state_augmented
 
+    def phi_h_parallel(self, h_state_current, alpha, E0):
+        """
+        used to map hemodynamic states into higher dimension
+        for hemodynamic states scan
+        :param h_state_current:
+        :param alpha:
+        :param E0:
+        :return:
+        """
+        h_state_augmented = np.zeros((h_state_current.shape[0], 7))
+        h_state_augmented[:, 0:4] = h_state_current
+        h_state_augmented[:, 4] = h_state_current[:, 2] ** (1 / alpha)
+        h_state_augmented[:, 5] = h_state_current[:, 3] / (h_state_current[:, 2]) * h_state_augmented[:, 4]
+        h_state_augmented[:, 6] = (1 - (1 - E0) ** (1 / h_state_current[:, 1])) / (E0) * h_state_current[:, 1]
+        return h_state_augmented
+
+
     def scan_h(self, parameter_package):
         """
         Calculate h, namely hemodynamic response
@@ -1450,20 +1470,38 @@ class Scanner:
                 E0 = hemodynamic_parameters.loc['region_' + str(n), 'E0']
                 h_temp = (np.matmul(Whh[n], self.phi_h(h[t - 1, n, :], alpha, E0)).reshape(4, 1)
                           + Whx[n] * x[t - 1, n] + bh[n]).reshape(4)
-                '''
-                # do not use exp trick to protect f, v, q to be possitive
-                # it induces error in our approximation
-                # s doesn't need protection
-                h[t, n, 0] = h_temp[0]
-                # avoid f, v, q run2 into non-positive value
-                fvq_tm1 = h[t - 1, n, 1:]
-                fvq_temp = h_temp[1:]
-                fvq_delta = fvq_temp - fvq_tm1
-                fvq_t = fvq_tm1 * np.exp(fvq_delta / fvq_tm1)
-                fvq_t = np.array([value if value > eps else eps for value in list(fvq_t)])
-                h[t, n, 1:] = fvq_t
-                '''
                 h[t, n, :] = h_temp
+        return h
+
+    def scan_h_parallel(self, parameter_package):
+        """
+        Calculate h, namely hemodynamic response
+        :param parameter_package: r dictionary containing all needed parameters
+        :return: np.array of size (n_time_point, n_node, 4)
+        """
+        hemodynamic_parameters = parameter_package['hemodynamic_parameter']
+        Whh = np.stack(parameter_package['Whh'], 0)
+        bh = np.squeeze(np.stack(parameter_package['bh'], 0))
+        Whx = np.squeeze(np.stack(parameter_package['Whx']))
+        initial_h_state = parameter_package['initial_h_state']
+        x = parameter_package['x']
+
+        n_time_point = x.shape[0]
+        n_node = x.shape[1]
+        eps = np.finfo(float).eps
+        h = np.ones((n_time_point, n_node, 4))
+        h[:, :, 0] = 0
+        h[0, :, :] = initial_h_state
+
+        for t in range(1, n_time_point):
+            alpha = hemodynamic_parameters['alpha']
+            E0 = hemodynamic_parameters['E0']
+
+            h_temp1 = np.squeeze(np.matmul(Whh, np.expand_dims(self.phi_h_parallel(h[t - 1, :, :], alpha, E0), 2)))
+            h_temp2 = Whx * np.expand_dims(x[t - 1, :], 1)
+            h_temp3 = bh
+            h_temp = h_temp1 + h_temp2 + h_temp3
+            h[t, :, :] = h_temp
         return h
 
     def phi_o(self, h_state_current):
@@ -1477,6 +1515,19 @@ class Scanner:
         o_state_augmented[0:2] = h_state_current[2:4]
         o_state_augmented[2] = o_state_augmented[1] / o_state_augmented[0]
         return o_state_augmented
+
+    def phi_o_parallel(self, h_state_current):
+        """
+        used to map hemodynamic states into higher dimension
+        for fMRI ys
+        :param h_state_current:
+        :return:
+        """
+        o_state_augmented = np.zeros((h_state_current.shape[0], 3))
+        o_state_augmented[:, 0:2] = h_state_current[:, 2:4]
+        o_state_augmented[:, 2] = o_state_augmented[:, 1] / o_state_augmented[:, 0]
+        return o_state_augmented
+
 
     def scan_y(self, parameter_package):
         """
@@ -1497,6 +1548,25 @@ class Scanner:
                 y[t, n] = np.matmul(Wo[n], self.phi_o(h[t, n, :])) + bo[n]
         return y
 
+    def scan_y_parallel(self, parameter_package):
+        """
+        Calculate value, namely observable functional signal
+        :param parameter_package: r dictionary containing all needed parameters
+        :return: np.array of size (n_time_point, n_node)
+        """
+
+        Wo = np.stack(parameter_package['Wo'])
+        bo = np.squeeze(np.stack(parameter_package['bo']))
+        h = parameter_package['h']
+        n_time_point = h.shape[0]
+        n_node = h.shape[1]
+        y = np.zeros((n_time_point, n_node))
+
+        for t in range(0, n_time_point):
+            temp1 = np.squeeze(np.matmul(np.expand_dims(Wo, 1), np.expand_dims(self.phi_o_parallel(h[t, :, :]), 2)))
+            temp2 = bo
+            y[t, :] = temp1 + temp2
+        return y
 
 class DataUnit(Initialization, ParameterGraph, Scanner):
     """
@@ -1841,14 +1911,15 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
             self._secured_data[para] = self.scan_x(parameter_package)
         elif para is 'h':
             assert flag_name is None
-            show(para, flag_name, flag_value, 'scan_h')
+            show(para, flag_name, flag_value, 'scan_h_parallel')
             parameter_package = self.collect_parameter_for_h_scan()
-            self._secured_data[para] = self.scan_h(parameter_package)
+            # self._secured_data[para] = self.scan_h(parameter_package)
+            self._secured_data[para] = self.scan_h_parallel(parameter_package)
         elif para is 'y':
             assert flag_name is None
-            show(para, flag_name, flag_value, 'scan_y')
+            show(para, flag_name, flag_value, 'scan_y_parallel')
             parameter_package = self.collect_parameter_for_y_scan()
-            self._secured_data[para] = self.scan_y(parameter_package)
+            self._secured_data[para] = self.scan_y_parallel(parameter_package)
 
     def get_dcm_rnn_x_matrices(self):
         """

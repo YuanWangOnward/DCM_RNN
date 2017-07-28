@@ -39,6 +39,8 @@ import itertools
 import copy
 import pandas as pd
 import progressbar
+import math as mth
+
 
 def regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters):
     du_hat = copy.deepcopy(du)
@@ -75,7 +77,6 @@ def regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters):
 
 
 def apply_and_check(isess, grads_and_vars, step_size, u, x_connector, h_connector, y_true):
-
     dr.update_variables_in_graph(isess, dr.trainable_variables_nodes,
                                  [-val[0] * step_size + val[1] for val in grads_and_vars])
     loss_prediction, x_connector, h_connector \
@@ -97,20 +98,59 @@ def check_transition_matrix(Wxx):
         return False
 
 
-MAX_EPOCHS = 120
+def make_batches(u, x, h, y, batch_size=128, if_shuffle=True):
+    batches = []
+    temp_u = copy.deepcopy(u)
+    temp_x = copy.deepcopy(x)
+    temp_h = copy.deepcopy(h)
+    temp_y = copy.deepcopy(y)
+
+    if if_shuffle:
+        index = list(range(len(temp_y)))
+        random.shuffle(index)
+        temp_u = [temp_u[i] for i in index]
+        temp_x = [temp_x[i] for i in index]
+        temp_h = [temp_h[i] for i in index]
+        temp_y = [temp_y[i] for i in index]
+
+
+    for i in range(0, len(temp_u), batch_size):
+        batch = make_a_batch(temp_u[i: i + batch_size],
+                             temp_x[i: i + batch_size],
+                             temp_h[i: i + batch_size],
+                             temp_y[i: i + batch_size])
+        if len(batch['u']) == batch_size and len(batch['x_initial']) == batch_size and \
+                        len(batch['h_initial']) == batch_size and len(batch['y']) == batch_size:
+            batches.append(batch)
+    return batches
+
+def make_a_batch(u, x, h, y):
+    batch = {}
+    batch['u'] = np.stack(u, axis=0)
+    batch['x_initial'] = np.stack([v[0, :] for v in x], axis=0)
+    batch['h_initial'] = np.stack([v[0, :, :] for v in h], axis=0)
+    batch['y'] = np.stack(y, axis=0)
+    return batch
+
+def random_drop(batches, ration=0.5):
+    random.shuffle(batches)
+    return batches[: int(len(batches) * ration)]
+
+MAX_EPOCHS = 48
 CHECK_STEPS = 1
-N_SEGMENTS = 1024
-N_RECURRENT_STEP = 64
+# N_SEGMENTS = 128 * 21
+N_RECURRENT_STEP = 160
+N_SEGMENTS = mth.ceil(2880 / N_RECURRENT_STEP) * N_RECURRENT_STEP
 # STEP_SIZE = 0.002 # for 32
 # STEP_SIZE = 0.5
 # STEP_SIZE = 0.001 # for 64
 # STEP_SIZE = 0.001 # 128
 # STEP_SIZE = 0.0005 # for 256
-STEP_SIZE = 1e-5
+# STEP_SIZE = 5e-5
 # DATA_SHIFT = int(N_RECURRENT_STEP / 4)
-DATA_SHIFT = 1
+DATA_SHIFT = 4
 LEARNING_RATE = 0.01 / N_RECURRENT_STEP
-
+MAX_BACK_TRACK = 10
 
 print('current working directory is ' + os.getcwd())
 # PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
@@ -140,7 +180,7 @@ dr.trainable_flags = {'Wxx': True,
                       'theta0': False,
                       'x_h_coupling': False
                       }
-dr.build_main_graph(neural_parameter_initial=neural_parameter_initial)
+dr.build_main_graph_parallel(neural_parameter_initial=neural_parameter_initial)
 
 # process after building the main graph
 mask = {dr.Wxx.name: np.ones((dr.n_region, dr.n_region)),
@@ -150,20 +190,21 @@ mask[dr.Wxxu[0].name][2, 2] = 1
 mask[dr.Wxu.name][0] = 1
 dr.support_masks = dr.setup_support_mask(mask)
 dr.x_parameter_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                    scope=dr.variable_scope_name_x_parameter)]
+                                                     scope=dr.variable_scope_name_x_parameter)]
 dr.trainable_variables_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 
 # y_hat are re-generated after each global updating
 # gradients of each segments are calculated all according to this y_hat
 # namely, Wxx, Wxxu, and Wxu are not updated in each segment
-Wxx = np.identity(3) * (1 - 1. * du.get('t_delta'))
+Wxx = np.identity(3) * (1 - 1.2 * du.get('t_delta'))
 Wxxu = np.zeros((3, 3))
 Wxu = np.array([0., 0., 0.]).reshape(3, 1)
+Wxu[0] = 0.0625
 h_parameters = dr.get_standard_hemodynamic_parameters(dr.n_region)
 
 du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, np.array(h_parameters))
 
-data_hat ={
+data_hat = {
     'x_initial': tb.split(du_hat.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
     'h_initial': tb.split(du_hat.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
 }
@@ -186,6 +227,9 @@ for i in range(len(data['y_true'])):
 
 N_TEST_SAMPLE = min(N_SEGMENTS, len(data['y_true_float_corrected']))
 
+# make training batches
+batches = make_batches(data['u'], data_hat['x_initial'], data_hat['h_initial'], data['y_true_float_corrected'])
+
 print('start session')
 # start session
 isess = tf.InteractiveSession()
@@ -203,27 +247,18 @@ h_connectors = []
 gradients = []
 step_sizes = []
 for epoch in range(MAX_EPOCHS):
-    x_connector_current = dr.set_initial_neural_state_as_zeros(dr.n_region)
-    h_connector_current = dr.set_initial_hemodynamic_state_as_inactivated(dr.n_region)
     gradients = []
 
-    bar = progressbar.ProgressBar(max_value=N_TEST_SAMPLE)
-    for i in range(len(data['y_true_float_corrected'])):
-        # print('current processing ' + str(i))
-        # print('.', end='')
-        # bar.update(i)
-        grads_and_vars, x_connector, h_connector, loss_prediction, loss_total, y_predicted_before_training = \
-            isess.run([dr.grads_and_vars, dr.x_connector, dr.h_connector,
-                       dr.loss_prediction, dr.loss_total, dr.y_predicted],
+    bar = progressbar.ProgressBar(max_value=len(batches))
+    for batch in batches:
+        grads_and_vars = \
+            isess.run(dr.grads_and_vars,
                       feed_dict={
-                          dr.u_placeholder: data['u'][i],
-                          # dr.x_state_initial: x_connector_current,
-                          # dr.h_state_initial: h_connector_current,
-                          dr.x_state_initial: data_hat['x_initial'][i][0, :],
-                          dr.h_state_initial: data_hat['h_initial'][i][0, :, :],
-                          dr.y_true: data['y_true_float_corrected'][i]
+                          dr.u_placeholder: batch['u'],
+                          dr.x_state_initial: batch['x_initial'],
+                          dr.h_state_initial: batch['h_initial'],
+                          dr.y_true: batch['y']
                       })
-
         # apply mask to gradients
         variable_names = [v.name for v in tf.trainable_variables()]
         for idx in range(len(grads_and_vars)):
@@ -232,11 +267,6 @@ for epoch in range(MAX_EPOCHS):
 
         # collect gradients and logs
         gradients.append(grads_and_vars)
-        loss_totals.append(loss_total)
-
-        # prepare for next segment
-        # x_connector_current = x_connector
-        # h_connector_current = h_connector
 
     # updating with back-tracking
     ## collect statistics before updating
@@ -250,6 +280,11 @@ for epoch in range(MAX_EPOCHS):
     for idx, grad_and_var in enumerate(grads_and_vars):
         grads_and_vars[idx] = (sum([gv[idx][0] for gv in gradients]), grads_and_vars[idx][1])
 
+    # adaptive step size, making max value change 0.001
+    max_gradient = max([np.max(np.abs(np.array(g[0])).flatten()) for g in grads_and_vars])
+    STEP_SIZE = 0.001 / max_gradient
+    print('max gradient:    ' + str(max_gradient))
+    print('STEP_SIZE:    ' + str(STEP_SIZE))
 
     step_size = STEP_SIZE
     count = 0
@@ -268,7 +303,7 @@ for epoch in range(MAX_EPOCHS):
     stable_flag = check_transition_matrix(Wxx)
     while not stable_flag:
         count += 1
-        if count == 20:
+        if count == MAX_BACK_TRACK:
             step_size = 0
         else:
             step_size = step_size / 2
@@ -279,7 +314,7 @@ for epoch in range(MAX_EPOCHS):
 
     while loss_prediction > loss_prediction_original or np.isnan(loss_prediction):
         count += 1
-        if count == 20:
+        if count == MAX_BACK_TRACK:
             step_size = 0.
         else:
             step_size = step_size / 2
@@ -302,18 +337,21 @@ for epoch in range(MAX_EPOCHS):
     # regenerate connector data
     data_hat['x_initial'] = tb.split(du_hat.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0)
     data_hat['h_initial'] = tb.split(du_hat.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1)
-
-
-    print(step_size)
-    print(loss_prediction_original)
-    print(loss_differences[-1])
+    batches = make_batches(data['u'], data_hat['x_initial'], data_hat['h_initial'], data['y_true_float_corrected'])
+    batches = random_drop(batches)
+    print('')
+    print('epoch:    ' + str(epoch))
+    print('applied step size:    ' + str(step_size))
+    print('loss_prediction_original:    ' + str(loss_prediction_original))
+    print('reduced prediction:    ' + str(loss_differences[-1]))
+    print('reduced prediction persentage:    ' + str(loss_differences[-1] / loss_prediction_original))
     print(Wxx)
     print(Wxxu)
     print(Wxu)
-
+    # print(h_parameters)
 
 print('optimization finished.')
 
-i = 0
-plt.plot(y_hat[:, i], '--')
+i = 2
 plt.plot(du.get('y')[:, i])
+plt.plot(y_hat[:, i], '--')
