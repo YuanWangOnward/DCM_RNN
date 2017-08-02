@@ -27,7 +27,7 @@ def create_a_template(id):
         du._secured_data['if_random_delta_t'] = False
         du._secured_data['if_random_scan_time'] = False
         du._secured_data['t_delta'] = 1. / 16.
-        du._secured_data['t_scan'] = 3 * 60
+        du._secured_data['t_scan'] = 5 * 60
         du._secured_data['n_node'] = 3
         du._secured_data['n_stimuli'] = 1
         du._secured_data['A'] = np.array([[-1, 0, 0],
@@ -41,7 +41,6 @@ def create_a_template(id):
         du._secured_data['n_backpro'] = 12
         du.complete_data_unit(if_show_message=False, if_check_property=False)
         return du
-
 
 if __name__ == '__main__':
     IF_CHECK_RESULT = True

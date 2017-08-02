@@ -53,10 +53,10 @@ STEP_SIZE = 1e-5
 DATA_SHIFT = int(N_RECURRENT_STEP / 4)
 TARGET_TEMPORAL_RESOLUTION = 1. / 16
 
-# load SPM attention SPM_data from resources
+# load SPM attention spm_data from resources
 SPM_data = pickle.load(open(DATA_DIR, 'rb'))
 
-# process SPM_data,
+# process spm_data,
 # up sample u and y to 16 frame/second
 # shift y's so that they are around 0 when there is no input
 t_total = SPM_data['TR'] * SPM_data['y'].shape[0]
@@ -128,7 +128,7 @@ dr.x_parameter_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARI
                                                      scope=dr.variable_scope_name_x_parameter)]
 dr.trainable_variables_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 
-# prepare SPM_data for training
+# prepare spm_data for training
 data = {
     'u': tb.split(SPM_data['u_upsampled'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
     'y': tb.split(SPM_data['y_upsampled'], n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y),

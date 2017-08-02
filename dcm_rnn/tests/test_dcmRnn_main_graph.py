@@ -53,7 +53,7 @@ class TestDcmRnnMainGraph(TestCase):
         du = self.du
         dr = self.dr
 
-        # prepare SPM_data
+        # prepare spm_data
         data = {'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
                 'x': tb.split(du.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
                 'h': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
@@ -105,7 +105,7 @@ class TestDcmRnnMainGraph(TestCase):
         du = self.du
         dr = self.dr
 
-        # prepare SPM_data
+        # prepare spm_data
         # split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_h):
         data = {'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
                 'x': tb.split(du.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
@@ -135,7 +135,7 @@ class TestDcmRnnMainGraph(TestCase):
                 np.array(data['h'][i], dtype=np.float32),
                 np.array(h_hat, dtype=np.float32))
 
-            # print(np.array(SPM_data['y'][i], dtype=np.float32))
+            # print(np.array(spm_data['y'][i], dtype=np.float32))
             # print(np.array(y_hat, dtype=np.float32))
             np.testing.assert_array_almost_equal(
                 np.array(data['y'][i], dtype=np.float32),
@@ -146,7 +146,7 @@ class TestDcmRnnMainGraph(TestCase):
         dr = self.dr
         isess = self.isess
 
-        # prepare SPM_data
+        # prepare spm_data
         data = {'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
                 'x': tb.split(du.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
                 'h': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
@@ -185,7 +185,7 @@ class TestDcmRnnMainGraph(TestCase):
         du = self.du
         dr = self.dr
 
-        # prepare SPM_data
+        # prepare spm_data
         # split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_h):
         data = {'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
                 'x': tb.split(du.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),

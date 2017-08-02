@@ -14,6 +14,7 @@ import subprocess
 import pickle
 import copy
 from numba import jit
+import re
 
 def cdr(relative_path, if_print=False):
     file_path = os.path.dirname(os.path.realpath(__file__))
@@ -48,6 +49,7 @@ def mse(value_hat, value_true=None):
         mse = (value_hat.flatten() ** 2).mean()
     return mse
 
+
 def rmse(value_hat, value_true):
     error = value_hat.flatten() - value_true.flatten()
     norm_true = np.linalg.norm(value_true.flatten())
@@ -65,7 +67,7 @@ def take_value(array, rc_locations):
 
 def split(data, n_segment, n_step=None, shift=0, split_dimension=0):
     """
-    Split a large array SPM_data into list of segments with step size n_step, ignoring the beginning shift points
+    Split a large array spm_data into list of segments with step size n_step, ignoring the beginning shift points
     :param data:
     :param n_segment:
     :param n_step:
@@ -142,6 +144,70 @@ def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_
     return [x_splits, y_splits]
 
 
+def make_a_batch(u, x, h, y):
+    """
+    Given lists of segments of u, x, h, and y, assemble a training batch.
+    :param u:
+    :param x:
+    :param h:
+    :param y:
+    :return:
+    """
+    batch = {}
+    batch['u'] = np.stack(u, axis=0)
+    batch['x_initial'] = np.stack([v[0, :] for v in x], axis=0)
+    batch['h_initial'] = np.stack([v[0, :, :] for v in h], axis=0)
+    batch['y'] = np.stack(y, axis=0)
+    return batch
+
+def make_batches(u, x, h, y, batch_size=128,if_shuffle=True):
+    """
+    Given u, x, h, and y from a DataUnit, assemble training batches.
+    :param u:
+    :param x:
+    :param h:
+    :param y:
+    :param batch_size:
+    :param if_shuffle:
+    :return:
+    """
+    batches = []
+    temp_u = copy.deepcopy(u)
+    temp_x = copy.deepcopy(x)
+    temp_h = copy.deepcopy(h)
+    temp_y = copy.deepcopy(y)
+
+    if if_shuffle:
+        index = list(range(len(temp_y)))
+        random.shuffle(index)
+        temp_u = [temp_u[i] for i in index]
+        temp_x = [temp_x[i] for i in index]
+        temp_h = [temp_h[i] for i in index]
+        temp_y = [temp_y[i] for i in index]
+
+
+    for i in range(0, len(temp_y), batch_size):
+        batch = make_a_batch(temp_u[i: i + batch_size],
+                             temp_x[i: i + batch_size],
+                             temp_h[i: i + batch_size],
+                             temp_y[i: i + batch_size])
+        # get rid of batches of less sample than batch size
+        if len(batch['u']) == batch_size and len(batch['x_initial']) == batch_size and \
+                        len(batch['h_initial']) == batch_size and len(batch['y']) == batch_size:
+            batches.append(batch)
+    return batches
+
+
+def random_drop(batches, ration=0.5):
+    """
+    Randomly drop a ration of batches to create some randomness of gradient.
+    :param batches:
+    :param ration:
+    :return:
+    """
+    random.shuffle(batches)
+    return batches[: int(len(batches) * ration)]
+
 def solve_for_effective_connection(x, u, prior=None):
     """
     Solve for the effective connection matrices Wxx, Wxxu, and Wxu from neural activity and stimuli
@@ -214,6 +280,7 @@ def solve_for_effective_connection(x, u, prior=None):
             Wxxu.append(W[:, (s + 1) * n_node:(s + 2) * n_node])
         Wxu = W[:, -n_stimuli:]
     return [Wxx, Wxxu, Wxu]
+
 
 def ista(A, Y, alpha_mask=1, support=None, prior=None):
     """
@@ -516,7 +583,7 @@ class Initialization:
         else:
             return False
 
-    def check_transition_matrix(self, A):
+    def check_transition_matrix(self, A, max_eigenvalue=0.):
         """
         Check whether all the eigenvalues of A have negative real parts
         to ensure r corresponding linear system is stable
@@ -524,7 +591,7 @@ class Initialization:
         :return: True or False
         """
         w, v = np.linalg.eig(A)
-        if max(w.real) < 0:
+        if max(w.real) < max_eigenvalue:
             return True
         else:
             return False
@@ -984,9 +1051,6 @@ class ParameterGraph:
             'x': ["Wxx", "Wxxu", "Wxu", 'initial_x_state', 'u', 'scanner'],
             'h': ['Whh', 'Whx', 'bh', 'hemodynamic_parameter', 'x', 'scanner'],
             'y': ['Wo', 'bo', 'h', 'scanner'],
-            # not necessary before estimation
-            'n_backpro': [],  # number of truncated back propagation steps
-            'learning_rate': [],  # used by tensorflow optimization operation
         }
 
         level_para = {
@@ -1000,8 +1064,7 @@ class ParameterGraph:
                         'if_random_stimuli_number',
                         'if_random_delta_t',
                         'if_random_scan_time',
-                        'n_backpro',
-                        'learning_rate'],
+                        ],
             'level_1': ['n_node', 't_delta', 't_scan'],
             'level_2': ['n_time_point',
                         'n_stimuli',
@@ -1568,6 +1631,7 @@ class Scanner:
             y[t, :] = temp1 + temp2
         return y
 
+
 class DataUnit(Initialization, ParameterGraph, Scanner):
     """
     This class is used to ensure consistence and integrity of all cores, but that takes r lot of efforts, so currently,
@@ -1639,7 +1703,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
     def get_locked_data(self):
         return copy.deepcopy(self._locked_data)
 
-    def set(self, para, value):
+    def set(self, para, value, if_check=True):
         """
         Set value to r parameter.
         A parameter can only be directly assigned r number if it is of category one or two (see ParameterGraph)
@@ -2111,3 +2175,85 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
     def secured_data(self):
         return self._secured_data
 
+    def parse_variable_names(self, names_in_graph):
+        """
+        Given trainable variable names in tensorflow graph, find out corresponding names in DCM_RNN model
+        :param names_in_graph:
+        :return:
+        """
+        names_in_model = []
+        for name in names_in_graph:
+            name_core = name[name.index('/') + 1: name.index(':')]
+            if '_' in name_core:
+                temp = name_core.split('_')
+                temp[1] = int(re.findall('\d+', temp[1])[0])
+                temp = tuple(temp)
+                names_in_model.append(temp)
+            else:
+                names_in_model.append(name_core)
+        self.variable_names_in_graph = names_in_model
+        return names_in_model
+
+    def update_trainable_variables(self, grads_and_vars, step_size, variable_names_in_graph=None):
+        """
+        Given grads_and_vars obtained from tensorflow graph, and step_size, update variable values in
+        DataUnit. Notice, it is not a simple assignment. For [Wxx, Wxxu, Wxu], corresponding [A, B, C]
+        should be updated. For hemodynamic parameters, entry in the dataframe should be updated.
+        It's much faster than apply grads_and_vars in graph and read out needed values.
+        :param grads_and_vars:
+        :param step_size:
+        :param variable_names_in_graph:
+        :return:
+        """
+        if variable_names_in_graph is None:
+            variable_names_in_graph = self.variable_names_in_graph
+        values = [-val[0] * step_size + val[1] for val in grads_and_vars]
+        assert len(values) == len(variable_names_in_graph)
+        for n, v in zip(variable_names_in_graph, values):
+            if isinstance(n, tuple):
+                if n[0] == 'Wxxu':
+                    self._secured_data[n[0]][n[1]] = v
+                    self._secured_data['B'][n[1]] = [v / self.get('t_delta')]
+                else:
+                    self._secured_data['hemodynamic_parameter'].set_value('region_' + str(n[1]), n[0], v)
+            else:
+                if n == 'Wxx':
+                    self._secured_data['A'] = (v - np.eye(self.get('n_node'))) / self.get('t_delta')
+                elif n == 'Wxu':
+                    self._secured_data['C'] = v / self.get('t_delta')
+                self._secured_data[n] = v
+
+    def regenerate_data(self):
+        """
+        Re-generate x, h, and y. (after update some of the parameters in Wxx, Wxxu, Wxu, or hemodynamic
+        parameter)
+        :return:
+        """
+        remove_keys = ['Wxx', 'Wxxu', 'Wxu', 'Whh', 'Whx', 'bh', 'Wo', 'bo', 'x', 'h', 'y']
+        for key in remove_keys:
+            if key in self._secured_data.keys():
+                del self._secured_data[key]
+        self.complete_data_unit(start_categorty=1, if_check_property=False, if_show_message=False)
+
+    def initialize_a_training_unit(self, Wxx, Wxxu, Wxu, h_parameters):
+        du_hat = copy.deepcopy(self)
+
+        du_hat._secured_data['A'] = (Wxx - np.eye(du_hat.get('n_node'))) / du_hat.get('t_delta')
+        du_hat._secured_data['B'] = [m / du_hat.get('t_delta') for m in Wxxu]
+        du_hat._secured_data['C'] = Wxu / du_hat.get('t_delta')
+
+        hemodynamic_parameter_temp = du_hat.get_standard_hemodynamic_parameters(du_hat.get('n_node'))
+        temp = h_parameters
+        for c in range(temp.shape[1]):
+            hemodynamic_parameter_temp[hemodynamic_parameter_temp.columns[c]] = temp[:, c]
+        du_hat._secured_data['hemodynamic_parameter_temp'] = hemodynamic_parameter_temp
+
+        remove_keys = ['Wxx', 'Wxxu', 'Wxu', 'Whh', 'Whx', 'bh', 'Wo', 'bo', 'x', 'h', 'y']
+        for key in remove_keys:
+            if key in du_hat._secured_data.keys():
+                del du_hat._secured_data[key]
+
+        du_hat._secured_data['if_random_x_state_initial'] = False
+        du_hat._secured_data['if_random_h_state_initial'] = False
+        du_hat.complete_data_unit(start_categorty=1, if_check_property=False, if_show_message=False)
+        return du_hat

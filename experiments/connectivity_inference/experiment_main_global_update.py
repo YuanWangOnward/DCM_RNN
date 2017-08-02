@@ -52,7 +52,7 @@ IF_IMAGE_LOG = True
 IF_DATA_LOG = False
 LOG_EXTRA_PREFIX = ''
 
-# load in SPM_data
+# load in spm_data
 data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)
 du_hat = copy.deepcopy(du)
@@ -118,7 +118,7 @@ dr.trainable_flags = {'Wxx': True,
                       }
 dr.build_main_graph(neural_parameter_initial=neural_parameter_initial)
 
-# prepare SPM_data
+# prepare spm_data
 data = {'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
         'y': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)}
 n_segment = min([len(data[x]) for x in data.keys()])
@@ -154,7 +154,7 @@ for epoch in range(MAX_EPOCHS):
     loss_prediction_accumulated = 0
     for i in range(len(data['u'])):
 
-        # sess.run(dr.h_state_monitor_stacked, feed_dict={dr.u_placeholder: SPM_data['u'][i]})
+        # sess.run(dr.h_state_monitor_stacked, feed_dict={dr.u_placeholder: spm_data['u'][i]})
 
         x_state_initial_previous = copy.deepcopy(x_state_initial)
         h_state_initial_previous = copy.deepcopy(h_state_initial)
@@ -170,10 +170,10 @@ for epoch in range(MAX_EPOCHS):
         _, loss_total, loss_prediction, x_state_initial, h_state_initial = \
             sess.run([dr.train, dr.loss_total, dr.loss_prediction, dr.x_connector, dr.h_connector],
                      feed_dict={
-                         dr.u_placeholder: SPM_data['u'][i],
+                         dr.u_placeholder: spm_data['u'][i],
                          dr.x_state_initial: x_state_initial,
                          dr.h_state_initial: h_state_initial,
-                         dr.y_true: SPM_data['y'][i]
+                         dr.y_true: spm_data['y'][i]
                      })
         '''
         grads_and_vars, loss_total, loss_prediction, x_state_initial, h_state_initial = \
@@ -275,14 +275,14 @@ package["Wxx"] = Wxx
 package["Wxxu"] = Wxxu
 package["Wxu"] = Wxu
 package['initial_x_state'] = np.array([0, 0, 0])
-package['u'] = tb.merge(SPM_data['u'], N_RECURRENT_STEP, DATA_SHIFT)
+package['u'] = tb.merge(spm_data['u'], N_RECURRENT_STEP, DATA_SHIFT)
 x_hat = du.scan_x(package)
 
 package["Wxx"] = du.get('Wxx')
 package["Wxxu"] = du.get('Wxxu')
 package["Wxu"] = du.get('Wxu')
 package['initial_x_state'] = np.array([0, 0, 0])
-package['u'] = tb.merge(SPM_data['u'], N_RECURRENT_STEP, DATA_SHIFT)
+package['u'] = tb.merge(spm_data['u'], N_RECURRENT_STEP, DATA_SHIFT)
 x_true = du.scan_x(package)
 
 plt.plot(x_true)

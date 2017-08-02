@@ -61,9 +61,9 @@ def build_a_base(current_base_number):
         else:
             current_dir = os.getcwd()
             if current_dir.split('/')[-1] == "dcm_rnn":
-                OUTPUT_DIR = current_dir + '/SPM_data'
+                OUTPUT_DIR = current_dir + '/spm_data'
             elif current_dir.split('/')[-1] == "dcm_rnn":
-                OUTPUT_DIR = current_dir + '/../SPM_data'
+                OUTPUT_DIR = current_dir + '/../spm_data'
             else:
                 raise ValueError("Cannot find default output directory. \
                     Specify it or run this script in data_package root directory")
@@ -76,7 +76,7 @@ def build_a_base(current_base_number):
 
 
 '''
-# Codes used to check generated SPM_data
+# Codes used to check generated spm_data
 
 # check cores base
 current_base_number = 0

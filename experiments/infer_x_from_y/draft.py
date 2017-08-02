@@ -23,16 +23,16 @@ class TrainingManager(tb.Initialization):
 
     def prepare_data(self, du, dr, data_package):
         """
-        Prepare SPM_data in du for dr in training. Create a 'SPM_data' dictionary 
-        :param du: a DataUnit instance, with needed SPM_data
+        Prepare spm_data in du for dr in training. Create a 'spm_data' dictionary
+        :param du: a DataUnit instance, with needed spm_data
         :param dr: a DcmRnn instance, with needed parameters
-        :param data_package: a dictionary, stores configure and SPM_data for a particular experimental case
+        :param data_package: a dictionary, stores configure and spm_data for a particular experimental case
         :return: modified
         """
         dp = data_package
         data = dp.data
 
-        # create SPM_data according to flag
+        # create spm_data according to flag
         if dp.IF_RANDOM_H_PARA:
             dp.H_PARA_INITIAL = \
                 dp.randomly_generate_hemodynamic_parameters(dr.n_region, deviation_constraint=2).astype(np.float32)
@@ -62,7 +62,7 @@ class TrainingManager(tb.Initialization):
         if dp.N_SEGMENTS is not None:
             if dp.N_SEGMENTS > max_segments_natural:
                 dp.N_SEGMENTS = max_segments_natural
-                warnings.warn("dp.N_SEGMENTS is larger than the length of available SPM_data", UserWarning)
+                warnings.warn("dp.N_SEGMENTS is larger than the length of available spm_data", UserWarning)
             else:
                 data['u'] = data['u'][:dp.N_SEGMENTS]
                 data['x_true'] = data['x_true'][:dp.N_SEGMENTS]
@@ -78,8 +78,8 @@ class TrainingManager(tb.Initialization):
             data['y_train'] = [array[:, node_index].reshape(dr.n_recurrent_step, 1) for array in data['y_train']]
             dp.H_STATE_INITIAL = dp.H_STATE_INITIAL[node_index].reshape(1, 4)
 
-        # saved dp.SEQUENCE_LENGTH = dr.n_recurrent_step + (len(SPM_data['x_true']) - 1) * dr.shift_data
-        # collect merged SPM_data (without split and merge, it can be tricky to cut proper part from du)
+        # saved dp.SEQUENCE_LENGTH = dr.n_recurrent_step + (len(spm_data['x_true']) - 1) * dr.shift_data
+        # collect merged spm_data (without split and merge, it can be tricky to cut proper part from du)
         data['u_merged'] = tb.merge(data['u'], dr.n_recurrent_step, dr.shift_data)
         data['x_true_merged'] = tb.merge(data['x_true'], dr.n_recurrent_step, dr.shift_data)
         # x_hat is with extra wrapper for easy modification with a single index

@@ -9,7 +9,7 @@ if '/Users/yuanwang' in sys.executable:
     import matplotlib
 
     sys.path.append('dcm_rnn')
-elif '/share/apps/python3/' in sys.executable:
+elif '/home/yw1225' in sys.executable:
     PROJECT_DIR = '/home/yw1225/projects/DCM_RNN'
     print("It seems a remote run on NYU HPC")
     print("PROJECT_DIR is set as: " + PROJECT_DIR)
@@ -21,6 +21,7 @@ else:
     print("Not sure executing machine. Make sure to set PROJECT_DIR properly.")
     print("PROJECT_DIR is set as: " + PROJECT_DIR)
     import matplotlib
+
 
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -44,23 +45,32 @@ MAX_EPOCHS = 16
 CHECK_STEPS = 1
 N_SEGMENTS = 128
 N_RECURRENT_STEP = 128
-# STEP_SIZE = 0.002 # for 32
-# STEP_SIZE = 0.5
-# STEP_SIZE = 0.001 # for 64
-STEP_SIZE = 0.001 # 128
-# STEP_SIZE = 0.0005 # for 256
 DATA_SHIFT = int(N_RECURRENT_STEP / 4)
-LEARNING_RATE = 0.01 / N_RECURRENT_STEP
-
 
 print(os.getcwd())
-PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
 data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)
 
+# initialize DataUnit du_hat, support masks should be specified here
+# Wxx = np.zeros((du.get('n_node'), du.get('n_node')))
+Wxx = np.eye(du.get('n_node')) - np.eye(du.get('n_node')) * du.get('t_delta')
+Wxxu = [np.zeros((du.get('n_node'), du.get('n_node'))) for _ in range(du.get('n_stimuli'))]
+Wxu = np.zeros((du.get('n_node'), du.get('n_stimuli')))
+Wxu[0, 0] = 1. * du.get('t_delta')
+h_parameters = du.get_standard_hemodynamic_parameters(du.get('n_node'))
+# h_parameters['x_h_coupling'] = 1.
+mask = {
+    'Wxx': np.ones((du.get('n_node'), du.get('n_node'))),
+    'Wxxu': [np.zeros((du.get('n_node'), du.get('n_node'))) for _ in range(du.get('n_stimuli'))],
+    'Wxu': np.zeros((du.get('n_node'), du.get('n_stimuli')))
+}
+mask['Wxxu'][0][2, 2] = 1
+mask['Wxu'][0, 0] = 1
+du_hat = du.initialize_a_training_unit(Wxx, Wxxu, Wxu, np.array(h_parameters))
+
+
 dr = tfm.DcmRnn()
 dr.collect_parameters(du)
-dr.learning_rate = LEARNING_RATE
 dr.shift_data = DATA_SHIFT
 dr.n_recurrent_step = N_RECURRENT_STEP
 neural_parameter_initial = {'A': du.get('A'), 'B': du.get('B'), 'C': du.get('C')}

@@ -93,6 +93,19 @@ class DcmRnn(Initialization):
                                 }
 
         self.batch_size = 128
+        self.max_parameter_change_per_iteration = 0.001
+        self.max_parameter_change_decreasing_rate = 0.9
+        self.max_back_track_steps = 8
+
+    def decrease_max_parameter_change_per_iteration(self, rate=None):
+        """
+
+        :param rate:
+        :return:
+        """
+        if rate is None:
+            rate = self.max_parameter_change_decreasing_rate
+        self.max_parameter_change_per_iteration = self.max_parameter_change_per_iteration * rate
 
     def collect_parameters(self, du):
         """
@@ -845,8 +858,33 @@ class DcmRnn(Initialization):
         """
         Set up support mask for the trainable variable in the computation graph.
         If a value in any variable is not supported, it's not updated in the back propagation process.
-        It's a trainable flag for withn each variable than tf trainable flag which is for each variable globally.
-        :param masks:
+        It's a trainable flag for within each variable than tf trainable flag which is for each variable wise.
+        :param masks: a dict of matrice, keys can be variable names in graph or more natural variable in dcm_rnn model.
+        :return:
+        """
+        # support mask should be written in variable name in the graph
+        # assume variables are all fully supported
+        self.support_in_graph = {v.name: np.ones([int(d) for d in v.get_shape()]) for v in tf.trainable_variables()}
+        # merge input masks info
+        for key, val in masks.items():
+            if key in [v.name for v in tf.trainable_variables()]:
+                self.support_in_graph[key] = val
+            elif key in ['Wxx', 'Wxu']:
+                #getattr(self, key).name in [v.name for v in tf.trainable_variables()]:
+                self.support_in_graph[getattr(self, key).name] = val
+            elif key == 'Wxxu':
+                for i in range(len(val)):
+                    self.support_in_graph[getattr(self, key)[i].name] = val[i]
+            else:
+                raise KeyError(str(key) + ' is not a proper key')
+        return self.support_in_graph
+
+    def _setup_support_mask(self, masks):
+        """
+        Set up support mask for the trainable variable in the computation graph.
+        If a value in any variable is not supported, it's not updated in the back propagation process.
+        It's a trainable flag for within each variable than tf trainable flag which is for each variable wise.
+        :param masks: a dict of matrice, keys can be variable names in graph or more natural variable in dcm_rnn model.
         :return:
         """
         # support mask should be written in variable name in the graph

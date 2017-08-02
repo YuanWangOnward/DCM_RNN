@@ -12,11 +12,11 @@ else:
     print('Please specify project path properly.')
 
 
-mat_path = os.path.join(project_path, 'SPM_data', 'dcm_rnn_data.mat')
+mat_path = os.path.join(project_path, 'spm_data', 'dcm_rnn_data.mat')
 target_pkl_path = os.path.join(project_path, 'dcm_rnn', 'resources', 'SPM_data_attention.pkl')
 
 mat_contents = sio.loadmat(mat_path)
-data = mat_contents['SPM_data']
+data = mat_contents['spm_data']
 val = data[0, 0]
 
 data = {}

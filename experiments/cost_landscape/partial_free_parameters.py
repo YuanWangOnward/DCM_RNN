@@ -69,7 +69,7 @@ def run1(configure):
     plt.xlabel(x_label)
     plt.ylabel('mse')
 
-    # store SPM_data
+    # store spm_data
     stored_data = {}
     du.refresh_data()
     stored_data['du'] = du
@@ -134,7 +134,7 @@ def run2(configure):
     plt.plot(annotate_xy[0], annotate_xy[1], 'bo')
     plt.xlabel(x_label)
     plt.ylabel(y_label)
-    # store SPM_data
+    # store spm_data
     stored_data = {}
     du.refresh_data()
     stored_data['du'] = du
@@ -183,7 +183,7 @@ def run_n(configure):
         metric[value] = tb.mse(du.get('y'), y_true)
     du.refresh_data()
 
-    # store SPM_data
+    # store spm_data
     stored_data = {}
     du.refresh_data()
     stored_data['du'] = du

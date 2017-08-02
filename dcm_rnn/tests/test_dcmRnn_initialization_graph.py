@@ -24,7 +24,7 @@ class TestDcmRnnInitializationGraph(TestCase):
         isess = tf.InteractiveSession()
         isess.run(tf.global_variables_initializer())
 
-        # prepare SPM_data
+        # prepare spm_data
         # split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_h):
         data = {'x': tb.split_data_for_initializer_graph(
                     du.get('x'), du.get('y'), dr.n_recurrent_step, dr.shift_data, dr.shift_x_y)[0],

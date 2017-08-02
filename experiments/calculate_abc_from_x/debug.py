@@ -70,10 +70,10 @@ else:
     tm.IF_NOISED_Y = False
 
 
-# load in SPM_data
+# load in spm_data
 data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)
-print('Loading SPM_data done.')
+print('Loading spm_data done.')
 
 # create and configure DcmRnn instance
 dr = tfm.DcmRnn()
@@ -82,9 +82,9 @@ tm.prepare_dcm_rnn(dr, tag='initializer')
 # dr.build_an_initializer_graph()
 print('Creating and configuring tf model done.')
 
-# get distributed SPM_data data_package
+# get distributed spm_data data_package
 configure_package = tm.prepare_distributed_configure_package()
-print('Preparing distributed SPM_data data_package done.')
+print('Preparing distributed spm_data data_package done.')
 
 # modify each data_package according to each particular experimental case, store in a list
 package_list = tm.modify_configure_packages(configure_package, 'SNR', range(2, 2 + tm.N_PACKAGES))
@@ -96,10 +96,10 @@ tm.N_CORES = min(cpu_count, len(package_list))
 print('There are ' + str(cpu_count) + ' cores available. ' + str(tm.N_CORES) + ' fo them are used.')
 iterator = itertools.product(*[[du], [dr], package_list])
 with Pool(tm.N_CORES) as p:
-    # prepare SPM_data
+    # prepare spm_data
     package_list = p.starmap(tm.prepare_data, iterator)
 
-    # modify SPM_data if necessary
+    # modify spm_data if necessary
     # iterator = itertools.product(*[package_list, ['H_PARA_INITIAL'], [values]])
     # package_list = p.starmap(tm.modify_signel_data_package, iterator)
 
