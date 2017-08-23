@@ -62,7 +62,7 @@ class TrainingManager(tb.Initialization):
         if dp.N_SEGMENTS is not None:
             if dp.N_SEGMENTS > max_segments_natural:
                 dp.N_SEGMENTS = max_segments_natural
-                warnings.warn("dp.N_SEGMENTS is larger than the length of available spm_data", UserWarning)
+                warnings.warn("dp.MAX_SEGMENTS is larger than the length of available spm_data", UserWarning)
             else:
                 data['u'] = data['u'][:dp.N_SEGMENTS]
                 data['x_true'] = data['x_true'][:dp.N_SEGMENTS]

@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 import subprocess
 import pickle
 import copy
-from numba import jit
 import re
 
 def cdr(relative_path, if_print=False):
@@ -476,6 +475,8 @@ class Initialization:
                  B_sign_probability=None,
                  C_init_low=None, C_init_high=None,
                  u_t_low=None, u_t_high=None,
+                 u_interval_t_low=None, u_interval_t_high=None,
+                 u_skip_rate=None,
                  deviation_constraint=None,
                  h_parameter_check_statistics=None,
                  n_time_point_unit_length=None
@@ -500,27 +501,30 @@ class Initialization:
         self.q_init_low = q_init_low or 0.6
         self.q_init_high = q_init_high or 1.
 
-        self.A_off_diagonal_low = A_off_diagonal_low or -0.45
-        self.A_off_diagonal_high = A_off_diagonal_high or 0.45
-        self.A_diagonal_low = A_diagonal_low or -0.5
+        self.A_off_diagonal_low = A_off_diagonal_low or -0.8
+        self.A_off_diagonal_high = A_off_diagonal_high or 0.8
+        self.A_diagonal_low = A_diagonal_low or -1.0
         self.A_diagonal_high = A_diagonal_high or 0
         self.A_generation_max_trial_number = A_generation_max_trial_number or 5000
         self.sparse_level = sparse_level or 0.5
-        self.B_init_low = B_init_low or 0.2
+        self.B_init_low = B_init_low or -0.5
         self.B_init_high = B_init_high or 0.5
         self.B_non_zero_probability = B_non_zero_probability or 0.5
         self.B_sign_probability = B_sign_probability or 0.5
         self.C_init_low = C_init_low or 0.5
-        self.C_init_high = C_init_high or 1
+        self.C_init_high = C_init_high or 1.
 
-        self.u_t_low = u_t_low or 2  # in second
-        self.u_t_high = u_t_high or 8  # in second
+        self.u_t_low = u_t_low or 5  # in second
+        self.u_t_high = u_t_high or 10  # in second
+        self.u_interval_t_low = u_interval_t_low or 5  # in second
+        self.u_interval_t_high = u_interval_t_high or 10  # in second
+        self.u_skip_rate = u_skip_rate or 0.2
 
         self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
         self.deviation_constraint = deviation_constraint or 1
         self.hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0',
                                     'x_h_coupling']
-        self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3, 0.02],
+        self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3, 1.],
                                              self.hemo_parameter_keys)
         self.hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0., 0.],
                                                  self.hemo_parameter_keys)
@@ -697,14 +701,36 @@ class Initialization:
         u_t_high = self.u_t_high
         u_n_low = int(u_t_low / t_delta)
         u_n_high = int(u_t_high / t_delta)
+
+        u_interval_t_low = self.u_interval_t_low
+        u_interval_t_high = self.u_interval_t_high
+        u_interval_n_low = int(u_interval_t_low / t_delta)
+        u_interval_n_high = int(u_interval_t_high / t_delta)
+
         u = np.zeros((n_time_point, n_stimuli))
 
         for n_s in range(n_stimuli):
-            i_current = 0
+            if n_s > 0:
+                i_current = np.random.randint(int((u_interval_n_low + u_interval_n_high) / 2))
+            else:
+                i_current = 0
             value = 0
             while i_current < n_time_point:
-                step = np.random.randint(u_n_low, u_n_high)
-                value = flip(value)
+                if i_current > 0:
+                    if random.random() > self.u_skip_rate:
+                        value = flip(value)
+                else:
+                    value = flip(value)
+                if value == 1:
+                    if u_n_low == u_n_high:
+                        step = u_n_low
+                    else:
+                        step = np.random.randint(u_n_low, u_n_high)
+                else:
+                    if u_interval_n_low == u_interval_n_high:
+                        step = u_interval_n_low
+                    else:
+                        step = np.random.randint(u_interval_n_low, u_interval_n_high)
                 i_next = i_current + step
                 if i_next >= n_time_point:
                     i_next = n_time_point
@@ -2194,7 +2220,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         self.variable_names_in_graph = names_in_model
         return names_in_model
 
-    def update_trainable_variables(self, grads_and_vars, step_size, variable_names_in_graph=None):
+    def update_trainable_variables(self, grads_and_vars, step_size, variable_names_in_graph=None, ):
         """
         Given grads_and_vars obtained from tensorflow graph, and step_size, update variable values in
         DataUnit. Notice, it is not a simple assignment. For [Wxx, Wxxu, Wxu], corresponding [A, B, C]
@@ -2223,12 +2249,19 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                     self._secured_data['C'] = v / self.get('t_delta')
                 self._secured_data[n] = v
 
-    def regenerate_data(self):
+    def regenerate_data(self, u=None, initial_x_state=None, initial_h_state=None):
         """
         Re-generate x, h, and y. (after update some of the parameters in Wxx, Wxxu, Wxu, or hemodynamic
         parameter)
+        :param u: input stimuli
         :return:
         """
+        if u is not None:
+            self._secured_data['u'] = u
+        if initial_x_state is not None:
+            self._secured_data['initial_x_state'] = initial_x_state
+        if initial_h_state is not None:
+            self._secured_data['initial_h_state'] = initial_h_state
         remove_keys = ['Wxx', 'Wxxu', 'Wxu', 'Whh', 'Whx', 'bh', 'Wo', 'bo', 'x', 'h', 'y']
         for key in remove_keys:
             if key in self._secured_data.keys():

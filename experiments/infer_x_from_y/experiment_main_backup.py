@@ -246,7 +246,7 @@ def add_data_log(data_log_dir='./data_logs/', extra_prefix=''):
     data_saved['NODE_INDEX'] = NODE_INDEX
     data_saved['MAX_EPOCHS'] = MAX_EPOCHS
     data_saved['MAX_EPOCHS_INNER'] = MAX_EPOCHS_INNER
-    data_saved['N_SEGMENTS'] = N_SEGMENTS
+    data_saved['MAX_SEGMENTS'] = N_SEGMENTS
     data_saved['CHECK_STEPS'] = CHECK_STEPS
 
     data_saved['N_RECURRENT_STEP'] = N_RECURRENT_STEP

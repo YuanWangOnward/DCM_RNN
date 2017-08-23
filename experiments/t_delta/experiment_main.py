@@ -9,27 +9,29 @@ from multiprocessing import Pool
 # add project root directory to sys.path otherwise modules cannot be imported properly
 sys.path.append(os.getcwd())
 
-import dcm_rnn.toolboxes as tb
-import dcm_rnn.database_toolboxes as dbt
+import toolboxes as tb
+# import database_toolboxes as dbt
 
 importlib.reload(tb)
-importlib.reload(dbt)
-dbo = dbt.Operations()
+# importlib.reload(dbt)
+# dbo = dbt.Operations()
 
 
 def run(data_path):
-    print('run() runs')
+    # print('run() runs')
     key_word = os.path.splitext(os.path.basename(data_path))[0]
     output_file = os.path.join(OUTPUT_DIR, key_word + "_t_delta.pkl")
 
     def _run():
-        print('_run() runs')
-        cores = dbo.load_database(data_path)
+        # print('_run() runs')
+        # cores = dbo.load_database(data_path)
+        with open(data_path, 'rb') as f:
+            cores = pickle.load(f)
         # for each DCM, recover fMRI signal with different t_delta
         t_delta_list = [1.0 / 64, 1.0 / 32, 1.0 / 16, 1.0 / 8, 1.0 / 4, 1.0 / 2]
         rMSEs = []
         # for i in range(len(cores)):
-        for i in range(10):
+        for i in range(len(cores)):
             # print('current processing: ' + str(i))
             du = tb.DataUnit()
             du.load_parameter_core(cores[i])

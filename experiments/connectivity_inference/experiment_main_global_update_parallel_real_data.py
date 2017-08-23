@@ -201,8 +201,8 @@ for epoch in range(MAX_EPOCHS):
 
     # updating with back-tracking
     ## collect statistics before updating
-    # xx, Wxxu, Wxu, h_parameters = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameters])
-    # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
+    # xx, Wxxu, Wxu, h_parameter_inital = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameter_inital])
+    # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameter_inital)
 
     du_hat.update_trainable_variables(grads_and_vars, step_size=0)
     du_hat.regenerate_data()
@@ -226,14 +226,6 @@ for epoch in range(MAX_EPOCHS):
     count = 0
     du_hat.update_trainable_variables(grads_and_vars, step_size)
 
-    try:
-        # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
-        du_hat.regenerate_data()
-        y_hat = du_hat.get('y')
-        loss_prediction = tb.mse(y_hat, du.get('y'))
-    except:
-        loss_prediction = float('inf')
-
     Wxx = du_hat.get('Wxx')
     stable_flag = du.check_transition_matrix(Wxx, 1.)
     while not stable_flag:
@@ -245,8 +237,17 @@ for epoch in range(MAX_EPOCHS):
             step_size = step_size / 2
         warnings.warn('not stable')
         print('step_size=' + str(step_size))
-        Wxx = -grads_and_vars[0][0] * step_size + grads_and_vars[0][1]
+        du_hat.update_trainable_variables(grads_and_vars, step_size)
+        Wxx = du_hat.get('Wxx')
         stable_flag = du.check_transition_matrix(Wxx, 1.)
+
+    try:
+        # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameter_inital)
+        du_hat.regenerate_data()
+        y_hat = du_hat.get('y')
+        loss_prediction = tb.mse(y_hat, du.get('y'))
+    except:
+        loss_prediction = float('inf')
 
     while loss_prediction > loss_prediction_original or np.isnan(loss_prediction):
         count += 1
@@ -260,8 +261,8 @@ for epoch in range(MAX_EPOCHS):
             '''
             dr.update_variables_in_graph(isess, dr.trainable_variables_nodes,
                                          [-val[0] * step_size + val[1] for val in grads_and_vars])
-            Wxx, Wxxu, Wxu, h_parameters = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameters])
-            du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
+            Wxx, Wxxu, Wxu, h_parameter_inital = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameter_inital])
+            du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameter_inital)
             '''
 
             du_hat.update_trainable_variables(grads_and_vars, step_size)
@@ -296,7 +297,7 @@ for epoch in range(MAX_EPOCHS):
     print(du_hat.get('Wxx'))
     print(du_hat.get('Wxxu'))
     print(du_hat.get('Wxu'))
-    # print(h_parameters)
+    # print(h_parameter_inital)
 
 
 print('optimization finished.')

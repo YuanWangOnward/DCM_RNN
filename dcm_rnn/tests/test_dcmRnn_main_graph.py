@@ -160,7 +160,7 @@ class TestDcmRnnMainGraph(TestCase):
         dr.loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
         # dr.if_add_optimiser = False
         # dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial,
-        #                     hemodynamic_parameter_initial=h_parameters_initial)
+        #                     hemodynamic_parameter=h_parameters_initial)
 
 
         # run forward

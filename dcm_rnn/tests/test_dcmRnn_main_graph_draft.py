@@ -128,7 +128,7 @@ class TestDcmRnnMainGraph(TestCase):
         h_parameters_updated = mean + std
 
         dr.update_h_parameters_in_graph(isess, h_parameters_updated)
-        h_parameters_read_out = isess.run(dr.h_parameters)
+        h_parameters_read_out = isess.run(dr.h_parameter_inital)
 
         np.testing.assert_array_equal(h_parameters_updated, h_parameters_read_out)
         '''

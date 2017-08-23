@@ -31,8 +31,6 @@ def build_a_base(current_base_number):
         du._secured_data['if_random_h_state_initial'] = False
         du._secured_data['t_delta'] = 0.25
         du._secured_data['t_scan'] = 5 * 60
-        du._secured_data['learning_rate'] = 0.1
-        du._secured_data['n_backpro'] = 12
         du.complete_data_unit(if_show_message=False)
 
         # add cores
@@ -49,27 +47,23 @@ def build_a_base(current_base_number):
         pickle.dump(current_data, f)
 
 
-    if __name__ == '__main__':
-        import argparse
+if __name__ == '__main__':
+    import argparse
 
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-o", "--output", help="output directory")
-        args = parser.parse_args()
-        if args.output:
-            print("Output directory is " + args.output)
-            OUTPUT_DIR = args.output
-        else:
-            current_dir = os.getcwd()
-            if current_dir.split('/')[-1] == "dcm_rnn":
-                OUTPUT_DIR = current_dir + '/spm_data'
-            elif current_dir.split('/')[-1] == "dcm_rnn":
-                OUTPUT_DIR = current_dir + '/../spm_data'
-            else:
-                raise ValueError("Cannot find default output directory. \
-                    Specify it or run this script in data_package root directory")
-            print("Output directory is " + OUTPUT_DIR)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-o", "--output", help="output directory")
+    args = parser.parse_args()
+    if args.output:
+        print("Output directory is " + args.output)
+        OUTPUT_DIR = args.output
+    else:
+        current_dir = os.getcwd()
+        OUTPUT_DIR = os.path.join(current_dir, 'output')
+        print("Output directory is " + OUTPUT_DIR)
+        if not os.path.exists(OUTPUT_DIR):
+            os.makedirs(OUTPUT_DIR)
 
-    TOTAL_BASE_NUMBER = 10
+    TOTAL_BASE_NUMBER = 20
     SAMPLE_PER_BASE = 500
     pool = Pool(os.cpu_count())
     pool.map(build_a_base, range(TOTAL_BASE_NUMBER))

@@ -933,9 +933,11 @@ class DcmRnn(Initialization):
         self.loss_sparsity = tf.reduce_mean(tf.concat([loss_Wxx, loss_Wxxu, loss_Wxu], axis=0), name="loss_sparsity")
         return self.loss_sparsity
 
-    def add_loss_prior(self, h_parameters=None):
+    def add_loss_prior(self, h_parameters=None, loss_weighting=None):
         if h_parameters == None:
             h_parameters = self.h_parameters
+        if loss_weighting == None:
+            loss_weighting = self.loss_weighting
         prior_distribution = self.get_expanded_hemodynamic_parameter_prior_distributions(self.n_region)
         mask = np.array(prior_distribution['std'] > 0)
         mean = np.array(prior_distribution['mean'], dtype=np.float32)[mask]

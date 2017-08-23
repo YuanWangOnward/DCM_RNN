@@ -173,8 +173,8 @@ for epoch in range(MAX_EPOCHS):
 
     # updating with back-tracking
     ## collect statistics before updating
-    # xx, Wxxu, Wxu, h_parameters = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameters])
-    # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
+    # xx, Wxxu, Wxu, h_parameter_inital = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameter_inital])
+    # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameter_inital)
 
     du_hat.update_trainable_variables(grads_and_vars, step_size=0)
     du_hat.regenerate_data()
@@ -199,7 +199,7 @@ for epoch in range(MAX_EPOCHS):
     du_hat.update_trainable_variables(grads_and_vars, step_size)
 
     try:
-        # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
+        # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameter_inital)
         du_hat.regenerate_data()
         y_hat = du_hat.get('y')
         loss_prediction = tb.mse(y_hat, du.get('y'))
@@ -232,8 +232,8 @@ for epoch in range(MAX_EPOCHS):
             '''
             dr.update_variables_in_graph(isess, dr.trainable_variables_nodes,
                                          [-val[0] * step_size + val[1] for val in grads_and_vars])
-            Wxx, Wxxu, Wxu, h_parameters = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameters])
-            du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters)
+            Wxx, Wxxu, Wxu, h_parameter_inital = isess.run([dr.Wxx, dr.Wxxu[0], dr.Wxu, dr.h_parameter_inital])
+            du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameter_inital)
             '''
 
             du_hat.update_trainable_variables(grads_and_vars, step_size)
@@ -268,7 +268,7 @@ for epoch in range(MAX_EPOCHS):
     print(du_hat.get('Wxx'))
     print(du_hat.get('Wxxu'))
     print(du_hat.get('Wxu'))
-    # print(h_parameters)
+    # print(h_parameter_inital)
 
 print('optimization finished.')
 
