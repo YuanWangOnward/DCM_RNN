@@ -4,11 +4,12 @@ import dcm_rnn.toolboxes as tb
 import os
 
 current_dir = os.getcwd()
-if current_dir.split('/')[-1] == "DCM-RNN":
+if current_dir.split('/')[-1] == "DCM_RNN":
     os.chdir(current_dir + '/experiments/infer_x_from_y')
+print('Current working directory is ' + os.getcwd())
 
 
-file_name = "20170322000530.pkl"
+file_name = "20170508081014.pkl"
 data = pickle.load(open(file_name, "rb"))
 
 x_hat = data['x_hat']

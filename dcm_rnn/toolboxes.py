@@ -14,7 +14,7 @@ import subprocess
 import pickle
 import copy
 import re
-
+from collections import Iterable
 def cdr(relative_path, if_print=False):
     file_path = os.path.dirname(os.path.realpath(__file__))
     os.chdir(file_path + relative_path)
@@ -133,7 +133,6 @@ def merge(data_list, n_segment, n_step=None, merge_dimension=0):
     output = output / average_template
     return output
 
-
 def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_y):
     x_splits = split(x_data, n_segment, n_step=n_step)
     y_splits = split(y_data, n_segment, n_step=n_step, shift=shift_x_y)
@@ -141,7 +140,6 @@ def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_
     x_splits = x_splits[:n_segments]
     y_splits = y_splits[:n_segments]
     return [x_splits, y_splits]
-
 
 def make_a_batch(u, x, h, y):
     """
@@ -289,11 +287,11 @@ def ista(A, Y, alpha_mask=1, support=None, prior=None):
     The (smallest) Lipschitz constant of the gradient ∇f is L(f) = λ_max(A^T*A)
     :param A: the mixing matrix
     :param Y: the target signal
-    :param alpha_mask: a scalar or a np.array, if a scalar, the sparsity penalty is the same for each element of X; 
+    :param alpha_mask: a scalar or a np.array, if a scalar, the sparsity penalty is the same for each element of X;
                        if a np.array, it should have the same shape of X, which means the sparsity penalty of each
                        element of X is different.
     :param support: a binary np.array of the same shape of X. If an element is 0, the element in X at the corresponding
-                    location is fixed as zeros; otherwise, can be any value. 
+                    location is fixed as zeros; otherwise, can be any value.
     :param prior: a binary np.array of the same shape of X. Sparsity is with respect to value in prior
     :return: X, a np.array of coefficients
     """
@@ -524,7 +522,7 @@ class Initialization:
         self.deviation_constraint = deviation_constraint or 1
         self.hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0',
                                     'x_h_coupling']
-        self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3, 1.],
+        self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3, 0.02],
                                              self.hemo_parameter_keys)
         self.hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0., 0.],
                                                  self.hemo_parameter_keys)
@@ -1489,7 +1487,7 @@ class Scanner:
         Check if r set of generated h seems r reasonable one.
         Namely, f, v, q should be within [self.h_value_low, self.h_value_high] all the time
         :param h: test hemodynamic state, np.array of (n_time_point, n_node, 4)
-        :return: True if x means proper; False otherwise
+        :return: True if h means proper; False otherwise
         """
         h_temp = h[:, :, 1:].flatten()
         min_value = np.min(h_temp)
@@ -2068,8 +2066,9 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         """
         self._locked_data = copy.deepcopy(self._secured_data)
 
-    def collect_parameter_core(self):
+    def collect_parameter_core(self, extra_paras=None):
         """
+        :param extra_paras: extra parameters to be save, sequence of string
         :return: Return the initial setting and core paremeters, with which the DCM model can be reproduced.
                  Namely, the category one and two parameters
         """
@@ -2079,6 +2078,11 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         self.check_all_have_values(core_para)
         for para in core_para:
             para_core[para] = self._secured_data[para]
+        if isinstance(extra_paras, str):
+            para_core[extra_paras] = self._secured_data[extra_paras]
+        elif isinstance(extra_paras, Iterable):
+            for para in extra_paras:
+                para_core[para] = self._secured_data[para]
         return para_core
 
     def load_parameter_core(self, parameter_core):
@@ -2167,19 +2171,20 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         else:
             print(source_para_name + ' is not supported yet.')
 
-    def resample(self, states, target_shape):
+    def resample(self, array, target_shape, order=0, mode='constant'):
         """
-        Resample states to same shape for comparison.
-        :param states: r list of states
+        A wrapper of scipy.ndimage.zoom. Resample array to the target shape.
+        :param array:
         :param target_shape: desired shape
-        :return: r list of states of the same time point.
+        :param order: the order of the spline interpolation
+        :param mode: Points outside the boundaries of the input are filled according to the given mode
+            (‘constant’, ‘nearest’, ‘reflect’ or ‘wrap’). Default is ‘constant’.
+        :return: resamped array
         """
-        states_resampled = []
-        for state in states:
-            factor = np.array(target_shape)/np.array(state.shape)
-            state_resampled = scipy.ndimage.zoom(state, factor, order=0, mode='nearest')
-            states_resampled.append(state_resampled)
-        return states_resampled
+        factor = np.array(target_shape) / np.array(array.shape)
+        state_resampled = scipy.ndimage.zoom(array, factor, order=order, mode=mode)
+        return state_resampled
+
 
     def compare(self, arrays, ground_truth):
         """
@@ -2290,3 +2295,104 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         du_hat._secured_data['if_random_h_state_initial'] = False
         du_hat.complete_data_unit(start_categorty=1, if_check_property=False, if_show_message=False)
         return du_hat
+
+    def resample_data_unit(self, target_resolution_u=16, down_resolution_y=0.5, up_resolution_y=16):
+        """
+        Given a du with small t_delta, resample it as a preprocessing step for DCM-RNN estimation.
+        :param du_input: input instant of DataUnit
+        :param target_resolution_u:
+        :param down_resolution_y:
+        :param up_resolution_y:
+        :return:
+        """
+        du = copy.deepcopy(self)
+        factor = np.ones(du._secured_data['u'].ndim)
+        original_resolution = int(1 / du.get('t_delta'))
+        target_resolution = target_resolution_u
+        factor[0] = target_resolution / original_resolution
+        du._secured_data['u'] = sp.ndimage.zoom(du._secured_data['u'], factor, order=0)
+
+        factor = np.ones(du._secured_data['y'].ndim)
+        original_resolution = int(1 / du.get('t_delta'))
+        target_resolution = down_resolution_y
+        factor[0] = target_resolution / original_resolution
+        du._secured_data['y'] = sp.ndimage.zoom(du._secured_data['y'], factor, order=0)
+        if 'y_noised' in du._secured_data.keys():
+            du._secured_data['y_noised'] = sp.ndimage.zoom(du._secured_data['y_noised'], factor, order=0)
+
+        factor = np.ones(du._secured_data['y'].ndim)
+        original_resolution = down_resolution_y
+        target_resolution = up_resolution_y
+        factor[0] = target_resolution / original_resolution
+        du._secured_data['y'] = sp.ndimage.zoom(du._secured_data['y'], factor, order=3)
+        if 'y_noised' in du._secured_data.keys():
+            du._secured_data['y_noised'] = sp.ndimage.zoom(du._secured_data['y_noised'], factor, order=3)
+
+
+        du._secured_data['t_delta'] = 1 / target_resolution_u
+
+        return du
+
+    def create_support_mask(self, A=None, B=None, C=None):
+        """
+        Create support mask for the given connection parameters ABC
+        :param A:
+        :param B:
+        :param C:
+        :return:
+        """
+        if A is None:
+            A = self.get('A')
+        if B is None:
+            B = self.get('B')
+        if C is None:
+            C = self.get('C')
+        mask = {}
+        mask['Wxx'] = np.array(abs(A) > 0, dtype=float)
+        mask['Wxxu'] = [None] * len(B)
+        for i in range(len(B)):
+            mask['Wxxu'][i] = np.array(abs(B[i]) > 0, dtype=float)
+        mask['Wxu'] = np.array(abs(C) > 0, dtype=float)
+        return mask
+
+    def get_hemodynamic_kernel(self, response_length=32, impulse_length=0.5):
+        """
+        return y  response to impulse input of x
+        the impulse of x lasts for impluse_length second
+        :param response_length: response length in seconds
+        :param impulse_length: impulse length in seconds
+        :return:
+        """
+
+        du = copy.deepcopy(self)
+        parameter_package = du.collect_parameter_for_h_scan()
+        x = np.zeros((int(response_length / du.get('t_delta')), du.get('n_node')))
+        impulse_length = int(impulse_length / du.get('t_delta'))
+        x[:impulse_length, :] = 1
+        t_axis = np.array(range(0, x.shape[0])) * du.get('t_delta')
+        parameter_package['x'] = x
+        du._secured_data['h'] = du.scan_h_parallel(parameter_package)
+
+        parameter_package = du.collect_parameter_for_y_scan()
+        du._secured_data['y'] = du.scan_y_parallel(parameter_package)
+
+        return t_axis, du._secured_data['y']
+
+'''
+    def resample_arrays(self, states, target_shape, order=0, mode='constant'):
+        """
+        Resample states to same shape for comparison.
+        :param states: r list of states
+        :param target_shape: desired shape
+        :param order: the order of the spline interpolation
+        :param mode: Points outside the boundaries of the input are filled according to the given mode
+            (‘constant’, ‘nearest’, ‘reflect’ or ‘wrap’). Default is ‘constant’.
+        :return: r list of states of the same time point.
+        """
+        states_resampled = []
+        for state in states:
+            factor = np.array(target_shape)/np.array(state.shape)
+            state_resampled = scipy.ndimage.zoom(state, factor, order=order, mode=mode)
+            states_resampled.append(state_resampled)
+        return states_resampled
+'''

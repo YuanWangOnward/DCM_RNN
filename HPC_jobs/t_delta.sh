@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --tasks-per-node=8
-#SBATCH --time=96:00:00
+#SBATCH --tasks-per-node=10
+#SBATCH --time=48:00:00
 #SBATCH --mem=16GB
 #SBATCH --job-name=t_delta
 #SBATCH --mail-type=END

@@ -39,8 +39,8 @@ class TestDcmRnnMainGraph(TestCase):
         tf.reset_default_graph()
         self.dr = DcmRnn()
         print(os.getcwd())
-        data_path = '../resources/template0.pkl'
-        self.du = tb.load_template(data_path)
+        RESULT_PATH_DCM_RNN = '../resources/template0.pkl'
+        self.du = tb.load_template(RESULT_PATH_DCM_RNN)
         self.dr.collect_parameters(self.du)
         self.neural_parameter_initial = {'A': self.du.get('A'), 'B': self.du.get('B'), 'C': self.du.get('C')}
         '''

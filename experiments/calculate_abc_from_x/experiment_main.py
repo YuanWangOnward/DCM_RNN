@@ -53,7 +53,7 @@ def reproduce_x(w_hat, w_true):
     return [x_hat, x_true]
 
 
-# load in SPM_data
+# load in spm_data
 print('working directory is ' + os.getcwd())
 data_path = os.path.join(PROJECT_DIR, 'experiments', 'calculate_abc_from_x', 'data_ideal.pkl')
 data_package = tb.load_template(data_path)

@@ -52,8 +52,8 @@ print('working directory is ' + os.getcwd())
 data_path = os.path.join(PROJECT_DIR, 'experiments', 'calculate_abc_from_x', 'spm_data.pkl')
 data_package = tb.load_template(data_path)
 data = data_package.data
-# data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
-# du = tb.load_template(data_path)
+# RESULT_PATH_DCM_RNN = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
+# du = tb.load_template(RESULT_PATH_DCM_RNN)
 du = data['key']
 signal_length = data['x_true_merged'].data.shape[0]
 index_range = range(0, int(signal_length * 3 / 4))

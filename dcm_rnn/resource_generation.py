@@ -140,6 +140,3 @@ if __name__ == '__main__':
         with open(data_path, 'rb') as f:
             du_load = pickle.load(f)
             np.testing.assert_array_equal(du._secured_data['y'], du_load._secured_data['y'])
-
-
-

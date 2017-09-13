@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --ntasks=4
-#SBATCH --time=80:00:00
-#SBATCH --mem=12GB
+#SBATCH --tasks-per-node=8
+#SBATCH --time=48:00:00
+#SBATCH --mem=16GB
 #SBATCH --job-name=cost_landscape
 #SBATCH --mail-type=END
 #SBATCH --mail-user=yw1225@nyu.edu
@@ -15,7 +15,9 @@ JOBNAME=t_delta
 RUNDIR=$SCRATCH/runs/$JOBNAME-${SLURM_JOB_ID/.*}
 SOURCEDIR=~/projects/DCM_RNN/dcm_rnn
 OUTPUTDIR=$SCRATCH/results/DCM_RNN/cost_landscape/${SLURM_JOB_ID/.*}
+SOURCEDIR=~/projects/DCM_RNN/dcm_rnn
 
+export PYTHONPATH=$PYTHONPATH:$SOURCEDIR
 mkdir -p $RUNDIR
 mkdir -p $OUTPUTDIR
 cd $RUNDIR

@@ -24,7 +24,7 @@ def run(data_path):
 
     def _run():
         # print('_run() runs')
-        # cores = dbo.load_database(data_path)
+        # cores = dbo.load_database(RESULT_PATH_DCM_RNN)
         with open(data_path, 'rb') as f:
             cores = pickle.load(f)
         # for each DCM, recover fMRI signal with different t_delta
@@ -36,7 +36,7 @@ def run(data_path):
             du = tb.DataUnit()
             du.load_parameter_core(cores[i])
             y_list = du.map('t_delta', t_delta_list, 'y')
-            y_resampled = du.resample(y_list, y_list[-1].shape)
+            y_resampled = [du.resample(array, y_list[-1].shape) for array in y_list]
             rMSE = du.compare(y_resampled, y_resampled[0])
             rMSEs.append(rMSE)
         # save results

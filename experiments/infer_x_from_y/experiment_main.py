@@ -36,17 +36,23 @@ import itertools
 
 
 
-LOCAL_DEBUGGING = False
+LOCAL_DEBUGGING = True
 
 tm = training_manager.TrainingManager()
 if LOCAL_DEBUGGING is True:
-    tm.N_RECURRENT_STEP = 4
+    tm.N_RECURRENT_STEP = 64
     tm.N_SEGMENTS = 64
     tm.MAX_EPOCHS = 1
     tm.MAX_EPOCHS_INNER = 4
+    tm.MAX_SEGMENTS = 1
     tm.CHECK_STEPS = 4
     tm.IF_NODE_MODE = True
     tm.N_PACKAGES = 2
+
+    tm.IF_RANDOM_H_PARA = False
+    tm.IF_RANDOM_H_STATE_INIT = False
+    tm.IF_NOISED_Y = False
+
 else:
     tm.IF_NODE_MODE = False
     tm.N_PACKAGES = 1

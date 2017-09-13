@@ -49,7 +49,7 @@ IF_IMAGE_LOG = True
 IF_DATA_LOG = False
 LOG_EXTRA_PREFIX = ''
 
-# load in SPM_data
+# load in spm_data
 data_path = PROJECT_DIR + "/dcm_rnn/resources/template0.pkl"
 du = tb.load_template(data_path)
 
@@ -94,7 +94,7 @@ dr.trainable_flags = {'Wxx': True,
                       }
 dr.build_main_graph(neural_parameter_initial=neural_parameter_initial)
 
-# prepare SPM_data
+# prepare spm_data
 data = {'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
         'y': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)}
 n_segment = min([len(data[x]) for x in data.keys()])

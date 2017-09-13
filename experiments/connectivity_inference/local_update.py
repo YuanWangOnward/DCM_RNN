@@ -95,7 +95,7 @@ x_parameter_initial['C'] = np.zeros((du.get('n_node'), du.get('n_stimuli')))
 x_parameter_initial['C'][0, 0] = 1
 
 h_parameter_inital = du.get_standard_hemodynamic_parameters(du.get('n_node'))
-# h_parameter_inital['x_h_coupling'] = 1.
+# h_parameter_initial['x_h_coupling'] = 1.
 
 loss_weighting = {'prediction': 1., 'sparsity': 0., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
 

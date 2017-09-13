@@ -128,7 +128,7 @@ class TestDcmRnnMainGraph(TestCase):
         h_parameters_updated = mean + std
 
         dr.update_h_parameters_in_graph(isess, h_parameters_updated)
-        h_parameters_read_out = isess.run(dr.h_parameter_inital)
+        h_parameters_read_out = isess.run(dr.h_parameter_initial)
 
         np.testing.assert_array_equal(h_parameters_updated, h_parameters_read_out)
         '''
@@ -223,7 +223,7 @@ class TestDcmRnnMainGraph(TestCase):
                     for epoch in range(self.MAX_EPOCHS):
                         for i in [random.randint(0, len(data['y_true_float_corrected']))
                                   for _ in range(self.N_TEST_SAMPLE)]:
-                        # for i in range(len(SPM_data['y_true_float_corrected'])):
+                        # for i in range(len(spm_data['y_true_float_corrected'])):
 
                             print('current processing ' + str(i))
                             grads_and_vars, loss_prediction = \
@@ -307,13 +307,13 @@ class TestDcmRnnMainGraph(TestCase):
                         for i in range(len(data['y_true_float_corrected'])):
                             print('current processing ' + str(i))
                             #print('u:')
-                            #print(SPM_data['u'][i])
+                            #print(spm_data['u'][i])
                             #print('x_initial:')
                             #print(x_connector_current)
                             #print('h_initial:')
                             #print(h_connector_current)
                             #print('y_true:')
-                            #print(SPM_data['y_true_float_corrected'][i])
+                            #print(spm_data['y_true_float_corrected'][i])
 
 
                             grads_and_vars, x_connector, h_connector, loss_prediction = \

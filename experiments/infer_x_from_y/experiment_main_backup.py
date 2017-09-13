@@ -1,10 +1,25 @@
-import matplotlib
+import sys
+# global setting, you need to modify it accordingly
+if '/Users/yuanwang' in sys.executable:
+    PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
+    print("It seems a local run on Yuan's laptop")
+    print("PROJECT_DIR is set as: " + PROJECT_DIR)
+    import matplotlib
+    sys.path.append('dcm_rnn')
+elif '/share/apps/python3/' in sys.executable:
+    PROJECT_DIR = '/home/yw1225/projects/DCM_RNN'
+    print("It seems a remote run on NYU HPC")
+    print("PROJECT_DIR is set as: " + PROJECT_DIR)
+    import matplotlib
+    matplotlib.use('agg')
+else:
+    PROJECT_DIR = '.'
+    print("Not sure executing machine. Make sure to set PROJECT_DIR properly.")
+    print("PROJECT_DIR is set as: " + PROJECT_DIR)
+    import matplotlib
 
-matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
-# import dcm_rnn.tf_model as tfm
-# import dcm_rnn.toolboxes as tb
 import tf_model as tfm
 import toolboxes as tb
 import numpy as np
@@ -15,14 +30,6 @@ import warnings
 import sys
 import random
 
-'''
-# choose matplotlib backend depending on interpreter used
-if sys.executable == '/Users/yuanwang/anaconda/envs/tensorFlow/bin/python':
-    print("It's a local run on Yuan's laptop. Matplotlib uses MacOSX backend")
-else:
-    print("It's NOT a local run on Yuan's laptop, Matplotlib uses AGG backend")
-    matplotlib.use('agg')
-'''
 
 
 def get_log_prefix(extra_prefix=''):
@@ -246,7 +253,7 @@ def add_data_log(data_log_dir='./data_logs/', extra_prefix=''):
     data_saved['NODE_INDEX'] = NODE_INDEX
     data_saved['MAX_EPOCHS'] = MAX_EPOCHS
     data_saved['MAX_EPOCHS_INNER'] = MAX_EPOCHS_INNER
-    data_saved['MAX_SEGMENTS'] = N_SEGMENTS
+    data_saved['n_segments'] = N_SEGMENTS
     data_saved['CHECK_STEPS'] = CHECK_STEPS
 
     data_saved['N_RECURRENT_STEP'] = N_RECURRENT_STEP
@@ -269,19 +276,20 @@ IF_RANDOM_H_PARA = False
 IF_RANDOM_H_STATE_INIT = False
 IF_NOISED_Y = False
 
-IF_NODE_MODE = False
+IF_NODE_MODE = True
 IF_IMAGE_LOG = True
 IF_DATA_LOG = True
 
 SNR = 3
 NODE_INDEX = 0
-SMOOTH_WEIGHT = 0.2
+SMOOTH_WEIGHT = 0.
 N_RECURRENT_STEP = 64
-MAX_EPOCHS = 4
+MAX_EPOCHS = 3
 MAX_EPOCHS_INNER = 4
-N_SEGMENTS = 128  # total amount of spm_data segments
+N_SEGMENTS = 256  # total amount of spm_data segments
 # CHECK_STEPS = 4
-CHECK_STEPS = N_SEGMENTS * MAX_EPOCHS_INNER
+# CHECK_STEPS = N_SEGMENTS * MAX_EPOCHS_INNER
+CHECK_STEPS = N_SEGMENTS
 LEARNING_RATE = 128 / N_RECURRENT_STEP
 DATA_SHIFT = 4
 LOG_EXTRA_PREFIX = ''
@@ -347,6 +355,8 @@ data['loss_smooth'] = []
 data['loss_total'] = []
 count_total = 0
 
+data['x_hat_merged'].data = np.random.rand(1084, 1)
+
 with tf.Session() as sess:
     for epoch in range(MAX_EPOCHS):
         sess.run(tf.global_variables_initializer())
@@ -370,6 +380,11 @@ with tf.Session() as sess:
                 # collect results
                 temp = sess.run(dr.x_state_stacked)
                 data['x_hat_merged'].set(i_segment, temp)
+
+                # add noise, just for show equivalent x's
+                # i_segment_temp = min(N_SEGMENTS - 1, i_segment + 1)
+                # data['x_hat_merged'].set(i_segment_temp, np.mean(temp))
+                # data['x_hat_merged'].set(i_segment, temp)
 
                 # add counting
                 count_total += 1
@@ -407,7 +422,7 @@ with tf.Session() as sess:
             # update previous neural state
             sess.run(tf.assign(dr.x_state_stacked_previous, data['x_hat_merged'].get(i_segment)))
 
-isess.close()
+# isess.close()
 print("Optimization Finished!")
 
 if not IF_NODE_MODE:
@@ -431,4 +446,16 @@ if not IF_NODE_MODE:
     add_data_log(extra_prefix='final_')
 
 
+plt.subplot(1, 2, 1)
+plt.plot(data['x_true_merged'].data)
+plt.plot(data['x_hat_merged'].data, '--')
+plt.subplot(1, 2, 2)
+plt.plot(data['y_true_merged'])
+plt.plot(data['y_hat_merged'], '--')
 
+'''
+data_saved = {}
+data_saved['non_smooth'] = data
+RESULT_PATH_DCM_RNN = os.path.join(PROJECT_DIR, 'experiments', 'infer_x_from_y', 'equivalent_xs_part2.plk')
+pickle.dump(data_saved, open(RESULT_PATH_DCM_RNN, 'wb'))
+'''

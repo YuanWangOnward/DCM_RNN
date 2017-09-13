@@ -69,7 +69,7 @@ class TrainingManager(tb.Initialization):
         return ['IF_RANDOM_H_PARA', 'IF_RANDOM_H_STATE_INIT', 'IF_NOISED_Y',
                 'IF_NODE_MODE', 'IF_IMAGE_LOG', 'IF_DATA_LOG',
                 'SNR', 'NODE_INDEX', 'SMOOTH_WEIGHT', 'N_RECURRENT_STEP', 'MAX_EPOCHS',
-                'MAX_EPOCHS_INNER', 'MAX_SEGMENTS', 'CHECK_STEPS', 'LEARNING_RATE', 'DATA_SHIFT',
+                'MAX_EPOCHS_INNER', 'n_segments', 'CHECK_STEPS', 'LEARNING_RATE', 'DATA_SHIFT',
                 'PACKAGE_LABEL', 'LOG_EXTRA_PREFIX', 'IMAGE_LOG_DIR', 'DATA_LOG_DIR', 'N_CORES',
                 'N_PACKAGES',
                 'spm_data'
@@ -134,16 +134,16 @@ class TrainingManager(tb.Initialization):
         self.spm_data['x_true'] = tb.split(du.get('x'), dr.n_recurrent_step, dr.shift_data)[:max_segments_natural]
         self.spm_data['u'] = tb.split(du.get('u'), dr.n_recurrent_step, dr.shift_data)[:max_segments_natural]
 
-        if self.MAX_SEGMENTS is not None:
-            if self.MAX_SEGMENTS > max_segments_natural:
-                self.MAX_SEGMENTS = max_segments_natural
-                warnings.warn("self.MAX_SEGMENTS is larger than the length of available spm_data", UserWarning)
+        if self.n_segments is not None:
+            if self.n_segments > max_segments_natural:
+                self.n_segments = max_segments_natural
+                warnings.warn("self.n_segments is larger than the length of available spm_data", UserWarning)
             else:
-                self.spm_data['u'] = self.spm_data['u'][:self.MAX_SEGMENTS]
-                self.spm_data['x_true'] = self.spm_data['x_true'][:self.MAX_SEGMENTS]
-                self.spm_data['h_true_monitor'] = self.spm_data['h_true_monitor'][:self.MAX_SEGMENTS]
-                self.spm_data['y_true'] = self.spm_data['y_true'][:self.MAX_SEGMENTS]
-                self.spm_data['y_train'] = self.spm_data['y_train'][:self.MAX_SEGMENTS]
+                self.spm_data['u'] = self.spm_data['u'][:self.n_segments]
+                self.spm_data['x_true'] = self.spm_data['x_true'][:self.n_segments]
+                self.spm_data['h_true_monitor'] = self.spm_data['h_true_monitor'][:self.n_segments]
+                self.spm_data['y_true'] = self.spm_data['y_true'][:self.n_segments]
+                self.spm_data['y_train'] = self.spm_data['y_train'][:self.n_segments]
 
         if self.IF_NODE_MODE is True:
             node_index = self.NODE_INDEX
@@ -274,7 +274,7 @@ class TrainingManager(tb.Initialization):
         if dp.N_SEGMENTS is not None:
             if dp.N_SEGMENTS > max_segments_natural:
                 dp.N_SEGMENTS = max_segments_natural
-                warnings.warn("dp.MAX_SEGMENTS is larger than the length of available spm_data", UserWarning)
+                warnings.warn("dp.n_segments is larger than the length of available spm_data", UserWarning)
             else:
                 data['u'] = data['u'][:dp.N_SEGMENTS]
                 data['x_true'] = data['x_true'][:dp.N_SEGMENTS]

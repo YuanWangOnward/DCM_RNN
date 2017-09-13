@@ -1,4 +1,4 @@
-# manipulate two parameters to see how fMRI signal changes
+# manipulate n parameters to see how fMRI signal changes
 import numpy as np
 import matplotlib
 import importlib
@@ -38,7 +38,7 @@ def get_iteroator(template):
     return iterator
 
 
-def run1(configure):
+def run1(configure, if_plot=False):
     # configure
     du = tb.DataUnit()
     du.load_parameter_core(template.collect_parameter_core())
@@ -64,9 +64,10 @@ def run1(configure):
         metric[idx] = tb.mse(du.get('y'), y_true)
 
     # show result
-    plt.plot(value_range, metric)
-    plt.xlabel(x_label)
-    plt.ylabel('mse')
+    if if_plot:
+        plt.plot(value_range, metric)
+        plt.xlabel(x_label)
+        plt.ylabel('mse')
 
     # store spm_data
     stored_data = {}
@@ -79,7 +80,7 @@ def run1(configure):
     print('Results saved as ' + stored_data_path)
 
 
-def run2(configure):
+def run2(configure, if_plot=False):
     # configure
     du = tb.DataUnit()
     du.load_parameter_core(template.collect_parameter_core())
@@ -121,18 +122,21 @@ def run2(configure):
             assign(du, para_names[1], locations[1], c)
             du.recover_data_unit()
             metric[a_idx, c_idx] = tb.mse(du.get('y'), y_true)
+
     # show result
     annotate_text = "  Global\nminimum\n  (" + str(annotate_xy[0]) + ", " + str(annotate_xy[1]) + ")"
-    X, Y = np.meshgrid(c_range, r_range)
-    plt.figure()
-    CS = plt.contour(X, Y, metric)
-    plt.clabel(CS, inline=1, fontsize=10)
-    plt.title('MSE contour map')
-    plt.annotate(annotate_text, xy=annotate_xy, xytext=annotate_xytext,
-                 arrowprops=dict(facecolor='black', shrink=0.05))
-    plt.plot(annotate_xy[0], annotate_xy[1], 'bo')
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
+    if if_plot:
+        X, Y = np.meshgrid(c_range, r_range)
+        plt.figure()
+        CS = plt.contour(X, Y, metric)
+        plt.clabel(CS, inline=1, fontsize=10)
+        plt.title('MSE contour map')
+        plt.annotate(annotate_text, xy=annotate_xy, xytext=annotate_xytext,
+                     arrowprops=dict(facecolor='black', shrink=0.05))
+        plt.plot(annotate_xy[0], annotate_xy[1], 'bo')
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+
     # store spm_data
     stored_data = {}
     du.refresh_data()
@@ -246,37 +250,34 @@ if __name__ == '__main__':
     template = create_a_template(0)
     y_true = template.get('y')
 
-
     if VERBOSE:
         print("Processing cost landscape, one free parameter")
-        iterator = get_iteroator(template)
-        # print(len(list(itertools.combinations(iterator, 1))))
-        # with Pool(os.cpu_count()) as p:
-        #    p.map(run1, iterator)
-
+    iterator = get_iteroator(template)
+    # print(len(list(itertools.combinations(iterator, 1))))
+    with Pool(os.cpu_count()) as p:
+        p.map(run1, iterator)
 
     if VERBOSE:
         print("Processing cost landscape, two free parameter")
-        iterator = get_iteroator(template)
-        iterator = itertools.combinations(iterator, 2)
-        iterator = list(iterator)
-        random.shuffle(iterator)
-        # print(len(list(itertools.combinations(iterator, 2))))
-        # with Pool(os.cpu_count()) as p:
-        #     p.map(run2, iterator)
-
+    iterator = get_iteroator(template)
+    iterator = itertools.combinations(iterator, 2)
+    iterator = list(iterator)
+    random.shuffle(iterator)
+    # print(len(list(itertools.combinations(iterator, 2))))
+    with Pool(os.cpu_count()) as p:
+        p.map(run2, iterator)
 
     if VERBOSE:
         print("Processing cost landscape, three free parameter")
-        iterator = get_iteroator(template)
-        iterator = itertools.combinations(iterator, 3)
-        iterator = list(iterator)
-        random.shuffle(iterator)
-        iterator[0] = (('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0)))
-        for n in range(8):
-            iterator_temp = iterator[n * 16: (n + 1) * 16]
-            with Pool(os.cpu_count()) as p:
-                p.map(run_n, iterator_temp)
+    iterator = get_iteroator(template)
+    iterator = itertools.combinations(iterator, 3)
+    iterator = list(iterator)
+    random.shuffle(iterator)
+    iterator[0] = (('A', (1, 0)), ('B', (1, 0)), ('C', (1, 0)))
+    for n in range(1):
+        iterator_temp = iterator[n * 16: (n + 1) * 16]
+        with Pool(os.cpu_count()) as p:
+            p.map(run_n, iterator_temp)
 
 '''
 # evaluate one parameter

@@ -75,8 +75,8 @@ if __name__ == '__main__':
 # check cores base
 current_base_number = 0
 current_base_name = 'DB' + str(current_base_number)
-data_path = current_base_name + '.pkl'
-with open(data_path, 'rb') as f:
+RESULT_PATH_DCM_RNN = current_base_name + '.pkl'
+with open(RESULT_PATH_DCM_RNN, 'rb') as f:
     para_core_loaded = pickle.load(f)
 
 

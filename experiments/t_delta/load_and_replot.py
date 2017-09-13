@@ -1,3 +1,4 @@
+# replot histograms of error caused by t_delta
 import os
 import pickle
 import numpy as np
@@ -48,17 +49,34 @@ if __name__ == '__main__':
 
     print("rMSEs array shape: " + str(rMSEs.shape))
     histogram = plt.figure()
-    bins = np.linspace(0, 0.5, 100)
-    labels = ['15.625ms','31.25ms', '62.5ms', '125ms', '250ms', '500ms']
+    n_bin = 512
+    bins = np.linspace(0, 0.5, n_bin)
+    labels = ['15.625ms', '31.25ms', '62.5ms', '125ms', '250ms', '500ms']
     for n in range(1, rMSEs.shape[1]):
         temp = rMSEs[:, n]
         temp = temp[~np.isnan(temp)]
         temp = temp[~np.isinf(temp)]
-        plt.hist(temp, bins, normed=1, alpha=0.5, label=labels[n])
-        plt.xlabel('relative mean square error')
+        # plt.hist(temp, bins, normed=1, alpha=0.75, label=labels[n])
+        # plt.xlabel('relative mean square error (%')
+        # plt.ylabel('percentage (%)')
+        # plt.legend()
+        plt.figure(0)
+        data = plt.hist(temp, bins, alpha=0.75)
+        # plt.figure(dpi=300)
+        plt.figure(1)
+        plt.bar(data[1][:n_bin - 1] * 100, data[0][:n_bin - 1] / sum(data[0]) * 100, width=(bins[1] - bins[0]) * 100,
+                alpha=0.75, label=labels[n])
+        plt.xlabel('relative mean square error (%)')
         plt.ylabel('percentage (%)')
         plt.legend()
 
+    plt.grid()
     plt.show()
-    plt.savefig(os.path.join(OUTPUT_DIR + 't_delta.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(OUTPUT_DIR, 't_delta.png'), bbox_inches='tight')
+
+    rMSEs = pd.DataFrame(rMSEs)
+    rMSEs.mean(numeric_only=True)
+    np.sqrt(rMSEs.var(numeric_only=True))
+
+
 
