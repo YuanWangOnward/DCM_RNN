@@ -2,7 +2,7 @@
 data/
 dcm_rnn/__pycache__/
 .ipynb_checkpoints/
-__pycache__/
+*__pycache__/
 .idea/
 */infer_x_from_y/logs
 */data/*.pkl
@@ -10,3 +10,4 @@ __pycache__/
 dcm_rnn/tests/logs
 dcm_rnn/resources/logs
 *.mat
+*.pkl
