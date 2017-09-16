@@ -6,7 +6,7 @@
 
 # Dynamic Causal Modelling
 <center>
-<img src="assets/images/diagram_of_DCM.pdf?raw=true" >
+<img width="172" height="295"  src="assets/images/diagram_of_DCM.png?raw=true" >
 </center>
 <div style="text-align: justify; text-align:center;" >
 <p>Fig. 1 High level overview of Dynamic Causal Modelling.</p>
@@ -37,7 +37,7 @@ the neural activities are couple between regions in a bilinear way:
 </div>
 
 <center>
-<img align="center" src="assets/images/x_evolving.pdf?raw=true">
+<img width="295" height="106"  src="assets/images/x_evolving.png?raw=true">
 </center>
 <div style="text-align: justify;">
 <p>
@@ -54,7 +54,7 @@ architecture in the brain.
 </div>
 
 
-<center><img width="300" height="150" align="center" src="assets/images/causal_architecture.png?raw=true" alt="causal architecture in the brain">
+<center><img width="400" height="200" align="center" src="assets/images/causal_architecture.png?raw=true" alt="causal architecture in the brain">
 </center>
 <div style="text-aligh: justify; text-align:center;" >
 <p>Fig. 2 Connectivity matrices and the causal architecture.
@@ -74,7 +74,7 @@ nonlinear. One overview of DCM with details are shown in Fig. 3.
 </div>
 
 <center>
-<img align="center" src="assets/images/whole_DCM.pdf?raw=true">
+<img align="center" src="assets/images/whole_DCM.png?raw=true">
 </center>
 <p style="text-align:center" >
 Fig. 3 Overview of DCM with details. Although it seems very complex,
@@ -100,7 +100,7 @@ output as
 </p></div>
 
 <center>
-<img align="center" src="assets/images/classic_rnn.pdf?raw=true">
+<img width="375" height="89"  src="assets/images/classic_rnn.png?raw=true">
 </center>
 
 <div style="text-align: justify;"><p>
@@ -116,7 +116,7 @@ We generalize it by adding more nonlinearity:
 </p></div>
 
 <center>
-<img align="center" src="assets/images/GRNN.pdf?raw=true">
+<img width="375" height="82" src="assets/images/GRNN.png?raw=true">
 </center>
 
 <div style="text-align: justify;  "><p>
@@ -132,7 +132,7 @@ rearrangement. The approximation is
 </p></div>
 
 <center>
-<img align="center" src="assets/images/approximation.pdf?raw=true">
+<img width="183" height="74" src="assets/images/approximation.png?raw=true">
 </center>
 
 <div style="text-align: justify; "><p>
@@ -142,7 +142,7 @@ Substitute it into the original equation. One obtains
 </p></div>
 
 <center>
-<img align="center" src="assets/images/x_equation.pdf?raw=true">
+<img width="754" height="132" src="assets/images/x_equation.png?raw=true">
 </center>
 
 <div style="text-align: justify; "><p>
@@ -150,7 +150,7 @@ It can be visualized as a piece of neural network
 </p></div>
 
 <center>
-<img align="center" src="assets/images/x_nn_piece.pdf?raw=true">
+<img width="397" height="232" src="assets/images/x_nn_piece.png?raw=true">
 </center>
 
 <div style="text-align: justify; "><p>
@@ -159,7 +159,7 @@ DCM_RNN as shown in Fig. 4.
 </p></div>
 
 <center>
-<img align="center" src="assets/images/DCM_RNN.pdf?raw=true">
+<img align="center" src="assets/images/DCM_RNN.png?raw=true">
 </center>
 <div style="text-align: justify; text-align:center;" >
 <p>Fig. 4 Overview of DCM_RNN.</p>
@@ -169,7 +169,7 @@ DCM_RNN as shown in Fig. 4.
 It is important to see that DCM_RNN is much more than a simple reformatting of DCM. Its advantages over the classical DCM includes:
 
 * It provides a much more flexible framework which makes very simple to add biophysically inspired plausible modification, as long as the added modification operators are partially differentiable. In DCM, it’s like to induce a major change of its estimation procedure or even prohibited.
-* DCM_RNN can leverage efficient parameter estimation methods that have been developed for RNN, e.g. Truncated Backpropagation Through Time (TBPTT), which are significantly different from any existing methods for DCM. One can pursue model simplicity and data fidelity simultaneously by specifying an appropriate loss function for network training, while it has to be done separately in traditional DCM.  We have been able to show in experiments that DCM_RNN achieves more accurate and sparse estimation of the effective connectivity matrices ABC.
+* DCM_RNN can leverage backpropagation for training which is significantly different from any existing methods for DCM. One can pursue model simplicity and data fidelity simultaneously by specifying an appropriate loss function for network training, while it has to be done separately in traditional DCM.  We show in experiments that DCM_RNN can achieve more accurate and sparser estimation of the effective connectivity matrices ABC.
 * DCM_RNN is biophysical meaningful and compatible with other neural networks, which means it can be embedded into other NNs for advanced bio-signal modelling.
 * DCM_RNN circumvent the bilinear approximation used in SPM, the main implementation of DCM. We have been able to show our implementation error is controllable at the cost of computation while the bilinear approximation of SPM causes significant loss of nonlinearity in the DCM theory.
 
@@ -183,4 +183,5 @@ It is important to see that DCM_RNN is much more than a simple reformatting of D
 Generalized Recurrent Neural Network accommodating Dynamic Causal Modelling for functional MRI analysis
 , submitting to NeuroImage, under in-group review
 
+#### <a href="https://yuanwangonward.github.io/">Back to Yuan's homepage</a>
 
