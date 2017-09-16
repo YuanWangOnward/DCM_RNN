@@ -12,7 +12,6 @@
 <p>Fig. 1 High level overview of Dynamic Causal Modelling.</p>
 </div>
 
-
 <div style="text-align: justify; text-indent: 30px; ">
 <p>
 Dynamic Causal Modelling (DCM) [1] is a highly nonlinear generative
