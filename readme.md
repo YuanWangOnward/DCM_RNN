@@ -36,7 +36,7 @@ the neural activities are couple between regions in a bilinear way:
 </div>
 
 <center>
-<img width="295" height="106"  src="assets/images/x_evolving.png?raw=true">
+<img width="236" height="85"  src="assets/images/x_evolving.png?raw=true">
 </center>
 <div style="text-align: justify;">
 <p>
@@ -99,7 +99,7 @@ output as
 </p></div>
 
 <center>
-<img width="375" height="89"  src="assets/images/classic_rnn.png?raw=true">
+<img width="300" height="71"  src="assets/images/classic_rnn.png?raw=true">
 </center>
 
 <div style="text-align: justify;"><p>
@@ -115,7 +115,7 @@ We generalize it by adding more nonlinearity:
 </p></div>
 
 <center>
-<img width="375" height="82" src="assets/images/GRNN.png?raw=true">
+<img width="300" height="66" src="assets/images/GRNN.png?raw=true">
 </center>
 
 <div style="text-align: justify;  "><p>
@@ -131,7 +131,7 @@ rearrangement. The approximation is
 </p></div>
 
 <center>
-<img width="183" height="74" src="assets/images/approximation.png?raw=true">
+<img width="146" height="59" src="assets/images/approximation.png?raw=true">
 </center>
 
 <div style="text-align: justify; "><p>
@@ -141,7 +141,7 @@ Substitute it into the original equation. One obtains
 </p></div>
 
 <center>
-<img width="754" height="132" src="assets/images/x_equation.png?raw=true">
+<img width="603" height="106" src="assets/images/x_equation.png?raw=true">
 </center>
 
 <div style="text-align: justify; "><p>
@@ -149,7 +149,7 @@ It can be visualized as a piece of neural network
 </p></div>
 
 <center>
-<img width="397" height="232" src="assets/images/x_nn_piece.png?raw=true">
+<img width="318" height="186" src="assets/images/x_nn_piece.png?raw=true">
 </center>
 
 <div style="text-align: justify; "><p>
