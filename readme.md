@@ -1,6 +1,22 @@
 # Introduction
 <div style="text-align: justify; text-indent: 30px;">
-<p>Neural Network (NN) is a powerful modelling tool and one can find its exciting successes in various fields recently. In neurology, it can be used to detecting lesions, predicting treatment outcomes, and assisting diagnosis. However, its ability of discovering the working mechanism of the brain remains limited, because almost all the NN lack clear biophysical interpretability, although NN is originally inspired by biological studies. In this project, we make our efforts to address the problem. Instead of other related works which build NNs with standard NN models and then try to load the NNs with biophysical meaning, we propose and customize new Generalized Recurrent Neural Network (GRNN) deeply from an advanced biophysical model, Dynamic Causal Modeling (DCM). The resulting DCM_RNN links the power/flexibility of NN and the biophysical interpretability of DCM.
+<p>Neural Network (NN) is a powerful tool and
+one can find its exciting successes in various fields recently.
+In neurology, it can be used to detec lesions, predict
+treatment outcomes, and assist diagnosis. However, its ability of
+discovering the working mechanism of the brain remains limited,
+because none of the generic NNs has a clear biophysical interpretability,
+although NN is originally inspired by biological studies.
+In this project, we focus on not only its ability of reproducing
+observed bio-signals but also it biophysical meaning.
+Rather than manipulating standard neural net models and
+then trying to load them with biophysical meaning,
+we customize neural network from scratch based on the previous
+most advanced biophysical model, Dynamic Causal Modeling (DCM).
+We propose a new Generalized Recurrent Neural Network
+(GRNN) and show that DCM can be cast as a specific case of it.
+The resulting DCM_RNN links the power/flexibility of
+NN and the biophysical interpretability of DCM.
 </p>
 </div>
 
