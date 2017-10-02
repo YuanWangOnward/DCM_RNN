@@ -12,7 +12,6 @@ from collections import Iterable
 # from IPython.display import display
 
 
-
 class DcmRnn(Initialization):
     def __init__(self,
                  n_recurrent_step=None,
@@ -1037,8 +1036,6 @@ class DcmRnn(Initialization):
             self.grads_and_vars = self.opt.compute_gradients(self.loss_total, tf.trainable_variables())
             self.processed_grads_and_vars = self.grads_and_vars
             self.opt.apply_gradients(self.processed_grads_and_vars)
-
-            # self.train = tf.train.AdagradOptimizer(self.learning_rate).minimize(self.loss_total)
 
             # define summarizer
             self.variable_summaries(self.loss_prediction)

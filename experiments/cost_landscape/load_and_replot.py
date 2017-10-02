@@ -31,6 +31,7 @@ import pandas
 import os
 import itertools
 import copy
+import pandas as pd
 
 def modify_index(index_in):
     """
@@ -155,16 +156,20 @@ file_names = os.listdir(DATA_PATH)
 data = tb.load_data(os.path.join(DATA_PATH, file_names[0]))
 du = data['du']
 du.recover_data_unit()
-norm_y = tb.mse(du.get('y'), np.zeros(du.get('y').shape))
+# norm_y = tb.mse(du.get('y'), np.zeros(du.get('y').shape))
 
 #### ------------------ loss curve------------------------------------
 # find out files that corresponding to one free parameter
+SNR = 3.
+y_std = np.std(du.get('y'))
+noise_std = y_std / SNR
+noise_MSE = noise_std ** 2
 target_files = [name for name in file_names if categorize(name) == 1]
 for file in target_files:
     plt.clf()
     keyword = file.split('.')[0][:-3]
     file_path = os.path.join(DATA_PATH, file)
-    reproduce1(file_path, ylabel='values', fog=0.041)
+    reproduce1(file_path, ylabel='values', fog=noise_MSE)
     plt.savefig(os.path.join(SAVE_PATH, keyword + '.png'), bbox_inches='tight')
     plt.close()
 
@@ -178,12 +183,16 @@ for file in target_files:
     plt.savefig(os.path.join(SAVE_PATH, keyword + '.png'), bbox_inches='tight')
     plt.close()
 
+
+
 #### ------------------ range bar plot -------------------------------
 # rMSE can be seen as the reciprocal of SNR
 # SNR = l2(y)/l2(error/noise)
-SNRs = np.array([10, 20])
-rMSEs = 1 / SNRs
-noise_MSEs = (np.sqrt(norm_y) * rMSEs) ** 2
+SNRs = np.array([3, 5])
+y_std = np.std(du.get('y'))
+noise_std = y_std / SNRs
+noise_MSEs = noise_std ** 2
+
 sparsity_weight = [0., 0.]
 sparsity_order = [1., 1.]
 parameters = list(itertools.zip_longest(noise_MSEs, sparsity_weight, sparsity_order))
@@ -211,7 +220,7 @@ for result in results:
     plt.xticks(left, tick_label, rotation='vertical')
     axes.append(ax)
     total_lengths.append(np.sum(height))
-plt.legend((axes[0][0], axes[1][0]), ['SNR=10', 'SRN=20'])
+plt.legend((axes[0][0], axes[1][0]), ['SNR=' + str(v) for v in SNRs])
 plt.grid(axis='y')
 plt.ylabel('unidentifiable range')
 plt.savefig(os.path.join(SAVE_PATH, 'deviation_1.png'), bbox_inches='tight')

@@ -1,4 +1,3 @@
-# add mask to gradient
 import sys
 # global setting, you need to modify it accordingly
 if '/Users/yuanwang' in sys.executable:
