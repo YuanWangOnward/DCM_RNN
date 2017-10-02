@@ -1,6 +1,22 @@
 # Introduction
 <div style="text-align: justify; text-indent: 30px;">
-<p>Neural Network (NN) is a powerful modelling tool and one can find its exciting successes in various fields recently. In neurology, it can be used to detecting lesions, predicting treatment outcomes, and assisting diagnosis. However, its ability of discovering the working mechanism of the brain remains limited, because almost all the NN lack clear biophysical interpretability, although NN is originally inspired by biological studies. In this project, we make our efforts to address the problem. Instead of other related works which build NNs with standard NN models and then try to load the NNs with biophysical meaning, we propose and customize new Generalized Recurrent Neural Network (GRNN) deeply from an advanced biophysical model, Dynamic Causal Modeling (DCM). The resulting DCM_RNN links the power/flexibility of NN and the biophysical interpretability of DCM.
+<p>Neural Network (NN) is a powerful tool and
+one can find its exciting successes in various fields recently.
+In neurology, it can be used to detec lesions, predict
+treatment outcomes, and assist diagnosis. However, its ability of
+discovering the working mechanism of the brain remains limited,
+because none of the generic NNs has a clear biophysical interpretability,
+although NN is originally inspired by biological studies.
+In this project, we focus on not only its ability of reproducing
+observed bio-signals but also it biophysical meaning.
+Rather than manipulating standard neural net models and
+then trying to load them with biophysical meaning,
+we customize neural network from scratch based on the previous
+most advanced biophysical model, Dynamic Causal Modeling (DCM).
+We propose a new Generalized Recurrent Neural Network
+(GRNN) and show that DCM can be cast as a specific case of it.
+The resulting DCM_RNN links the power/flexibility of
+NN and the biophysical interpretability of DCM.
 </p>
 </div>
 
@@ -11,7 +27,6 @@
 <div style="text-align: justify; text-align:center;" >
 <p>Fig. 1 High level overview of Dynamic Causal Modelling.</p>
 </div>
-
 
 <div style="text-align: justify; text-indent: 30px; ">
 <p>
@@ -37,7 +52,7 @@ the neural activities are couple between regions in a bilinear way:
 </div>
 
 <center>
-<img width="295" height="106"  src="assets/images/x_evolving.png?raw=true">
+<img width="236" height="85"  src="assets/images/x_evolving.png?raw=true">
 </center>
 <div style="text-align: justify;">
 <p>
@@ -100,7 +115,7 @@ output as
 </p></div>
 
 <center>
-<img width="375" height="89"  src="assets/images/classic_rnn.png?raw=true">
+<img width="300" height="71"  src="assets/images/classic_rnn.png?raw=true">
 </center>
 
 <div style="text-align: justify;"><p>
@@ -116,7 +131,7 @@ We generalize it by adding more nonlinearity:
 </p></div>
 
 <center>
-<img width="375" height="82" src="assets/images/GRNN.png?raw=true">
+<img width="300" height="66" src="assets/images/GRNN.png?raw=true">
 </center>
 
 <div style="text-align: justify;  "><p>
@@ -132,7 +147,7 @@ rearrangement. The approximation is
 </p></div>
 
 <center>
-<img width="183" height="74" src="assets/images/approximation.png?raw=true">
+<img width="146" height="59" src="assets/images/approximation.png?raw=true">
 </center>
 
 <div style="text-align: justify; "><p>
@@ -142,7 +157,7 @@ Substitute it into the original equation. One obtains
 </p></div>
 
 <center>
-<img width="754" height="132" src="assets/images/x_equation.png?raw=true">
+<img width="603" height="106" src="assets/images/x_equation.png?raw=true">
 </center>
 
 <div style="text-align: justify; "><p>
@@ -150,7 +165,7 @@ It can be visualized as a piece of neural network
 </p></div>
 
 <center>
-<img width="397" height="232" src="assets/images/x_nn_piece.png?raw=true">
+<img width="318" height="186" src="assets/images/x_nn_piece.png?raw=true">
 </center>
 
 <div style="text-align: justify; "><p>
