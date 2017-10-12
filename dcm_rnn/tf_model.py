@@ -21,24 +21,20 @@ class DcmRnn(Initialization):
                  variable_scope_name_u_stacked=None,
 
                  variable_scope_name_x_parameter=None,
-                 variable_scope_name_x_initial=None,
                  variable_scope_name_x=None,
                  variable_scope_name_x_tailing=None,
-                 variable_scope_name_x_extended=None,
-                 variable_scope_name_x_connector=None,
                  variable_scope_name_x_stacked=None,
 
                  variable_scope_name_h_parameter=None,
                  variable_scope_name_h_initial=None,
-                 variable_scope_name_h_prelude=None,
                  variable_scope_name_h=None,
-                 variable_scope_name_h_final=None,
                  variable_scope_name_h_stacked=None,
 
                  variable_scope_name_y=None,
                  variable_scope_name_y_stacked=None,
                  variable_scope_name_loss=None,
                  log_directory=None):
+
         Initialization.__init__(self)
         self.n_recurrent_step = n_recurrent_step or 12
         self.learning_rate = learning_rate or 0.01
@@ -47,33 +43,8 @@ class DcmRnn(Initialization):
         self.shift_u_y = 4
         self.shift_u_x = 1
         self.shift_data = int(self.n_recurrent_step / 2)
-        self.if_add_optimiser = True  # turn off when do testing to save time
-
-        self.variable_scope_name_u_stacked = variable_scope_name_u_stacked or 'u_stacked'
-        self.variable_scope_name_u = variable_scope_name_x or 'cell_u'
-
-        self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
-        # self.variable_scope_name_x_initial = variable_scope_name_x_initial or 'cell_x_initial'
-        self.variable_scope_name_x = variable_scope_name_x or 'cell_x'
-        self.variable_scope_name_x_tailing = variable_scope_name_x_tailing or 'cell_x_tailing'
-        # self.variable_scope_name_x_connector = variable_scope_name_x_connector or 'cell_x_connector'
-        # self.variable_scope_name_x_extended = variable_scope_name_x_extended or 'cell_x_extended'
-        self.variable_scope_name_x_stacked = variable_scope_name_x_stacked or 'x_stacked'
-
-        self.variable_scope_name_h_parameter = variable_scope_name_h_parameter or 'para_h'
-        self.variable_scope_name_h_initial = variable_scope_name_h_initial or 'cell_h_initial'
-        # self.variable_scope_name_h_prelude = variable_scope_name_h_prelude or 'cell_h_prelude'
-        self.variable_scope_name_h = variable_scope_name_h or 'cell_h'
-        # self.variable_scope_name_h_connector = variable_scope_name_h_final or 'cell_h_connector'
-        self.variable_scope_name_h_stacked = variable_scope_name_h_stacked or 'h_stacked'
-
-        self.variable_scope_name_y = variable_scope_name_y or 'cell_y'
-        self.variable_scope_name_y_stacked = variable_scope_name_y_stacked or 'y_stacked'
-
-        self.variable_scope_name_loss = variable_scope_name_loss or 'loss'
-
+        self.if_training = True  # turn off when do testing to save time
         self.log_directory = log_directory or './logs'
-
         self.set_up_loss_weighting()
         self.trainable_flags = {'Wxx': True,
                                 'Wxxu': True,
@@ -91,10 +62,33 @@ class DcmRnn(Initialization):
                                 'x_h_coupling': False
                                 }
 
+        # dcm_rnn model settings
+        self.model_mode = 'parallel'    # 'series' or 'parallel'. if 'parallel', the single-sample parallelism is used.
+
+        # training settngs
         self.batch_size = 128
         self.max_parameter_change_per_iteration = 0.001
         self.max_parameter_change_decreasing_rate = 0.9
-        self.max_back_track_steps = 8
+        self.max_back_track_steps = 16
+
+        # scope name settings
+        self.variable_scope_name_u_stacked = variable_scope_name_u_stacked or 'u_stacked'
+        self.variable_scope_name_u = variable_scope_name_x or 'cell_u'
+
+        self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
+        self.variable_scope_name_x = variable_scope_name_x or 'cell_x'
+        self.variable_scope_name_x_tailing = variable_scope_name_x_tailing or 'cell_x_tailing'
+        self.variable_scope_name_x_stacked = variable_scope_name_x_stacked or 'x_stacked'
+
+        self.variable_scope_name_h_parameter = variable_scope_name_h_parameter or 'para_h'
+        self.variable_scope_name_h_initial = variable_scope_name_h_initial or 'cell_h_initial'
+        self.variable_scope_name_h = variable_scope_name_h or 'cell_h'
+        self.variable_scope_name_h_stacked = variable_scope_name_h_stacked or 'h_stacked'
+
+        self.variable_scope_name_y = variable_scope_name_y or 'cell_y'
+        self.variable_scope_name_y_stacked = variable_scope_name_y_stacked or 'y_stacked'
+
+        self.variable_scope_name_loss = variable_scope_name_loss or 'loss'
 
     def decrease_max_parameter_change_per_iteration(self, rate=None):
         """
@@ -127,6 +121,8 @@ class DcmRnn(Initialization):
     def set_up_loss_weighting(self):
         self.loss_weighting = \
             {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1., 'smooth': 4.}
+
+
 
     def create_shared_variables_x(self, neural_parameter_initial):
         """
@@ -410,6 +406,15 @@ class DcmRnn(Initialization):
             self.x_predicted_stacked = tf.stack(self.x_predicted, 0, name='x_predicted_stacked')
             self.x_monitor_stacked = tf.stack(self.x_monitor, 0, name='x_monitor_stacked')
 
+    def apply_x_nonlinearity(self, x_raw):
+        if self.x_nonlinearity_type is 'None':
+            return x_raw
+        elif self.x_nonlinearity_type == 'relu':
+            # return tf.nn.relu(x_raw)
+            return tf.maximum(x_raw, 0)
+        elif self.x_nonlinearity_type == 'sigmoid':
+            return tf.nn.sigmoid(x_raw) * self.x_nonlinearity_parameter['sigmoid']['max_value']
+
     def add_neural_layer_parallel(self, u_extend, x_state_initial=None):
         """
         :param u_extend: input stimuli
@@ -431,9 +436,10 @@ class DcmRnn(Initialization):
                 if i == 0:
                     self.x_whole = [x_state_initial]
                 else:
-                    self.x_whole.append(self.add_one_cell_x_parallel(u_extend[i - 1], self.x_whole[i - 1], x_parameter))
+                    raw_x = self.add_one_cell_x_parallel(u_extend[i - 1], self.x_whole[i - 1], x_parameter)
+                    self.x_whole.append(self.apply_x_nonlinearity(raw_x))
 
-        # label x whole into different parts
+        # label x whole into different parts, mainly for debug
         self.x_extended = self.x_whole[self.shift_u_x: self.shift_u_x + self.n_recurrent_step + self.shift_x_y]
         self.x_predicted = self.x_whole[self.shift_u_x: self.shift_u_x + self.n_recurrent_step]
         self.x_monitor = self.x_whole[:self.n_recurrent_step]
@@ -768,7 +774,7 @@ class DcmRnn(Initialization):
 
         return [wxx, i < MAX_TEST_STEPS]
 
-    def build_main_graph(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
+    def build_main_graph_series(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
         """
         The main graph of dcm_rnn, used to infer effective connectivity given fMRI signal and stimuli.
         :param neural_parameter_initial:
@@ -833,7 +839,7 @@ class DcmRnn(Initialization):
                                              self.loss_weighting['sparsity'] * self.loss_sparsity,
                                              self.loss_weighting['prior'] * self.loss_prior],
                                             name='loss_total')
-        if self.if_add_optimiser:
+        if self.if_training:
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
             # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
 
@@ -1027,7 +1033,7 @@ class DcmRnn(Initialization):
                                             name='loss_total')
 
 
-        if self.if_add_optimiser:
+        if self.if_training:
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
             # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
 
@@ -1044,6 +1050,23 @@ class DcmRnn(Initialization):
             self.variable_summaries(self.loss_total)
             self.merged_summary = tf.summary.merge_all()
             self.summary_writer = tf.summary.FileWriter(self.log_directory, tf.get_default_graph())
+
+    def build_main_graph(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
+        """
+        The main graph of dcm_rnn, used to infer effective connectivity given fMRI signal and stimuli.
+        :param neural_parameter_initial:
+        :param hemodynamic_parameter_initial:
+        :param model_mode: one of ['series' or 'parallel']. if 'parallel', the single-sample parallelism is used.
+        :param extensions: optional extensions of DCM_RNN
+        :return:
+        """
+        if self.model_mode == 'parallel':
+            self.build_main_graph_parallel(neural_parameter_initial, hemodynamic_parameter_initial)
+        elif self.model_mode == 'series':
+            self.build_main_graph_series(neural_parameter_initial, hemodynamic_parameter_initial)
+        else:
+            raise ValueError('DCM-RNN model_mode should be one of "parallel" or "series".')
+
 
 
     # unitilies

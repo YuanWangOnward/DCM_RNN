@@ -144,7 +144,7 @@ du_hat._secured_data['C'] = x_parameter_initial['C']
 du_hat._secured_data['hemodynamic_parameter'] = h_parameter_initial
 du_hat._secured_data['initial_x_state'] = du_hat.set_initial_neural_state_as_zeros(n_region)
 du_hat._secured_data['initial_h_state'] = du_hat.set_initial_hemodynamic_state_as_inactivated(n_region)
-du_hat.complete_data_unit(start_categorty=2, if_check_property=False)
+du_hat.complete_data_unit(start_category=2, if_check_property=False)
 
 
 # build dcm_rnn model

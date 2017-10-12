@@ -15,6 +15,8 @@ import pickle
 import copy
 import re
 from collections import Iterable
+
+
 def cdr(relative_path, if_print=False):
     file_path = os.path.dirname(os.path.realpath(__file__))
     os.chdir(file_path + relative_path)
@@ -133,6 +135,7 @@ def merge(data_list, n_segment, n_step=None, merge_dimension=0):
     output = output / average_template
     return output
 
+
 def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_y):
     x_splits = split(x_data, n_segment, n_step=n_step)
     y_splits = split(y_data, n_segment, n_step=n_step, shift=shift_x_y)
@@ -140,6 +143,7 @@ def split_data_for_initializer_graph(x_data, y_data, n_segment, n_step, shift_x_
     x_splits = x_splits[:n_segments]
     y_splits = y_splits[:n_segments]
     return [x_splits, y_splits]
+
 
 def make_a_batch(u, x, h, y):
     """
@@ -157,7 +161,8 @@ def make_a_batch(u, x, h, y):
     batch['y'] = np.stack(y, axis=0)
     return batch
 
-def make_batches(u, x, h, y, batch_size=128,if_shuffle=True):
+
+def make_batches(u, x, h, y, batch_size=128, if_shuffle=True):
     """
     Given u, x, h, and y from a DataUnit, assemble training batches.
     :param u:
@@ -182,7 +187,6 @@ def make_batches(u, x, h, y, batch_size=128,if_shuffle=True):
         temp_h = [temp_h[i] for i in index]
         temp_y = [temp_y[i] for i in index]
 
-
     for i in range(0, len(temp_y), batch_size):
         batch = make_a_batch(temp_u[i: i + batch_size],
                              temp_x[i: i + batch_size],
@@ -204,6 +208,7 @@ def random_drop(batches, ration=0.5):
     """
     random.shuffle(batches)
     return batches[: int(len(batches) * ration)]
+
 
 def solve_for_effective_connection(x, u, prior=None):
     """
@@ -349,13 +354,13 @@ def ista(A, Y, alpha_mask=1, support=None, prior=None):
             break
         else:
             # for next step
-            print('.', end='', flush=True)
+            # print('.', end='', flush=True)
             X_k = X_kp1
 
     if iter == MAX_ITERATION - 1:
         warnings.warn("Hit MAX_ITERATION")
 
-    print('', end='', flush=True)
+    # print('', end='', flush=True)
     plt.plot(np.log(loss_list))
     plt.xlabel('Iteration index')
     plt.ylabel('Total loss (ln)')
@@ -381,6 +386,55 @@ def setup_module():
         print("PROJECT_DIR is set as: " + PROJECT_DIR)
         import matplotlib
     return PROJECT_DIR
+
+
+def sigmoid(x):
+    """
+    Element wise sigmoid function.
+    :param x: numpy array
+    :return:
+    """
+    return 1 / (1 + np.exp(-x))
+
+def generalized_sigmoid(x, generalization_parameters):
+    """
+    Element wise generalized sigmoid function.
+    return y = vertical_zoom * sigmoid( horizontal_zoom * x + horizontal_shift) + vertical_shift
+    """
+    horizontal_zoom = generalization_parameters['horizontal_zoom']
+    horizontal_shift = generalization_parameters['horizontal_shift']
+    vertical_zoom = generalization_parameters['vertical_zoom']
+    vertical_shift = generalization_parameters['vertical_shift']
+
+    return vertical_zoom * (sigmoid(horizontal_zoom * x + horizontal_shift)) + vertical_shift
+
+
+def neuron_fire_kernel(x_current, x_delta):
+    x_current = np.array(copy.deepcopy(x_current))
+    x_delta = np.array(x_delta)
+
+    output = np.zeros(x_delta.shape)
+    sign_mask = np.sign(x_current) == np.sign(x_delta)
+    output[~sign_mask] = x_delta[~sign_mask]
+
+    mask = x_current < 0
+    x_current[mask] = x_current[mask] * 100
+    x_current[~mask] = x_current[~mask] * 10
+    weight = sigmoid(x_current) * (1 - sigmoid(x_current)) * 4
+
+    output[sign_mask] = weight[sign_mask] * x_delta[sign_mask]
+
+    return output
+
+'''
+def neuron_fire_kernel(x):
+    x_temp = np.array(copy.deepcopy(x))
+    mask = x_temp < 0
+    x_temp[mask] = x_temp[mask] * 100
+    x_temp[~mask] = x_temp[~mask] * 10
+    return sigmoid(x_temp) * (1 - sigmoid(x_temp)) * 4
+'''
+
 
 
 class OrderedDict(collections.OrderedDict):
@@ -434,7 +488,8 @@ class ArrayWrapper:
     """
     Allow easy and fast access to np.array segment with simple index
     """
-    def __init__(self,  array, n_segment, n_step=None, shift=0, split_dimension=0):
+
+    def __init__(self, array, n_segment, n_step=None, shift=0, split_dimension=0):
         self.data = array
         self.n_segment = n_segment
         self.n_step = n_step or n_segment
@@ -477,7 +532,9 @@ class Initialization:
                  u_skip_rate=None,
                  deviation_constraint=None,
                  h_parameter_check_statistics=None,
-                 n_time_point_unit_length=None
+                 n_time_point_unit_length=None,
+                 x_nonlinearity_type=None,
+                 x_nonlinearity_parameter=None
                  ):
 
         self.n_node_low = n_node_low or 3
@@ -522,12 +579,32 @@ class Initialization:
         self.deviation_constraint = deviation_constraint or 1
         self.hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0',
                                     'x_h_coupling']
-        self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 100., 0.03, 25, 40.3, 1.],
+        self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 4., 0.03, 25, 40.3, 1.],
                                              self.hemo_parameter_keys)
         self.hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0., 0.],
                                                  self.hemo_parameter_keys)
 
         self.n_time_point_unit_length = n_time_point_unit_length or 32
+
+
+        self.x_nonlinearity_type = x_nonlinearity_type or 'relu'
+        if x_nonlinearity_parameter is None:
+
+            y = np.array([0.05, 0.95])
+            x = -np.log(1 / y - 1)
+            vertical_zoom = 1 / (y[1] - y[0])
+            horizontal_zoom = (x[1] - x[0])
+            horizontal_shift = -0.5 * horizontal_zoom
+            vertical_shift = - vertical_zoom * sigmoid(horizontal_shift)
+
+            self.x_nonlinearity_parameter = {'None': {},
+                                             'relu': {},
+                                             'sigmoid': {'horizontal_zoom': horizontal_zoom,
+                                                         'horizontal_shift': horizontal_shift,
+                                                         'vertical_zoom': vertical_zoom,
+                                                         'vertical_shift': vertical_shift
+                                                         }}
+
 
     def sample_node_number(self):
         """
@@ -1017,22 +1094,24 @@ class ParameterGraph:
             'if_random_stimuli_number': [],
             'if_random_delta_t': [],
             'if_random_scan_time': [],
+            'if_x_nonlinearity': [],
 
-            #
+            'x_nonlinearity_type': ['if_x_nonlinearity', 'initializer'],
             'n_node': ['if_random_node_number', 'initializer'],
             't_delta': ['if_random_delta_t', 'initializer'],
             't_scan': ['if_random_scan_time', 'initializer'],
 
-            #
+
             'n_time_point': ['t_scan', 't_delta'],
             'n_stimuli': ['if_random_stimuli_number', 'n_node', 'initializer'],
+            'x_nonlinearity_parameter': ['x_nonlinearity_type', 'initializer'],
+
 
             'u': ['if_random_stimuli',
                   'n_stimuli',
                   'n_time_point',
                   't_delta',
                   'initializer'],
-
             'A': ['if_random_neural_parameter',
                   'n_node',
                   'initializer'],
@@ -1088,14 +1167,16 @@ class ParameterGraph:
                         'if_random_stimuli_number',
                         'if_random_delta_t',
                         'if_random_scan_time',
+                        'if_x_nonlinearity'
                         ],
-            'level_1': ['n_node', 't_delta', 't_scan'],
+            'level_1': ['n_node', 't_delta', 't_scan', 'x_nonlinearity_type'],
             'level_2': ['n_time_point',
                         'n_stimuli',
                         'A',
                         'hemodynamic_parameter',
                         'initial_x_state',
-                        'initial_h_state'],
+                        'initial_h_state',
+                        'x_nonlinearity_parameter'],
             'level_3': ['u',
                         'B', 'C',
                         'Wxx', 'Whx', 'Whh', 'bh', 'Wo', 'bo'],
@@ -1408,17 +1489,14 @@ class Scanner:
     def __init__(self, snr_y=None,
                  x_max_bound=None, x_mean_bound=None,
                  x_var_low=None, x_var_high=None,
-                 # x_low_frequency_energy_perscent=None,
                  h_value_low=None, h_value_high=None):
         self.snr_y = snr_y or 2
         self.x_max_bound = x_max_bound or 8
         self.x_mean_bound = x_mean_bound or 2
         self.x_var_low = x_var_low or 0.1
         self.x_var_high = x_var_high or 4
-        # self.x_low_frequency_energy_perscent = x_low_frequency_energy_perscent or 0.25
         self.h_value_low = h_value_low or 0.125
         self.h_value_high = h_value_high or 8
-
 
     def scan_x(self, parameter_package):
         """
@@ -1431,6 +1509,8 @@ class Scanner:
         Wxu = parameter_package['Wxu']
         initial_x_state = parameter_package['initial_x_state']
         u = parameter_package['u']
+        x_nonlinearity_type = parameter_package['x_nonlinearity_type']
+        x_nonlinearity_parameter = parameter_package['x_nonlinearity_parameter']
 
         n_node = Wxu.shape[0]
         n_stimuli = Wxu.shape[1]
@@ -1439,13 +1519,25 @@ class Scanner:
         x[0, :] = initial_x_state
 
         for i in range(1, n_time_point):
-            tmp1 = np.matmul(Wxx, x[i - 1, :])
+            if x_nonlinearity_type == 'sigmoid':
+                tmp1 = np.matmul(Wxx - np.eye(n_node), x[i - 1, :])
+            else:
+                tmp1 = np.matmul(Wxx, x[i - 1, :])
             tmp2 = [np.matmul(Wxxu[idx], x[i - 1, :] * u[i - 1, idx]) for idx in range(n_stimuli)]
             tmp2 = np.sum(np.asarray(tmp2), 0)
             tmp3 = np.matmul(Wxu, u[i - 1, :])
-            x[i, :] = tmp1 + tmp2 + tmp3
+            if x_nonlinearity_type == 'sigmoid':
+                x[i, :] = x[i - 1, :] + neuron_fire_kernel(x[i - 1, :], tmp1 + tmp2 + tmp3)
+            else:
+                x[i, :] = tmp1 + tmp2 + tmp3
+            if x_nonlinearity_type == 'None':
+                pass
+            else:
+                if x_nonlinearity_type == 'relu':
+                    x = np.maximum(x, 0)
+                elif x_nonlinearity_type == 'sigmoid':
+                    pass
         return x
-
 
     def if_proper_x(self, x):
         """
@@ -1457,7 +1549,7 @@ class Scanner:
         max_absolute_value = max(abs(x.flatten()))
         max_mean_value = np.max(abs(np.mean(x, axis=0)))
         n_time_point = x.shape[0]
-        variance = np.var(x[int(n_time_point/2):, :], 0)
+        variance = np.var(x[int(n_time_point / 2):, :], 0)
         min_var = min(variance)
         max_var = max(variance)
 
@@ -1529,7 +1621,6 @@ class Scanner:
         h_state_augmented[:, 5] = h_state_current[:, 3] / (h_state_current[:, 2]) * h_state_augmented[:, 4]
         h_state_augmented[:, 6] = (1 - (1 - E0) ** (1 / h_state_current[:, 1])) / (E0) * h_state_current[:, 1]
         return h_state_augmented
-
 
     def scan_h(self, parameter_package):
         """
@@ -1615,7 +1706,6 @@ class Scanner:
         o_state_augmented[:, 2] = o_state_augmented[:, 1] / o_state_augmented[:, 0]
         return o_state_augmented
 
-
     def scan_y(self, parameter_package):
         """
         Calculate value, namely observable functional signal
@@ -1676,6 +1766,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                  if_random_stimuli_number=True,
                  if_random_delta_t=False,
                  if_random_scan_time=False,
+                 if_x_nonlinearity=False,
                  ):
         Initialization.__init__(self)
         ParameterGraph.__init__(self)
@@ -1690,6 +1781,8 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         self._secured_data['if_random_stimuli_number'] = if_random_stimuli_number
         self._secured_data['if_random_delta_t'] = if_random_delta_t
         self._secured_data['if_random_scan_time'] = if_random_scan_time
+        self._secured_data['if_x_nonlinearity'] = if_x_nonlinearity
+
         self._secured_data['initializer'] = self
         self._secured_data['parameter_graph'] = self
         self._secured_data['scanner'] = self
@@ -1699,6 +1792,8 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                               'n_stimuli',
                               't_scan',
                               't_delta',
+                              'x_nonlinearity_type',
+                              'x_nonlinearity_parameter',
                               'n_time_point',
                               'A', 'B', 'C', 'u',
                               'hemodynamic_parameter',
@@ -1830,18 +1925,18 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         else:
             return True
 
-    def complete_data_unit(self, start_categorty=1, if_check_property=True, if_show_message=False):
+    def complete_data_unit(self, start_category=1, if_check_property=True, if_show_message=False):
         """
         Generate missing parameters
-        :param start_categorty: if it starts from category n, category n parameters must have had true_values
+        :param start_category: if it starts from category n, category n parameters must have had true_values
         :param if_show_message: boolean, whether show completing message
         :return:
         """
         # check category one parameters
         cate_para = self.get_category_para_mapping()
-        parameters_needed = cate_para[start_categorty]
+        parameters_needed = cate_para[start_category]
         self.check_all_have_values(parameters_needed)
-        assign_order = self.get_assign_order(start_categorty)
+        assign_order = self.get_assign_order(start_category)
         if if_check_property:
             trail_count = 1
             print("Trail NO." + str(trail_count))
@@ -1862,7 +1957,6 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         :return:
         """
         for para in assign_order:
-            # self.check_has_no_assigned_descendant(para)
             if not self.if_has_value(para):
                 flag_name = self.get_flag_name(para)
                 self._set(para, flag_name, if_show_message)
@@ -1920,6 +2014,17 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                 self._secured_data[para] = self.sample_t_delta()
             else:
                 raise_error(para, flag_name, flag_value, 'needs to be set manually')
+        elif para is 'x_nonlinearity_type':
+            if flag_value is True:
+                show(para, flag_name, flag_value, 'assign default value')
+                self._secured_data[para] = self.x_nonlinearity_type
+            else:
+                self._secured_data[para] = 'None'
+        elif para is 'x_nonlinearity_parameter':
+            assert flag_name is None
+            show(para, flag_name, flag_value, 'assign default value')
+            self._secured_data['x_nonlinearity_parameter'] = \
+                self.x_nonlinearity_parameter[self._secured_data['x_nonlinearity_type']]
         elif para is 'n_time_point':
             assert flag_name is None
             show(para, flag_name, flag_value, 'calculate_n_time_point')
@@ -2044,7 +2149,9 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                 'Wxxu': self._secured_data['Wxxu'],
                 'Wxu': self._secured_data['Wxu'],
                 'initial_x_state': self._secured_data['initial_x_state'],
-                'u': self._secured_data['u']}
+                'u': self._secured_data['u'],
+                'x_nonlinearity_type': self._secured_data['x_nonlinearity_type'],
+                'x_nonlinearity_parameter': self._secured_data['x_nonlinearity_parameter']}
 
     def collect_parameter_for_h_scan(self):
         return {'hemodynamic_parameter': self._secured_data['hemodynamic_parameter'],
@@ -2100,7 +2207,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         """
         :return:
         """
-        self.complete_data_unit(start_categorty=2, if_check_property=False)
+        self.complete_data_unit(start_category=2, if_check_property=False)
 
     def plot(self, para_name, if_new_figure=True):
         para_value = self._secured_data[para_name]
@@ -2141,7 +2248,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                 # for t_delta, u must be manually modified
                 u = self._secured_data['u']
                 factor = np.ones(u.ndim)
-                factor[0] = t_delta_original/value
+                factor[0] = t_delta_original / value
                 u_rescaled = scipy.ndimage.zoom(u, factor, order=0, mode='nearest')
                 self._secured_data['u'] = u_rescaled
 
@@ -2177,14 +2284,13 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         :param array:
         :param target_shape: desired shape
         :param order: the order of the spline interpolation
-        :param mode: Points outside the boundaries of the input are filled according to the given mode
+        :param mode: Points outside the boundaries of the input are filled according to the given model_mode
             (‘constant’, ‘nearest’, ‘reflect’ or ‘wrap’). Default is ‘constant’.
         :return: resamped array
         """
         factor = np.array(target_shape) / np.array(array.shape)
         state_resampled = scipy.ndimage.zoom(array, factor, order=order, mode=mode)
         return state_resampled
-
 
     def compare(self, arrays, ground_truth):
         """
@@ -2199,11 +2305,10 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         for array in arrays:
             error = array.flatten() - ground_truth
             norm_error = np.linalg.norm(error)
-            rMSE.append(norm_error/norm_ground_truth)
+            rMSE.append(norm_error / norm_ground_truth)
         return rMSE
 
-    @property
-    def secured_data(self):
+    def get_secured_data(self):
         return self._secured_data
 
     def parse_variable_names(self, names_in_graph):
@@ -2271,7 +2376,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         for key in remove_keys:
             if key in self._secured_data.keys():
                 del self._secured_data[key]
-        self.complete_data_unit(start_categorty=1, if_check_property=False, if_show_message=False)
+        self.complete_data_unit(start_category=1, if_check_property=False, if_show_message=False)
 
     def initialize_a_training_unit(self, Wxx, Wxxu, Wxu, h_parameters):
         du_hat = copy.deepcopy(self)
@@ -2280,11 +2385,14 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         du_hat._secured_data['B'] = [m / du_hat.get('t_delta') for m in Wxxu]
         du_hat._secured_data['C'] = Wxu / du_hat.get('t_delta')
 
-        hemodynamic_parameter_temp = du_hat.get_standard_hemodynamic_parameters(du_hat.get('n_node'))
-        temp = h_parameters
-        for c in range(temp.shape[1]):
-            hemodynamic_parameter_temp[hemodynamic_parameter_temp.columns[c]] = temp[:, c]
-        du_hat._secured_data['hemodynamic_parameter_temp'] = hemodynamic_parameter_temp
+        if isinstance(h_parameters, pd.DataFrame):
+            du_hat._secured_data['hemodynamic_parameter'] = h_parameters
+        else:
+            # assume np.array of proper shape
+            hemodynamic_parameter_temp = du_hat.get_standard_hemodynamic_parameters(du_hat.get('n_node'))
+            for c in range(h_parameters.shape[1]):
+                hemodynamic_parameter_temp[hemodynamic_parameter_temp.columns[c]] = h_parameters[:, c]
+            du_hat._secured_data['hemodynamic_parameter'] = hemodynamic_parameter_temp
 
         remove_keys = ['Wxx', 'Wxxu', 'Wxu', 'Whh', 'Whx', 'bh', 'Wo', 'bo', 'x', 'h', 'y']
         for key in remove_keys:
@@ -2293,8 +2401,32 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
         du_hat._secured_data['if_random_x_state_initial'] = False
         du_hat._secured_data['if_random_h_state_initial'] = False
-        du_hat.complete_data_unit(start_categorty=1, if_check_property=False, if_show_message=False)
+        du_hat.complete_data_unit(start_category=1, if_check_property=False, if_show_message=False)
         return du_hat
+
+    def setup_training_assistant(self, parameter_updates):
+        """
+        Create a DataUnit instant, keep basic setting from self but the parameters to be estimated are overwritten.
+        These parameters should be category 2 (or maybe category 1 as well).
+        :param parameter_updates: a dictionary containing key:value of the parameters that need to be updated
+        :return:
+        """
+        du_hat = copy.deepcopy(self)
+        for para, value in parameter_updates.items():
+            if para in self.get_category_para_mapping()[1] + self.get_category_para_mapping()[2]:
+                du_hat._secured_data[para] = value
+            else:
+                warnings.warn(para + ' should not be directly assigned, it will be ignored.')
+
+        remove_keys = ['Wxx', 'Wxxu', 'Wxu', 'Whh', 'Whx', 'bh', 'Wo', 'bo', 'x', 'h', 'y']
+        for key in remove_keys:
+            if key in du_hat._secured_data.keys():
+                del du_hat._secured_data[key]
+
+        du_hat.complete_data_unit(start_category=1, if_check_property=False, if_show_message=False)
+        return du_hat
+
+
 
     def resample_data_unit(self, target_resolution_u=16, down_resolution_y=0.5, up_resolution_y=16):
         """
@@ -2327,7 +2459,6 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         du._secured_data['y'] = sp.ndimage.zoom(du._secured_data['y'], factor, order=3)
         if 'y_noised' in du._secured_data.keys():
             du._secured_data['y_noised'] = sp.ndimage.zoom(du._secured_data['y_noised'], factor, order=3)
-
 
         du._secured_data['t_delta'] = 1 / target_resolution_u
 
@@ -2377,22 +2508,3 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         du._secured_data['y'] = du.scan_y_parallel(parameter_package)
 
         return t_axis, du._secured_data['y']
-
-'''
-    def resample_arrays(self, states, target_shape, order=0, mode='constant'):
-        """
-        Resample states to same shape for comparison.
-        :param states: r list of states
-        :param target_shape: desired shape
-        :param order: the order of the spline interpolation
-        :param mode: Points outside the boundaries of the input are filled according to the given mode
-            (‘constant’, ‘nearest’, ‘reflect’ or ‘wrap’). Default is ‘constant’.
-        :return: r list of states of the same time point.
-        """
-        states_resampled = []
-        for state in states:
-            factor = np.array(target_shape)/np.array(state.shape)
-            state_resampled = scipy.ndimage.zoom(state, factor, order=order, mode=mode)
-            states_resampled.append(state_resampled)
-        return states_resampled
-'''

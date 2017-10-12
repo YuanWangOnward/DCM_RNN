@@ -72,7 +72,7 @@ def regenerate_data(du, Wxx, Wxxu, Wxu, h_parameters):
     del du_hat._secured_data['h']
     del du_hat._secured_data['y']
 
-    du_hat.complete_data_unit(start_categorty=1, if_check_property=False, if_show_message=False)
+    du_hat.complete_data_unit(start_category=1, if_check_property=False, if_show_message=False)
     return du_hat
 
 

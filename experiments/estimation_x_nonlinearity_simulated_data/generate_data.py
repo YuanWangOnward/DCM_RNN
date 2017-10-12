@@ -44,12 +44,12 @@ from scipy.interpolate import interp1d
 import scipy as sp
 import scipy.io
 
-
-EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data')
+SIMULATION_X_NONLINEARITY = 'relu'
+EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'estimation_x_nonlinearity_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data')
-CORE_PATH = os.path.join(DATA_PATH, 'core.pkl')
-SAVE_PATH_PKL = os.path.join(DATA_PATH, 'du_DCM_RNN.pkl')
-SAVE_PATH_MAT = os.path.join(DATA_PATH, 'DCM_initial.mat')
+CORE_PATH = os.path.join(DATA_PATH, 'core_' + SIMULATION_X_NONLINEARITY + '.pkl')
+SAVE_PATH_PKL = os.path.join(DATA_PATH, 'du_DCM_RNN_' + SIMULATION_X_NONLINEARITY + '.pkl')
+SAVE_PATH_MAT = os.path.join(DATA_PATH, 'DCM_initial_' + SIMULATION_X_NONLINEARITY + '.mat')
 SNR = 3
 
 
@@ -63,25 +63,26 @@ du._secured_data['if_random_node_number'] = False
 du._secured_data['if_random_stimuli_number'] = False
 du._secured_data['if_random_delta_t'] = False
 du._secured_data['if_random_scan_time'] = False
+du._secured_data['if_x_nonlinearity'] = True
+
+du._secured_data['x_nonlinearity_type'] = SIMULATION_X_NONLINEARITY
 du._secured_data['t_delta'] = 1. / 64.
 du._secured_data['t_scan'] = 5 * 60
 du._secured_data['n_node'] = 3
-du._secured_data['n_stimuli'] = 3
+du._secured_data['n_stimuli'] = 2
 
-du._secured_data['A'] = np.array([[-0.8, 0., 0.],
-                                  [0., -0.8, 0.],
-                                  [0.4, 0.4, -0.8]])
+du._secured_data['A'] = np.array([[-0.8, 0, 0],
+                                      [0, -0.8, 0],
+                                      [0.4, -0.4, -0.8]])
 du._secured_data['B'] = [np.array([[0, 0, 0],
                                    [0, 0, 0],
-                                   [0, 0, 0]]),
+                                   [0, 0, 0],
+                                   ]),
                          np.array([[0, 0, 0],
                                    [0, 0, 0],
-                                   [0, 0, 0]]),
-                         np.array([[0., 0, 0],
                                    [0, 0, 0],
-                                   [0.2, 0, 0]])]
-du._secured_data['C'] = np.array([[1.2, 0., 0.], [0., 1.2, 0.], [0., 0., 0.]]).reshape(3, 3)
-
+                                   ])]
+du._secured_data['C'] = np.array([[0.8, 0], [0, 0.8], [0, 0]]).reshape(du.get('n_node'), du.get('n_stimuli'))
 
 # adjust hemodynamic parameter according to the ones used in SPM DCM
 # with decay = 0 and transit = 0
@@ -107,15 +108,16 @@ hemodynamic_parameter['theta0'] = 40.3
 hemodynamic_parameter['x_h_coupling'] = 1.
 du._secured_data['hemodynamic_parameter'] = hemodynamic_parameter
 
+
 # scan
 du.complete_data_unit(if_show_message=False, if_check_property=False)
-
 for i in range(du.get('n_node') + 1):
     plt.subplot(4, 1, i + 1)
     if i == 0:
-        plt.plot(du.get('u'))
+        plt.plot(du.get('x'))
     else:
         plt.plot(du.get('y')[:, i - 1])
+
 
 # add noise
 noise_std = np.sqrt(np.var(du.get('y').flatten())) / SNR
@@ -186,15 +188,14 @@ options['centre'] = 0.
 options['induced'] = 0.
 DCM['options'] = options
 
-# None will case trouble
-if du.x_nonlinearity is None:
-    du.x_nonlinearity = 'None'
-if du._secured_data['scanner'].x_nonlinearity is None:
-    du._secured_data['scanner'].x_nonlinearity = 'None'
-
 DCM['du'] = du
 DCM['du_data'] = du._secured_data
 
 DCM_initial = DCM
 scipy.io.savemat(SAVE_PATH_MAT, mdict={'DCM_initial': DCM_initial})
 
+
+x = -1
+for i in range(16):
+    x = tb.generalized_sigmoid(x, du.get('x_nonlinearity_parameter'))
+print(x)

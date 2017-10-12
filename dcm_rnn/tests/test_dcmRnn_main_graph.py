@@ -113,7 +113,7 @@ class TestDcmRnnMainGraph(TestCase):
                 'y': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)}
 
         # build model
-        dr.if_add_optimiser = False
+        dr.if_training = False
         dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial)
 
         # run forward
@@ -158,7 +158,7 @@ class TestDcmRnnMainGraph(TestCase):
         std = h_prior['std'].astype(np.float32)
         h_parameters_initial = mean + std
         dr.loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
-        # dr.if_add_optimiser = False
+        # dr.if_training = False
         # dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial,
         #                     hemodynamic_parameter=h_parameters_initial)
 
@@ -197,7 +197,7 @@ class TestDcmRnnMainGraph(TestCase):
         mean = h_prior['mean'].astype(np.float32)
         h_parameters_initial = mean
         dr.loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
-        dr.if_add_optimiser = False
+        dr.if_training = False
         dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial,
                             hemodynamic_parameter_initial=h_parameters_initial)
 

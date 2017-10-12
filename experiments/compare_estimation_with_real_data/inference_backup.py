@@ -297,7 +297,7 @@ for c in range(temp.shape[1]):
 du_hat._secured_data['hemodynamic_parameter'] = hemodynamic_parameter
 du_hat._secured_data['initial_x_state'] = du_hat.set_initial_neural_state_as_zeros(dr.n_region)
 du_hat._secured_data['initial_h_state'] = du_hat.set_initial_hemodynamic_state_as_inactivated(dr.n_region)
-du_hat.complete_data_unit(start_categorty=2, if_check_property=False, if_show_message=True)
+du_hat.complete_data_unit(start_category=2, if_check_property=False, if_show_message=True)
 
 i = 0
 plt.plot(spm_data['y_upsampled'][:, i]);
