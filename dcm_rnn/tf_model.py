@@ -63,13 +63,17 @@ class DcmRnn(Initialization):
                                 }
 
         # dcm_rnn model settings
-        self.model_mode = 'parallel'    # 'series' or 'parallel'. if 'parallel', the single-sample parallelism is used.
+        self.model_mode = 'parallel'  # 'series' or 'parallel'. if 'parallel', the single-sample parallelism is used.
 
-        # training settngs
+        # training settings
         self.batch_size = 128
         self.max_parameter_change_per_iteration = 0.001
         self.max_parameter_change_decreasing_rate = 0.9
         self.max_back_track_steps = 16
+
+        # extension setting
+        self.x_nonlinearity_type = 'None'
+        self.if_resting_state = False
 
         # scope name settings
         self.variable_scope_name_u_stacked = variable_scope_name_u_stacked or 'u_stacked'
@@ -121,8 +125,6 @@ class DcmRnn(Initialization):
     def set_up_loss_weighting(self):
         self.loss_weighting = \
             {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1., 'smooth': 4.}
-
-
 
     def create_shared_variables_x(self, neural_parameter_initial):
         """
@@ -356,7 +358,7 @@ class DcmRnn(Initialization):
         h_state_next.append(tmp)
         # v
         tmp = t_delta * h_state_augmented[:, 1] / tao \
-              - t_delta / tao * h_state_augmented[:,  4] \
+              - t_delta / tao * h_state_augmented[:, 4] \
               + h_state_augmented[:, 2]
         h_state_next.append(tmp)
         # q
@@ -640,7 +642,6 @@ class DcmRnn(Initialization):
         with tf.variable_scope(self.variable_scope_name_y_stacked):
             self.y_predicted_stacked = tf.stack(self.y_predicted, 1, name='y_predicted_stack')
 
-
     def build_an_initializer_graph(self, hemodynamic_parameter_initial=None):
         """
         Build a model to estimate neural states from functional signal
@@ -875,7 +876,7 @@ class DcmRnn(Initialization):
             if key in [v.name for v in tf.trainable_variables()]:
                 self.support_in_graph[key] = val
             elif key in ['Wxx', 'Wxu']:
-                #getattr(self, key).name in [v.name for v in tf.trainable_variables()]:
+                # getattr(self, key).name in [v.name for v in tf.trainable_variables()]:
                 self.support_in_graph[getattr(self, key).name] = val
             elif key == 'Wxxu':
                 for i in range(len(val)):
@@ -980,14 +981,27 @@ class DcmRnn(Initialization):
         self.check_parameter_consistency()
 
         # input stimuli u
-        with tf.variable_scope(self.variable_scope_name_u_stacked):
-            self.u_placeholder = \
-                tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.n_recurrent_step, self.n_stimuli],
-                               name='u_placeholder')
-        self.u = []
-        for n in range(self.n_recurrent_step):
-            with tf.variable_scope(self.variable_scope_name_u):
-                self.u.append(self.u_placeholder[:, n, :])
+        if self.if_resting_state:
+            with tf.variable_scope(self.variable_scope_name_u_stacked):
+                self.u_stacked = tf.get_variable(name='u_stacked', dtype=tf.float32,
+                                                 shape=[self.batch_size, self.n_recurrent_step, self.n_stimuli])
+                self.u_stacked_previous = tf.get_variable(name='u_stacked_previous', dtype=tf.float32,
+                                                          shape=[self.batch_size, self.n_recurrent_step,
+                                                                 self.n_stimuli],
+                                                          trainable=False)
+            self.u = []
+            for n in range(self.n_recurrent_step):
+                with tf.variable_scope(self.variable_scope_name_u):
+                    self.u.append(self.u_stacked[:, n, :])
+        else:
+            with tf.variable_scope(self.variable_scope_name_u_stacked):
+                self.u_placeholder = \
+                    tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.n_recurrent_step, self.n_stimuli],
+                                   name='u_placeholder')
+            self.u = []
+            for n in range(self.n_recurrent_step):
+                with tf.variable_scope(self.variable_scope_name_u):
+                    self.u.append(self.u_placeholder[:, n, :])
         self.u_tailing = []
         for n in range(self.shift_u_y):
             self.u_tailing.append(tf.constant(np.zeros((self.batch_size, 1, self.n_stimuli), dtype=np.float32),
@@ -1019,7 +1033,6 @@ class DcmRnn(Initialization):
         # output layer
         self.add_output_layer_parallel(self.h_predicted)
 
-
         # define loss and optimizer
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.n_recurrent_step, self.n_region],
                                      name="y_true")
@@ -1027,11 +1040,19 @@ class DcmRnn(Initialization):
             self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
             self.loss_sparsity = self.add_loss_sparsity()
             self.loss_prior = self.add_loss_prior(self.h_parameters)
-            self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
-                                             self.loss_weighting['sparsity'] * self.loss_sparsity,
-                                             self.loss_weighting['prior'] * self.loss_prior],
-                                            name='loss_total')
-
+            if self.if_resting_state:
+                u_stacked_backtracked = tf.concat(
+                    [self.u_stacked_previous[:, self.shift_data - 2: self.shift_data, :], self.u_stacked], axis=1)
+                self.loss_smooth = self.mse(self.second_order_smooth_parallel(u_stacked_backtracked))
+                self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
+                                                 self.loss_weighting['sparsity'] * self.loss_sparsity,
+                                                 self.loss_weighting['prior'] * self.loss_prior,
+                                                 self.loss_weighting['smooth'] * self.loss_smooth],
+                                                name='loss_total')
+            else:
+                self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
+                                                 self.loss_weighting['sparsity'] * self.loss_sparsity,
+                                                 self.loss_weighting['prior'] * self.loss_prior], name='loss_total')
 
         if self.if_training:
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
@@ -1066,8 +1087,6 @@ class DcmRnn(Initialization):
             self.build_main_graph_series(neural_parameter_initial, hemodynamic_parameter_initial)
         else:
             raise ValueError('DCM-RNN model_mode should be one of "parallel" or "series".')
-
-
 
     # unitilies
     def mse(self, tensor1, tensor2=0., name=None):
@@ -1108,6 +1127,46 @@ class DcmRnn(Initialization):
             derivative = tf.concat([first_order_difference, second_order_difference], axis=0)
 
         return derivative
+
+    def second_order_smooth_parallel(self, tensor, axis=1):
+        """
+        Calculate the first order and second order derivative for smoothing
+        :param tensor:
+        :param axis: smoothing direction, cannot be 0, since it's assumed to be batch dimension
+        :return:
+        """
+        signal_length = tensor.get_shape().as_list()[axis]
+        batch_size = tensor.get_shape().as_list()[0]
+
+        # build operator matrices
+        first_order_difference_operator = np.diag([1] * signal_length) + np.diag([-1] * (signal_length - 1), 1)
+        second_order_difference_operator = np.diag([-2] * signal_length) \
+                                           + np.diag([1] * (signal_length - 1), -1) \
+                                           + np.diag([1] * (signal_length - 1), 1)
+        first_order_difference_operator[-1] = 0
+        second_order_difference_operator[0] = 0
+        second_order_difference_operator[-1] = 0
+        first_order_difference_operator = first_order_difference_operator.astype(np.float32)
+        second_order_difference_operator = second_order_difference_operator.astype(np.float32)
+
+        first_order_difference_operator = tf.reshape(first_order_difference_operator, (1, signal_length, signal_length))
+        first_order_difference_operator = tf.tile(first_order_difference_operator, [batch_size, 1, 1])
+
+        second_order_difference_operator = tf.reshape(second_order_difference_operator, (1, signal_length, signal_length))
+        second_order_difference_operator = tf.tile(second_order_difference_operator, [batch_size, 1, 1])
+
+        if axis == 1:
+            first_order_difference = tf.matmul(first_order_difference_operator, tensor)
+            second_order_difference = tf.matmul(second_order_difference_operator, tensor)
+            derivative = tf.concat([first_order_difference, second_order_difference], axis=1)
+        else:
+            first_order_difference = tf.matmul(tensor, first_order_difference_operator)
+            second_order_difference = tf.matmul(tensor, first_order_difference_operator)
+            derivative = tf.concat([first_order_difference, second_order_difference], axis=0)
+
+        return derivative
+
+
 
     def variable_summaries(self, tensor):
         """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""

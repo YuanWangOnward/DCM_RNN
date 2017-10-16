@@ -162,22 +162,29 @@ def make_a_batch(u, x, h, y):
     return batch
 
 
-def make_batches(u, x, h, y, batch_size=128, if_shuffle=True):
+def make_batches(u, x, h, y, batch_size=128, if_shuffle=True, extra=None):
     """
-    Given u, x, h, and y from a DataUnit, assemble training batches.
+    Given u, x, h, and y as lists of data segments, assemble training batches.
     :param u:
     :param x:
     :param h:
     :param y:
     :param batch_size:
     :param if_shuffle:
+    :param extra: a list of strings of extra outputs
     :return:
     """
+
     batches = []
     temp_u = copy.deepcopy(u)
     temp_x = copy.deepcopy(x)
     temp_h = copy.deepcopy(h)
     temp_y = copy.deepcopy(y)
+    if extra is not None:
+        if 'u_previous' in extra:
+            temp_u_previous = copy.deepcopy(u)
+            temp_u_previous.insert(0, np.zeros(temp_u_previous[0].shape))
+            temp_u_previous.pop(-1)
 
     if if_shuffle:
         index = list(range(len(temp_y)))
@@ -186,15 +193,21 @@ def make_batches(u, x, h, y, batch_size=128, if_shuffle=True):
         temp_x = [temp_x[i] for i in index]
         temp_h = [temp_h[i] for i in index]
         temp_y = [temp_y[i] for i in index]
+        if extra is not None:
+            if 'u_previous' in extra:
+                temp_u_previous = [temp_u_previous[i] for i in index]
 
     for i in range(0, len(temp_y), batch_size):
         batch = make_a_batch(temp_u[i: i + batch_size],
                              temp_x[i: i + batch_size],
                              temp_h[i: i + batch_size],
                              temp_y[i: i + batch_size])
+        if extra is not None:
+            if 'u_previous' in extra:
+                batch['u_previous'] = np.stack(temp_u_previous[i: i + batch_size], axis=0)
+
         # get rid of batches of less sample than batch size
-        if len(batch['u']) == batch_size and len(batch['x_initial']) == batch_size and \
-                        len(batch['h_initial']) == batch_size and len(batch['y']) == batch_size:
+        if all([len(batch[k]) == batch_size for k in batch.keys()]):
             batches.append(batch)
     return batches
 
@@ -484,19 +497,51 @@ class OrderedDict(collections.OrderedDict):
             return self.key_order.index(key)
 
 
-class ArrayWrapper:
+class ArrayWrapper(np.ndarray):
     """
     Allow easy and fast access to np.array segment with simple index
     """
 
-    def __init__(self, array, n_segment, n_step=None, shift=0, split_dimension=0):
-        self.data = array
-        self.n_segment = n_segment
-        self.n_step = n_step or n_segment
+    def __new__(cls, array, segment_length, n_step=None, shift=0, split_dimension=0):
+        return np.ndarray.__new__(cls, array.shape)
+
+    def __init__(self, array, segment_length, n_step=None, shift=0, split_dimension=0):
+        self.segment_length = segment_length
+        self.n_step = n_step or segment_length
         self.shift = shift
         self.split_dimension = split_dimension
+        self[:] = array[:]
+        self.indices = split_index(self.data.shape, self.segment_length, self.n_step, self.shift, self.split_dimension)
 
-        self.indices = split_index(self.data.shape, self.n_segment, self.n_step, self.shift, self.split_dimension)
+    def set(self, index, data):
+        self[self.indices[index]] = data
+
+    def get(self, index=None):
+        if index == None:
+            return self.data
+        else:
+            return self[self.indices[index]]
+'''
+class ArrayWrapper(np.ndarray):
+    """
+    Allow easy and fast access to np.array segment with simple index
+    """
+
+    def __new__(cls, array, segment_length, n_step=None, shift=0, split_dimension=0):
+        np.ndarray.__new__(array.shape)
+
+    def __init__(self, array, segment_length, n_step=None, shift=0, split_dimension=0):
+        self.data = array
+        self.segment_length = segment_length
+        self.n_step = n_step or segment_length
+        self.shift = shift
+        self.split_dimension = split_dimension
+        print(tuple(array.shape))
+        print(type(tuple(array.shape)))
+        # self.__new__(self, tuple(array.shape))
+        # np.ndarray.__new__(tuple(array.shape))
+
+        self.indices = split_index(self.data.shape, self.segment_length, self.n_step, self.shift, self.split_dimension)
 
     def set(self, index, data):
         self.data[self.indices[index]] = data
@@ -506,7 +551,7 @@ class ArrayWrapper:
             return self.data
         else:
             return self.data[self.indices[index]]
-
+'''
 
 class Initialization:
     def __init__(self,
@@ -527,9 +572,11 @@ class Initialization:
                  B_non_zero_probability=None,
                  B_sign_probability=None,
                  C_init_low=None, C_init_high=None,
+                 u_type=None,
                  u_t_low=None, u_t_high=None,
                  u_interval_t_low=None, u_interval_t_high=None,
                  u_skip_rate=None,
+                 u_frequency_low=None, u_frequency_high=None,
                  deviation_constraint=None,
                  h_parameter_check_statistics=None,
                  n_time_point_unit_length=None,
@@ -569,11 +616,15 @@ class Initialization:
         self.C_init_low = C_init_low or 0.5
         self.C_init_high = C_init_high or 1.
 
+        self.u_type_supported = ['box_train', 'sine']
+        self.u_type = u_type or 'box_train'
         self.u_t_low = u_t_low or 5  # in second
         self.u_t_high = u_t_high or 10  # in second
         self.u_interval_t_low = u_interval_t_low or 5  # in second
         self.u_interval_t_high = u_interval_t_high or 10  # in second
         self.u_skip_rate = u_skip_rate or 0.2
+        self.u_frequency_low = u_frequency_low or 0.01    # in Hz
+        self.u_frequency_high = u_frequency_high or 0.1  # in Hz
 
         self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
         self.deviation_constraint = deviation_constraint or 1
@@ -587,9 +638,8 @@ class Initialization:
         self.n_time_point_unit_length = n_time_point_unit_length or 32
 
 
-        self.x_nonlinearity_type = x_nonlinearity_type or 'relu'
+        self.x_nonlinearity_type = x_nonlinearity_type or 'None'
         if x_nonlinearity_parameter is None:
-
             y = np.array([0.05, 0.95])
             x = -np.log(1 / y - 1)
             vertical_zoom = 1 / (y[1] - y[0])
@@ -713,7 +763,7 @@ class Initialization:
                 raise ValueError('Can not generate qualified A matrix with max trail number!')
         return A
 
-    def randomly_generate_B_matrix(self, n_node, n_stimuli):
+    def randomly_generate_B_matrix(self, n_node, n_stimuli, if_resting_state=False):
         """
         Generate the B matrices for neural level equation x'=Ax+\sigma(xBu)+Cu.
         The number of B matrices equals the number of stimuli
@@ -726,20 +776,23 @@ class Initialization:
         """
         if n_node < n_stimuli:
             raise ValueError('Improper number of nodes and stimuli')
-        B = []
-        indexes = random.sample(range(0, n_node ** 2), n_node ** 2)
-        for matrix_index in range(n_stimuli):
-            B_current = np.zeros((n_node, n_node))
-            if self.roll(self.B_non_zero_probability):
-                index_temp = indexes.pop()
-                row_index = int(index_temp / n_node)
-                column_index = index_temp % n_node
-                sign = -1 if self.roll(self.B_sign_probability) else 1
-                B_current[row_index, column_index] = sign * random.uniform(self.B_init_low, self.B_init_high)
-            B.append(B_current)
-        return B
+        if if_resting_state:
+            return [np.zeros((n_node, n_node)) for _ in range(n_stimuli)]
+        else:
+            B = []
+            indexes = random.sample(range(0, n_node ** 2), n_node ** 2)
+            for matrix_index in range(n_stimuli):
+                B_current = np.zeros((n_node, n_node))
+                if self.roll(self.B_non_zero_probability):
+                    index_temp = indexes.pop()
+                    row_index = int(index_temp / n_node)
+                    column_index = index_temp % n_node
+                    sign = -1 if self.roll(self.B_sign_probability) else 1
+                    B_current[row_index, column_index] = sign * random.uniform(self.B_init_low, self.B_init_high)
+                B.append(B_current)
+            return B
 
-    def randomly_generate_C_matrix(self, n_node, n_stimuli):
+    def randomly_generate_C_matrix(self, n_node, n_stimuli, if_resting_state=False):
         """
         Generate the C matrix for neural level equation x'=Ax+\sigma(xBu)+Cu.
         Assumptions:
@@ -751,13 +804,19 @@ class Initialization:
         """
         if n_node < n_stimuli:
             raise ValueError('Improper number of nodes and stimuli')
-        node_indexes = random.sample(range(0, n_node), n_stimuli)
-        C = np.zeros((n_node, n_stimuli))
-        for culumn_index, row_index in enumerate(node_indexes):
-            C[row_index, culumn_index] = np.random.uniform(self.C_init_low, self.C_init_high)
-        return C
+        if if_resting_state:
+            C = np.zeros((n_node, n_stimuli))
+            for i in range(n_stimuli):
+                C[i, i] = 1
+            return C
+        else:
+            node_indexes = random.sample(range(0, n_node), n_stimuli)
+            C = np.zeros((n_node, n_stimuli))
+            for culumn_index, row_index in enumerate(node_indexes):
+                C[row_index, culumn_index] = np.random.uniform(self.C_init_low, self.C_init_high)
+            return C
 
-    def randomly_generate_u(self, n_stimuli, n_time_point, t_delta):
+    def randomly_generate_u(self, n_stimuli, n_time_point, t_delta, u_type=None):
         """
         Randomly generate input stimuli,
         :param n_stimuli: the amount of stimuli
@@ -765,53 +824,64 @@ class Initialization:
         :param t_delta: time interval between adjacent sample points
         :return: np.array, random input, size (n_time_point, n_stimuli)
         """
+        if u_type is None:
+            u_type =  self.u_type
+        if u_type == 'box_train':
+            def flip(num):
+                if num is 0:
+                    return 1
+                if num is 1:
+                    return 0
 
-        def flip(num):
-            if num is 0:
-                return 1
-            if num is 1:
-                return 0
+            u_t_low = self.u_t_low
+            u_t_high = self.u_t_high
+            u_n_low = int(u_t_low / t_delta)
+            u_n_high = int(u_t_high / t_delta)
 
-        u_t_low = self.u_t_low
-        u_t_high = self.u_t_high
-        u_n_low = int(u_t_low / t_delta)
-        u_n_high = int(u_t_high / t_delta)
+            u_interval_t_low = self.u_interval_t_low
+            u_interval_t_high = self.u_interval_t_high
+            u_interval_n_low = int(u_interval_t_low / t_delta)
+            u_interval_n_high = int(u_interval_t_high / t_delta)
 
-        u_interval_t_low = self.u_interval_t_low
-        u_interval_t_high = self.u_interval_t_high
-        u_interval_n_low = int(u_interval_t_low / t_delta)
-        u_interval_n_high = int(u_interval_t_high / t_delta)
-
-        u = np.zeros((n_time_point, n_stimuli))
-
-        for n_s in range(n_stimuli):
-            if n_s > 0:
-                i_current = np.random.randint(int((u_interval_n_low + u_interval_n_high) / 2))
-            else:
-                i_current = 0
-            value = 0
-            while i_current < n_time_point:
-                if i_current > 0:
-                    if random.random() > self.u_skip_rate:
+            u = np.zeros((n_time_point, n_stimuli))
+            for n_s in range(n_stimuli):
+                if n_s > 0:
+                    i_current = np.random.randint(int((u_interval_n_low + u_interval_n_high) / 2))
+                else:
+                    i_current = 0
+                value = 0
+                while i_current < n_time_point:
+                    if i_current > 0:
+                        if random.random() > self.u_skip_rate:
+                            value = flip(value)
+                    else:
                         value = flip(value)
-                else:
-                    value = flip(value)
-                if value == 1:
-                    if u_n_low == u_n_high:
-                        step = u_n_low
+                    if value == 1:
+                        if u_n_low == u_n_high:
+                            step = u_n_low
+                        else:
+                            step = np.random.randint(u_n_low, u_n_high)
                     else:
-                        step = np.random.randint(u_n_low, u_n_high)
-                else:
-                    if u_interval_n_low == u_interval_n_high:
-                        step = u_interval_n_low
-                    else:
-                        step = np.random.randint(u_interval_n_low, u_interval_n_high)
-                i_next = i_current + step
-                if i_next >= n_time_point:
-                    i_next = n_time_point
-                u[i_current:i_next, n_s] = value
-                i_current = i_next
-        return u
+                        if u_interval_n_low == u_interval_n_high:
+                            step = u_interval_n_low
+                        else:
+                            step = np.random.randint(u_interval_n_low, u_interval_n_high)
+                    i_next = i_current + step
+                    if i_next >= n_time_point:
+                        i_next = n_time_point
+                    u[i_current:i_next, n_s] = value
+                    i_current = i_next
+            return u
+        elif u_type == 'sine':
+            u = np.zeros((n_time_point, n_stimuli))
+            t = np.array(range(n_time_point)) * t_delta
+            for n_s in range(n_stimuli):
+                frequency = np.random.uniform(self.u_frequency_low, self.u_frequency_high)
+                u[:, n_s] = np.sin(2 * np.pi * frequency * t)
+            return u
+        else:
+            raise ValueError(u_type + ' is not a proper stimuli input. Supported stimulus types include ' +
+                             ' '.join(self.u_type_supported))
 
     def get_impulse_u(self, n_stimuli, n_time_point):
         """
@@ -1084,7 +1154,6 @@ class ParameterGraph:
             'parameter_graph': [],
             'scanner': [],
 
-            # level zero
             'if_random_neural_parameter': [],
             'if_random_hemodynamic_parameter': [],
             'if_random_x_state_initial': [],
@@ -1095,7 +1164,9 @@ class ParameterGraph:
             'if_random_delta_t': [],
             'if_random_scan_time': [],
             'if_x_nonlinearity': [],
+            'if_resting_state': [],
 
+            'u_type': ['if_resting_state', 'initializer'],
             'x_nonlinearity_type': ['if_x_nonlinearity', 'initializer'],
             'n_node': ['if_random_node_number', 'initializer'],
             't_delta': ['if_random_delta_t', 'initializer'],
@@ -1108,6 +1179,7 @@ class ParameterGraph:
 
 
             'u': ['if_random_stimuli',
+                  'u_type',
                   'n_stimuli',
                   'n_time_point',
                   't_delta',
@@ -1116,10 +1188,12 @@ class ParameterGraph:
                   'n_node',
                   'initializer'],
             'B': ['if_random_neural_parameter',
+                  'if_resting_state',
                   'n_node',
                   'n_stimuli',
                   'initializer'],
             'C': ['if_random_neural_parameter',
+                  'if_resting_state',
                   'n_node',
                   'n_stimuli',
                   'initializer'],
@@ -1167,9 +1241,10 @@ class ParameterGraph:
                         'if_random_stimuli_number',
                         'if_random_delta_t',
                         'if_random_scan_time',
-                        'if_x_nonlinearity'
+                        'if_x_nonlinearity',
+                        'if_resting_state'
                         ],
-            'level_1': ['n_node', 't_delta', 't_scan', 'x_nonlinearity_type'],
+            'level_1': ['n_node', 't_delta', 't_scan', 'x_nonlinearity_type', 'u_type'],
             'level_2': ['n_time_point',
                         'n_stimuli',
                         'A',
@@ -1370,8 +1445,8 @@ class ParameterGraph:
             elif len(temp) == 1:
                 return temp[0]
             else:
-                print(prerequisites)
-                raise ValueError('Multiple flags found.')
+                return temp
+
 
     def get_flag_name(self, para):
         """
@@ -1510,7 +1585,7 @@ class Scanner:
         initial_x_state = parameter_package['initial_x_state']
         u = parameter_package['u']
         x_nonlinearity_type = parameter_package['x_nonlinearity_type']
-        x_nonlinearity_parameter = parameter_package['x_nonlinearity_parameter']
+        # x_nonlinearity_parameter = parameter_package['x_nonlinearity_parameter']
 
         n_node = Wxu.shape[0]
         n_stimuli = Wxu.shape[1]
@@ -1754,7 +1829,6 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
     A internal dictionary, _secured_data is r dictionary should only manipulated by internal methods. It's not
     implemented currently but DataUnit should keep it structure so that this functionality can be added easily.
     """
-    init = Initialization()
 
     def __init__(self,
                  if_random_neural_parameter=True,
@@ -1767,6 +1841,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                  if_random_delta_t=False,
                  if_random_scan_time=False,
                  if_x_nonlinearity=False,
+                 if_resting_state=False
                  ):
         Initialization.__init__(self)
         ParameterGraph.__init__(self)
@@ -1781,7 +1856,11 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         self._secured_data['if_random_stimuli_number'] = if_random_stimuli_number
         self._secured_data['if_random_delta_t'] = if_random_delta_t
         self._secured_data['if_random_scan_time'] = if_random_scan_time
+
+
         self._secured_data['if_x_nonlinearity'] = if_x_nonlinearity
+        self._secured_data['if_resting_state'] = if_resting_state
+
 
         self._secured_data['initializer'] = self
         self._secured_data['parameter_graph'] = self
@@ -1792,10 +1871,11 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                               'n_stimuli',
                               't_scan',
                               't_delta',
+                              'n_time_point',
                               'x_nonlinearity_type',
                               'x_nonlinearity_parameter',
-                              'n_time_point',
-                              'A', 'B', 'C', 'u',
+                              'u_type',
+                              'u', 'A', 'B', 'C',
                               'hemodynamic_parameter',
                               'initial_x_state',
                               'initial_h_state',
@@ -1987,7 +2067,10 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
             raise ValueError(message)
 
         if flag_name is not None:
-            flag_value = self._secured_data[flag_name]
+            if isinstance(flag_name, list):
+                flag_value = {name:self._secured_data[name] for name in flag_name}
+            else:
+                flag_value = self._secured_data[flag_name]
         else:
             flag_value = 'none_flag'
         if para is 'n_node':
@@ -2030,6 +2113,11 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
             show(para, flag_name, flag_value, 'calculate_n_time_point')
             self._secured_data[para] = self.calculate_n_time_point(self._secured_data['t_scan'],
                                                                    self._secured_data['t_delta'])
+        elif para is 'u_type':
+            if flag_value is True:
+                self._secured_data['u_type'] = 'sine'
+            else:
+                self._secured_data['u_type'] = 'box_train'
         elif para is 'A':
             if flag_value is True:
                 show(para, flag_name, flag_value, 'randomly_generate_A_matrix')
@@ -2037,25 +2125,30 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
             else:
                 raise_error(para, flag_name, flag_value, 'needs to be set manually')
         elif para is 'B':
-            if flag_value is True:
+            if flag_value['if_random_neural_parameter'] is True:
                 show(para, flag_name, flag_value, 'randomly_generate_B_matrix')
                 self._secured_data[para] = self.randomly_generate_B_matrix(self._secured_data['n_node'],
-                                                                           self._secured_data['n_stimuli'])
+                                                                           self._secured_data['n_stimuli'],
+                                                                           self._secured_data['if_resting_state'])
             else:
-                raise_error(para, flag_name, flag_value, 'needs to be set manually')
+                raise_error(para, 'if_random_neural_parameter', flag_value['if_random_neural_parameter'],
+                            'needs to be set manually')
         elif para is 'C':
-            if flag_value is True:
+            if flag_value['if_random_neural_parameter'] is True:
                 show(para, flag_name, flag_value, 'randomly_generate_C_matrix')
                 self._secured_data[para] = self.randomly_generate_C_matrix(self._secured_data['n_node'],
-                                                                           self._secured_data['n_stimuli'])
+                                                                           self._secured_data['n_stimuli'],
+                                                                           self._secured_data['if_resting_state'])
             else:
-                raise_error(para, flag_name, flag_value, 'needs to be set manually')
+                raise_error(para, 'if_random_neural_parameter', flag_value['if_random_neural_parameter'],
+                            'needs to be set manually')
         elif para is 'u':
             if flag_value is True:
                 show(para, flag_name, flag_value, 'randomly_generate_u')
                 self._secured_data[para] = self.randomly_generate_u(self._secured_data['n_stimuli'],
                                                                     self._secured_data['n_time_point'],
-                                                                    self._secured_data['t_delta'])
+                                                                    self._secured_data['t_delta'],
+                                                                    self._secured_data['u_type'])
             else:
                 show(para, flag_name, flag_value, 'get_impulse_u')
                 self._secured_data[para] = self.get_impulse_u(self._secured_data['n_stimuli'],
@@ -2320,7 +2413,9 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         names_in_model = []
         for name in names_in_graph:
             name_core = name[name.index('/') + 1: name.index(':')]
-            if '_' in name_core:
+            if name_core == 'u_stacked':
+                names_in_model.append(name_core)
+            elif '_' in name_core:
                 temp = name_core.split('_')
                 temp[1] = int(re.findall('\d+', temp[1])[0])
                 temp = tuple(temp)
