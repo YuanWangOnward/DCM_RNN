@@ -114,7 +114,7 @@ SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_' + CONDITION +
 du = tb.load_template(DATA_PATH)
 if SETTINGS[CONDITION]['if_noised_y']:
     du._secured_data['y'] = du.get('y_noised')
-n_segments = mth.ceil(len(du.get('y')) - N_RECURRENT_STEP / DATA_SHIFT)
+# n_segments = mth.ceil(len(du.get('y')) - N_RECURRENT_STEP / DATA_SHIFT)
 
 # specify initialization values, loss weighting factors, and mask (support of effective connectivity)
 x_parameter_initial = {}
@@ -165,6 +165,7 @@ dr.trainable_variables_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINA
 dr.trainable_variables_names = [v.name for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 du_hat.variable_names_in_graph = du_hat.parse_variable_names(dr.trainable_variables_names)
 
+
 # prepare data for training
 data = {
     'y': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)}
@@ -173,11 +174,6 @@ data_hat = {
     'x_initial': tb.split(du_hat.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
     'h_initial': tb.split(du_hat.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
 }
-# may use a portion of the data
-for k in data_hat.keys():
-    data_hat[k] = data_hat[k][: n_segments]
-for k in data.keys():
-    data[k] = data[k][: n_segments]
 batches = tb.make_batches(data_hat['u'], data_hat['x_initial'], data_hat['h_initial'], data['y'],
                           batch_size=dr.batch_size, extra=['u_previous'])
 
@@ -189,6 +185,15 @@ dr.update_variables_in_graph(isess, dr.x_parameter_nodes,
                              [x_parameter_initial_in_graph['Wxx']]
                              + x_parameter_initial_in_graph['Wxxu']
                              + [x_parameter_initial_in_graph['Wxu']])
+
+# tests
+isess.run(tf.assign(dr.u_entire, np.tile(np.array(range(19200)), [2, 1]).transpose().astype(np.float32)))
+u_index = np.array(range(128))
+u_stacked, u_stacked_previous = isess.run([dr.u_stacked, dr.u_stacked_previous], feed_dict={dr.u_index_place_holder: u_index})
+u_stacked.shape
+u_stacked_previous.shape
+
+
 
 print('start inference')
 loss_differences = []

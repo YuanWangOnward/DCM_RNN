@@ -19,6 +19,7 @@ class DcmRnn(Initialization):
                  stop_threshold=None,
 
                  variable_scope_name_u_stacked=None,
+                 variable_scope_name_u_entire=None,
 
                  variable_scope_name_x_parameter=None,
                  variable_scope_name_x=None,
@@ -77,6 +78,7 @@ class DcmRnn(Initialization):
 
         # scope name settings
         self.variable_scope_name_u_stacked = variable_scope_name_u_stacked or 'u_stacked'
+        self.variable_scope_name_u_entire = variable_scope_name_u_entire or 'u_entire'
         self.variable_scope_name_u = variable_scope_name_x or 'cell_u'
 
         self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
@@ -111,7 +113,7 @@ class DcmRnn(Initialization):
         :return: a dictionary containing needed paramters
         """
         deliverables = {}
-        needed_parameters = {'n_node', 'n_stimuli', 't_delta'}
+        needed_parameters = {'n_node', 'n_stimuli', 't_delta', 'n_time_point'}
         for para in needed_parameters:
             deliverables[para] = du.get(para)
         self.load_parameters(deliverables)
@@ -121,6 +123,7 @@ class DcmRnn(Initialization):
         self.n_region = parameter_package['n_node']
         self.t_delta = parameter_package['t_delta']
         self.n_stimuli = parameter_package['n_stimuli']
+        self.n_time_point = parameter_package['n_time_point']
 
     def set_up_loss_weighting(self):
         self.loss_weighting = \
@@ -982,31 +985,51 @@ class DcmRnn(Initialization):
 
         # input stimuli u
         if self.if_resting_state:
-            with tf.variable_scope(self.variable_scope_name_u_stacked):
-                self.u_stacked = tf.get_variable(name='u_stacked', dtype=tf.float32,
-                                                 shape=[self.batch_size, self.n_recurrent_step, self.n_stimuli])
-                self.u_stacked_previous = tf.get_variable(name='u_stacked_previous', dtype=tf.float32,
-                                                          shape=[self.batch_size, self.n_recurrent_step,
-                                                                 self.n_stimuli],
-                                                          trainable=False)
+            with tf.variable_scope(self.variable_scope_name_u_entire):
+                self.u_entire = tf.get_variable(name='u_entire', dtype=tf.float32,
+                                                shape=[self.n_time_point, self.n_stimuli])
+                self.u_index_place_holder = tf.placeholder(dtype=tf.int32, shape=[None],
+                                                           name='u_index_place_holder')
+
+            def f1():
+                return tf.reshape(self.u_entire[u_index_previous * self.n_recurrent_step + n], [-1, 1, self.n_stimuli])
+
+            def f2():
+                return tf.constant(np.zeros((None, 1, self.n_stimuli)).astype(np.float32))
+
             self.u = []
+            self.u_previous = []
             for n in range(self.n_recurrent_step):
                 with tf.variable_scope(self.variable_scope_name_u):
-                    self.u.append(self.u_stacked[:, n, :])
+                    self.u.append(tf.gather(self.u_entire, self.u_index_place_holder * self.n_recurrent_step + n))
+
+                    u_index_previous = self.u_index_place_holder - 1
+                    # self.u_previous.append(tf.cond(tf.greater_equal(u_index_previous, 0), f1, f2))
+                    self.u_previous.append(tf.gather(self.u_entire,
+                                                       u_index_previous * self.n_recurrent_step + n))
+
+            with tf.variable_scope(self.variable_scope_name_u_stacked):
+                self.u_stacked = tf.stack(self.u, 1, name='u_stacked')
+                self.u_stacked_previous = tf.stack(self.u_previous, 1, name='u_stacked_previous')
+
         else:
             with tf.variable_scope(self.variable_scope_name_u_stacked):
                 self.u_placeholder = \
-                    tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.n_recurrent_step, self.n_stimuli],
+                    tf.placeholder(dtype=tf.float32, shape=[None, self.n_recurrent_step, self.n_stimuli],
                                    name='u_placeholder')
             self.u = []
             for n in range(self.n_recurrent_step):
                 with tf.variable_scope(self.variable_scope_name_u):
                     self.u.append(self.u_placeholder[:, n, :])
+
         self.u_tailing = []
         for n in range(self.shift_u_y):
-            self.u_tailing.append(tf.constant(np.zeros((self.batch_size, 1, self.n_stimuli), dtype=np.float32),
-                                              dtype=np.float32,
-                                              name='u_tailing_' + str(n)))
+            self.u_tailing.append(tf.zeros_like(self.u[0], name='u_tailing_' + str(n)))
+            '''
+            self.u_tailing.append(tf.constant(value=0, shape=[-1, self.n_stimuli],
+                                              dtype=tf.float32, name='u_tailing_' + str(n)))
+            '''
+
         self.u_extended = self.u
         self.u_extended.extend(self.u_tailing)
 
@@ -1057,8 +1080,6 @@ class DcmRnn(Initialization):
         if self.if_training:
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
             # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
-
-
             self.opt = tf.train.GradientDescentOptimizer(self.learning_rate)
             self.grads_and_vars = self.opt.compute_gradients(self.loss_total, tf.trainable_variables())
             self.processed_grads_and_vars = self.grads_and_vars
@@ -1149,11 +1170,13 @@ class DcmRnn(Initialization):
         first_order_difference_operator = first_order_difference_operator.astype(np.float32)
         second_order_difference_operator = second_order_difference_operator.astype(np.float32)
 
-        first_order_difference_operator = tf.reshape(first_order_difference_operator, (1, signal_length, signal_length))
-        first_order_difference_operator = tf.tile(first_order_difference_operator, [batch_size, 1, 1])
+        first_order_difference_operator = tf.reshape(first_order_difference_operator,
+                                                     (-1, signal_length, signal_length))
+        first_order_difference_operator = tf.tile(first_order_difference_operator, [-1, 1, 1])
 
-        second_order_difference_operator = tf.reshape(second_order_difference_operator, (1, signal_length, signal_length))
-        second_order_difference_operator = tf.tile(second_order_difference_operator, [batch_size, 1, 1])
+        second_order_difference_operator = tf.reshape(second_order_difference_operator,
+                                                      (-1, signal_length, signal_length))
+        second_order_difference_operator = tf.tile(second_order_difference_operator, [-1, 1, 1])
 
         if axis == 1:
             first_order_difference = tf.matmul(first_order_difference_operator, tensor)
@@ -1165,8 +1188,6 @@ class DcmRnn(Initialization):
             derivative = tf.concat([first_order_difference, second_order_difference], axis=0)
 
         return derivative
-
-
 
     def variable_summaries(self, tensor):
         """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""

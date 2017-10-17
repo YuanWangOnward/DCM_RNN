@@ -513,11 +513,15 @@ class ArrayWrapper(np.ndarray):
         self[:] = array[:]
         self.indices = split_index(self.data.shape, self.segment_length, self.n_step, self.shift, self.split_dimension)
 
+    def __dir__(self):
+        return np.ndarray.__dir__(self) + ['segment_length', 'n_step', 'shift', 'split_dimension', 'indices',
+                                           'set', 'get']
+
     def set(self, index, data):
         self[self.indices[index]] = data
 
     def get(self, index=None):
-        if index == None:
+        if index is None:
             return self.data
         else:
             return self[self.indices[index]]
@@ -2413,7 +2417,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         names_in_model = []
         for name in names_in_graph:
             name_core = name[name.index('/') + 1: name.index(':')]
-            if name_core == 'u_stacked':
+            if name_core in ['u_stacked', 'u_entire']:
                 names_in_model.append(name_core)
             elif '_' in name_core:
                 temp = name_core.split('_')
