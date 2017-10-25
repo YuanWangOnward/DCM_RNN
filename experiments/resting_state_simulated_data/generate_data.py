@@ -52,7 +52,6 @@ SAVE_PATH_PKL = os.path.join(DATA_PATH, 'du_DCM_RNN_' + SIMULATION_X_NONLINEARIT
 SAVE_PATH_MAT = os.path.join(DATA_PATH, 'DCM_initial_' + SIMULATION_X_NONLINEARITY + '.mat')
 SNR = 3
 
-
 du = tb.DataUnit()
 du._secured_data['if_random_neural_parameter'] = False
 du._secured_data['if_random_hemodynamic_parameter'] = False
@@ -70,11 +69,11 @@ du._secured_data['x_nonlinearity_type'] = SIMULATION_X_NONLINEARITY
 du._secured_data['t_delta'] = 1. / 64.
 du._secured_data['t_scan'] = 5 * 60
 du._secured_data['n_node'] = 3
-du._secured_data['n_stimuli'] = 2
+du._secured_data['n_stimuli'] = 3
 
 du._secured_data['A'] = np.array([[-0.8, 0, 0],
-                                      [0, -0.8, 0],
-                                      [0.4, -0.4, -0.8]])
+                                  [0, -0.8, 0],
+                                  [0.4, -0.4, -0.8]])
 du._secured_data['B'] = [np.array([[0, 0, 0],
                                    [0, 0, 0],
                                    [0, 0, 0],
@@ -82,8 +81,12 @@ du._secured_data['B'] = [np.array([[0, 0, 0],
                          np.array([[0, 0, 0],
                                    [0, 0, 0],
                                    [0, 0, 0],
+                                   ]),
+                         np.array([[0, 0, 0],
+                                   [0, 0, 0],
+                                   [0, 0, 0],
                                    ])]
-du._secured_data['C'] = np.array([[0.15, 0], [0, 0.15], [0, 0]]).reshape(du.get('n_node'), du.get('n_stimuli'))
+du._secured_data['C'] = np.array([[1., 0, 0], [0, 1., 0], [0, 0, 1.]]).reshape(du.get('n_node'), du.get('n_stimuli'))
 
 # adjust hemodynamic parameter according to the ones used in SPM DCM
 # with decay = 0 and transit = 0
@@ -109,7 +112,6 @@ hemodynamic_parameter['theta0'] = 40.3
 hemodynamic_parameter['x_h_coupling'] = 1.
 du._secured_data['hemodynamic_parameter'] = hemodynamic_parameter
 
-
 # scan
 du.complete_data_unit(if_show_message=False, if_check_property=False)
 for i in range(du.get('n_node') + 1):
@@ -118,7 +120,6 @@ for i in range(du.get('n_node') + 1):
         plt.plot(du.get('x'))
     else:
         plt.plot(du.get('y')[:, i - 1])
-
 
 # add noise
 noise_std = np.sqrt(np.var(du.get('y').flatten())) / SNR
@@ -131,11 +132,9 @@ for i in range(du.get('n_node') + 1):
     else:
         plt.plot(du.get('y_noised')[:, i - 1])
 
-
 # save data after finding a good u
 core = du.collect_parameter_core('y_noised')
 pickle.dump(core, open(CORE_PATH, 'wb'))
-
 
 ## do down sample and up sample, make the data used for DCM-RNN inference
 # load data
@@ -145,6 +144,7 @@ du_original.load_parameter_core(core)
 du_original.recover_data_unit()
 du = du_original.resample_data_unit()
 pickle.dump(du, open(SAVE_PATH_PKL, 'wb'))
+
 
 # create DCM structure for SPM DCM
 core = tb.load_template(CORE_PATH)
@@ -194,4 +194,3 @@ DCM['du_data'] = du._secured_data
 
 DCM_initial = DCM
 scipy.io.savemat(SAVE_PATH_MAT, mdict={'DCM_initial': DCM_initial})
-

@@ -45,19 +45,20 @@ from scipy.interpolate import interp1d
 
 MAX_EPOCHS = 96
 CHECK_STEPS = 1
-N_RECURRENT_STEP = 8
+N_RECURRENT_STEP = 128
 DATA_SHIFT = 2
-MAX_BACK_TRACK = 16
+MAX_BACK_TRACK = 8
 MAX_CHANGE = 0.001
+U_UPDATE_FACTOR = 5    # the max update of u is MAX_CHANGE * U_UPDATE_FACTOR
 BATCH_RANDOM_DROP_RATE = 1.
+BATCH_SIZE = 128
 
 
 SIMULATION_X_NONLINEARITY = 'None'
 ESTIMATION_X_NONLINEARITY = 'None'
 IF_RESTING_STATE = True
 
-tf.reset_default_graph()
-# ESTIMATION_X_NONLINEARITY = 'relu'
+# tf.reset_default_graph()
 CONDITION = 'h1_s0_n0'
 SETTINGS = {}
 SETTINGS['h0_s0_n0'] = {'if_update_h_parameter': False,
@@ -105,6 +106,8 @@ else:
                        'x_h_coupling': False
                        }
 
+trainable_flags['Wxu'] = False
+
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'resting_state_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data', 'du_DCM_RNN_' + SIMULATION_X_NONLINEARITY + '.pkl')
 SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_' + CONDITION + '_simulation_' +
@@ -114,18 +117,18 @@ SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_' + CONDITION +
 du = tb.load_template(DATA_PATH)
 if SETTINGS[CONDITION]['if_noised_y']:
     du._secured_data['y'] = du.get('y_noised')
-# n_segments = mth.ceil(len(du.get('y')) - N_RECURRENT_STEP / DATA_SHIFT)
 
 # specify initialization values, loss weighting factors, and mask (support of effective connectivity)
 x_parameter_initial = {}
 x_parameter_initial['A'] = - np.eye(du.get('n_node'))
 x_parameter_initial['B'] = [np.zeros((du.get('n_node'), du.get('n_node'))) for _ in range(du.get('n_stimuli'))]
 x_parameter_initial['C'] = np.zeros((du.get('n_node'), du.get('n_stimuli')))
-x_parameter_initial['C'][0, 0] = 0.1
-x_parameter_initial['C'][1, 1] = 0.1
+x_parameter_initial['C'][0, 0] = 1
+x_parameter_initial['C'][1, 1] = 1
+x_parameter_initial['C'][2, 2] = 1
 h_parameter_initial = du.get('hemodynamic_parameter')
 
-loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1., 'smooth': 4.}
+loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 0.05, 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1., 'smooth': 50.}
 mask = du.create_support_mask()
 if SETTINGS[CONDITION]['if_extended_support']:
     mask['Wxx'] = np.ones((du.get('n_node'), du.get('n_node')))
@@ -152,6 +155,7 @@ dr.max_back_track_steps = MAX_BACK_TRACK
 dr.max_parameter_change_per_iteration = MAX_CHANGE
 dr.trainable_flags = trainable_flags
 dr.loss_weighting = loss_weighting
+dr.batch_size = BATCH_SIZE
 dr.x_nonlinearity_type = ESTIMATION_X_NONLINEARITY
 dr.if_resting_state = IF_RESTING_STATE
 dr.build_main_graph_parallel(neural_parameter_initial=x_parameter_initial,
@@ -164,40 +168,43 @@ dr.x_parameter_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARI
 dr.trainable_variables_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 dr.trainable_variables_names = [v.name for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 du_hat.variable_names_in_graph = du_hat.parse_variable_names(dr.trainable_variables_names)
-
+du_hat.global_variable_indexes = copy.deepcopy(du_hat.parse_variable_names(dr.trainable_variables_names))
+du_hat.global_variable_indexes.remove('u_entire')
+du_hat.global_variable_indexes = [du_hat.variable_names_in_graph.index(n) for n in du_hat.global_variable_indexes]
+du_hat.local_variable_indexes = [0]
 
 # prepare data for training
 data = {
     'y': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)}
 data_hat = {
+    'u_index': tb.split_index(du_hat.get('u').shape, n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
     'u': tb.split(du_hat.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
     'x_initial': tb.split(du_hat.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
     'h_initial': tb.split(du_hat.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
 }
 batches = tb.make_batches(data_hat['u'], data_hat['x_initial'], data_hat['h_initial'], data['y'],
-                          batch_size=dr.batch_size, extra=['u_previous'])
+                          batch_size=dr.batch_size, extra=['index'], if_shuffle=False)
+
 
 print('start session')
 # start session
 isess = tf.InteractiveSession()
 isess.run(tf.global_variables_initializer())
+'''
 dr.update_variables_in_graph(isess, dr.x_parameter_nodes,
                              [x_parameter_initial_in_graph['Wxx']]
                              + x_parameter_initial_in_graph['Wxxu']
                              + [x_parameter_initial_in_graph['Wxu']])
-
-# tests
-isess.run(tf.assign(dr.u_entire, np.tile(np.array(range(19200)), [2, 1]).transpose().astype(np.float32)))
-u_index = np.array(range(128))
-u_stacked, u_stacked_previous = isess.run([dr.u_stacked, dr.u_stacked_previous], feed_dict={dr.u_index_place_holder: u_index})
-u_stacked.shape
-u_stacked_previous.shape
-
-
+'''
+dr.update_variables_in_graph(isess, dr.x_parameter_nodes,
+                             [x_parameter_initial_in_graph['Wxx']]
+                             + x_parameter_initial_in_graph['Wxxu']
+                             )
 
 print('start inference')
 loss_differences = []
 step_sizes = []
+epoch = 0
 for epoch in range(MAX_EPOCHS):
     print('')
     print('epoch:    ' + str(epoch))
@@ -208,69 +215,110 @@ for epoch in range(MAX_EPOCHS):
         grads_and_vars = \
             isess.run(dr.grads_and_vars,
                       feed_dict={
-                          dr.u_stacked: batch['u'],
-                          dr.u_stacked_previous: batch['u_previous'],
+                          dr.u_index_place_holder: batch['index'],
                           dr.x_state_initial: batch['x_initial'],
                           dr.h_state_initial: batch['h_initial'],
                           dr.y_true: batch['y']
                       })
         # collect gradients and logs
         gradients.append(grads_and_vars)
-
-    # updating with back-tracking
-    ## collect statistics before updating
-
-    du_hat.update_trainable_variables(grads_and_vars, step_size=0)
-    du_hat.regenerate_data()
-
-    y_hat_original = du_hat.get('y')
-    loss_prediction_original = tb.mse(y_hat_original, du.get('y'))
-
     ## sum gradients
-    grads_and_vars = gradients[-1]
-    for idx, grad_and_var in enumerate(grads_and_vars):
-        grads_and_vars[idx] = (sum([gv[idx][0] for gv in gradients]), grads_and_vars[idx][1])
-
+    grads_and_vars = du_hat.sum_gradients(gradients, variable_names_in_graph=None)
     ## apply mask to gradients
     variable_names = [v.name for v in tf.trainable_variables()]
     for idx in range(len(grads_and_vars)):
         variable_name = variable_names[idx]
         grads_and_vars[idx] = (grads_and_vars[idx][0] * dr.support_masks[variable_name], grads_and_vars[idx][1])
 
+    ## collect statistics before updating
+    # du_hat.update_trainable_variables(grads_and_vars, step_size=0)
+    # du_hat.regenerate_data()
+    y_hat_original = du_hat.get('y')
+    loss_prediction_original = tb.mse(y_hat_original, du.get('y'))
+    loss_prediction_original_backup = loss_prediction_original
+    # print('loss_prediction_original = ' + str(loss_prediction_original))
+
+    if epoch > 1:
+        # adaptive step size, making max value change dr.max_parameter_change_per_iteration
+        max_gradient = max([np.max(np.abs(np.array(g[0])).flatten()) for g in
+                            [grads_and_vars[i] for i in du_hat.global_variable_indexes]])
+        STEP_SIZE = dr.max_parameter_change_per_iteration / max_gradient
+        print('max gradient of global variables:    ' + str(max_gradient))
+        print('Initial step size:    ' + str(STEP_SIZE))
+        # try to find proper step size
+        step_size = STEP_SIZE
+        count = 0
+        loss_prediction_original = loss_prediction
+        du_hat.update_trainable_variables(grads_and_vars, step_size,
+                                          update_parameters=[du_hat.variable_names_in_graph[i] for i in
+                                                             du_hat.global_variable_indexes])
+        Wxx = du_hat.get('Wxx')
+        stable_flag = du.check_transition_matrix(Wxx, 1.)
+        while not stable_flag:
+            count += 1
+            if count == dr.max_back_track_steps:
+                step_size = 0.
+                dr.decrease_max_parameter_change_per_iteration()
+            else:
+                step_size = step_size / 2
+            warnings.warn('not stable')
+            print('step_size=' + str(step_size))
+            du_hat.update_trainable_variables(grads_and_vars, step_size)
+            Wxx = du_hat.get('Wxx')
+            stable_flag = du.check_transition_matrix(Wxx, 1.)
+
+        try:
+            # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameter_initial)
+            du_hat.regenerate_data()
+            y_hat = du_hat.get('y')
+            loss_prediction = tb.mse(y_hat, du.get('y'))
+        except:
+            loss_prediction = float('inf')
+
+        while loss_prediction > loss_prediction_original or np.isnan(loss_prediction):
+            count += 1
+            if count == dr.max_back_track_steps:
+                step_size = 0.
+                dr.decrease_max_parameter_change_per_iteration()
+            else:
+                step_size = step_size / 2
+            print('step_size=' + str(step_size))
+            try:
+                du_hat.update_trainable_variables(grads_and_vars, step_size,
+                                                  update_parameters=[du_hat.variable_names_in_graph[i] for i in
+                                                                     du_hat.global_variable_indexes])
+                du_hat.regenerate_data()
+                y_hat = du_hat.get('y')
+                loss_prediction = tb.mse(y_hat, du.get('y'))
+            except:
+                pass
+            if step_size == 0.0:
+                break
+
+        # update parameters in graph with found step_size
+        if step_size > 0:
+            dr.update_variables_in_graph(isess,
+                                         [dr.trainable_variables_nodes[i] for i in du_hat.global_variable_indexes],
+                                         [-val[0] * step_size + val[1] for val in
+                                          [grads_and_vars[i] for i in du_hat.global_variable_indexes]])
+
     # adaptive step size, making max value change dr.max_parameter_change_per_iteration
-    max_gradient = max([np.max(np.abs(np.array(g[0])).flatten()) for g in grads_and_vars])
-    STEP_SIZE = dr.max_parameter_change_per_iteration / max_gradient
-    print('max gradient:    ' + str(max_gradient))
-    print('STEP_SIZE:    ' + str(STEP_SIZE))
+    max_gradient = max([np.max(np.abs(np.array(g[0])).flatten()) for g in
+                        [grads_and_vars[i] for i in du_hat.local_variable_indexes]])
+    STEP_SIZE = dr.max_parameter_change_per_iteration / max_gradient * U_UPDATE_FACTOR
+    print('max gradient of local variables:    ' + str(max_gradient))
+    print('Initial step size:    ' + str(STEP_SIZE))
 
     # try to find proper step size
     step_size = STEP_SIZE
     count = 0
-    du_hat.update_trainable_variables(grads_and_vars, step_size)
-
-    Wxx = du_hat.get('Wxx')
-    stable_flag = du.check_transition_matrix(Wxx, 1.)
-    while not stable_flag:
-        count += 1
-        if count == dr.max_back_track_steps:
-            step_size = 0.
-            dr.decrease_max_parameter_change_per_iteration()
-        else:
-            step_size = step_size / 2
-        warnings.warn('not stable')
-        print('step_size=' + str(step_size))
-        du_hat.update_trainable_variables(grads_and_vars, step_size)
-        Wxx = du_hat.get('Wxx')
-        stable_flag = du.check_transition_matrix(Wxx, 1.)
-
+    du_hat.update_trainable_variables(grads_and_vars, step_size, update_parameters=['u_entire'])
     try:
-        # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameter_initial)
         du_hat.regenerate_data()
         y_hat = du_hat.get('y')
         loss_prediction = tb.mse(y_hat, du.get('y'))
     except:
         loss_prediction = float('inf')
-
     while loss_prediction > loss_prediction_original or np.isnan(loss_prediction):
         count += 1
         if count == dr.max_back_track_steps:
@@ -289,33 +337,35 @@ for epoch in range(MAX_EPOCHS):
         if step_size == 0.0:
             break
 
-    # update parameters in graph with found step_size
     if step_size > 0:
-        dr.update_variables_in_graph(isess, dr.trainable_variables_nodes,
-                                     [-val[0] * step_size + val[1] for val in grads_and_vars])
+        dr.update_variables_in_graph(isess,
+                                     [dr.trainable_variables_nodes[i] for i in du_hat.local_variable_indexes],
+                                     [-val[0] * step_size + val[1] for val in
+                                      [grads_and_vars[i] for i in du_hat.local_variable_indexes]])
 
-    loss_differences.append(loss_prediction_original - loss_prediction)
-    step_sizes.append(step_size)
+
+
+    loss_differences.append(loss_prediction_original_backup - loss_prediction)
 
     # regenerate connector data
     data_hat['x_initial'] = tb.split(du_hat.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0)
     data_hat['h_initial'] = tb.split(du_hat.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1)
-    batches = tb.make_batches(data['u'], data_hat['x_initial'],
-                              data_hat['h_initial'], data['y'],
-                              batch_size=dr.batch_size,
-                              if_shuffle=True)
+    batches = tb.make_batches(data_hat['u'], data_hat['x_initial'], data_hat['h_initial'], data['y'],
+                              batch_size=dr.batch_size, extra=['index'], if_shuffle=False)
     batches = tb.random_drop(batches, ration=BATCH_RANDOM_DROP_RATE)
+
     print('applied step size:    ' + str(step_size))
-    print('loss_prediction_original:    ' + str(loss_prediction_original))
+    print('loss_prediction_original:    ' + str(loss_prediction_original_backup))
     print('reduced prediction:    ' + str(loss_differences[-1]))
-    print('reduced prediction persentage:    ' + str(loss_differences[-1] / loss_prediction_original))
+    print('reduced prediction persentage:    ' + str(loss_differences[-1] / loss_prediction_original_backup))
     print(du_hat.get('Wxx'))
-    print(du_hat.get('Wxxu'))
-    print(du_hat.get('Wxu'))
+    # print(du_hat.get('Wxxu'))
+    # print(du_hat.get('Wxu'))
     print(du_hat.get('hemodynamic_parameter'))
     pickle.dump(du_hat, open(SAVE_PATH, 'wb'))
 
 print('optimization finished.')
+
 
 for i in range(dr.n_region):
     plt.subplot(dr.n_region, 1, i + 1)

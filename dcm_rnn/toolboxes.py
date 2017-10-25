@@ -15,6 +15,7 @@ import pickle
 import copy
 import re
 from collections import Iterable
+import tensorflow as tf
 
 
 def cdr(relative_path, if_print=False):
@@ -171,7 +172,7 @@ def make_batches(u, x, h, y, batch_size=128, if_shuffle=True, extra=None):
     :param y:
     :param batch_size:
     :param if_shuffle:
-    :param extra: a list of strings of extra outputs
+    :param extra: a list of strings of extra outputs, ['u_previous', 'index']
     :return:
     """
 
@@ -185,30 +186,39 @@ def make_batches(u, x, h, y, batch_size=128, if_shuffle=True, extra=None):
             temp_u_previous = copy.deepcopy(u)
             temp_u_previous.insert(0, np.zeros(temp_u_previous[0].shape))
             temp_u_previous.pop(-1)
+        elif 'index' in extra:
+            index = []
 
     if if_shuffle:
-        index = list(range(len(temp_y)))
-        random.shuffle(index)
-        temp_u = [temp_u[i] for i in index]
-        temp_x = [temp_x[i] for i in index]
-        temp_h = [temp_h[i] for i in index]
-        temp_y = [temp_y[i] for i in index]
+        idx = list(range(len(temp_y)))
+        random.shuffle(idx)
+        temp_u = [temp_u[i] for i in idx]
+        temp_x = [temp_x[i] for i in idx]
+        temp_h = [temp_h[i] for i in idx]
+        temp_y = [temp_y[i] for i in idx]
         if extra is not None:
             if 'u_previous' in extra:
-                temp_u_previous = [temp_u_previous[i] for i in index]
+                temp_u_previous = [temp_u_previous[i] for i in idx]
+            elif 'index' in extra:
+                warnings.warn('Shuffle will cause index chaos.')
+                
 
     for i in range(0, len(temp_y), batch_size):
         batch = make_a_batch(temp_u[i: i + batch_size],
                              temp_x[i: i + batch_size],
                              temp_h[i: i + batch_size],
                              temp_y[i: i + batch_size])
+
         if extra is not None:
             if 'u_previous' in extra:
                 batch['u_previous'] = np.stack(temp_u_previous[i: i + batch_size], axis=0)
-
+            elif 'index' in extra:
+                batch['index'] = np.array(range(i, i + batch_size))
         # get rid of batches of less sample than batch size
+        warnings.warn('Batch that does not meet batch size will be removed.')
         if all([len(batch[k]) == batch_size for k in batch.keys()]):
             batches.append(batch)
+
     return batches
 
 
@@ -581,6 +591,8 @@ class Initialization:
                  u_interval_t_low=None, u_interval_t_high=None,
                  u_skip_rate=None,
                  u_frequency_low=None, u_frequency_high=None,
+                 u_power_law_beta_low=None,
+                 u_power_law_beta_high=None,
                  deviation_constraint=None,
                  h_parameter_check_statistics=None,
                  n_time_point_unit_length=None,
@@ -620,7 +632,7 @@ class Initialization:
         self.C_init_low = C_init_low or 0.5
         self.C_init_high = C_init_high or 1.
 
-        self.u_type_supported = ['box_train', 'sine']
+        self.u_type_supported = ['box_train', 'sine', 'power_law']
         self.u_type = u_type or 'box_train'
         self.u_t_low = u_t_low or 5  # in second
         self.u_t_high = u_t_high or 10  # in second
@@ -629,6 +641,8 @@ class Initialization:
         self.u_skip_rate = u_skip_rate or 0.2
         self.u_frequency_low = u_frequency_low or 0.01    # in Hz
         self.u_frequency_high = u_frequency_high or 0.1  # in Hz
+        self.u_power_law_beta_low = u_power_law_beta_low or np.exp(1 - 3 / 8)
+        self.u_power_law_beta_high = u_power_law_beta_high or np.exp(1 + 3 / 8)
 
         self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
         self.deviation_constraint = deviation_constraint or 1
@@ -879,10 +893,14 @@ class Initialization:
         elif u_type == 'sine':
             u = np.zeros((n_time_point, n_stimuli))
             t = np.array(range(n_time_point)) * t_delta
+            n = 3
             for n_s in range(n_stimuli):
-                frequency = np.random.uniform(self.u_frequency_low, self.u_frequency_high)
-                u[:, n_s] = np.sin(2 * np.pi * frequency * t)
+                frequencies = [np.random.uniform(self.u_frequency_low, self.u_frequency_high) for _ in range(n)]
+                u[:, n_s] = np.sum([np.sin(2 * np.pi * frequency * t) for frequency in frequencies], axis=0) / n / 10
             return u
+        elif u_type == 'power_law':
+            beta = np.random.uniform(self.u_power_law_beta_low, self.u_power_law_beta_high)
+
         else:
             raise ValueError(u_type + ' is not a proper stimuli input. Supported stimulus types include ' +
                              ' '.join(self.u_type_supported))
@@ -2429,7 +2447,20 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         self.variable_names_in_graph = names_in_model
         return names_in_model
 
-    def update_trainable_variables(self, grads_and_vars, step_size, variable_names_in_graph=None, ):
+
+    def apply_gradients(self, grads_and_vars, step_size, variable_names_in_graph=None):
+        values = []
+        for name, grad_and_var in zip(variable_names_in_graph, grads_and_vars):
+            if name == 'u_entire' and not isinstance(grad_and_var[0], np.ndarray):
+                temp = grad_and_var[1]
+                temp[grad_and_var[0][1]] = temp[grad_and_var[0][1]] - grad_and_var[0][0] * step_size
+                values.append(temp)
+            else:
+                values.append(grad_and_var[1] - grad_and_var[0] * step_size)
+        return values
+
+    def update_trainable_variables(self, grads_and_vars, step_size, variable_names_in_graph=None,
+                                   update_parameters=None):
         """
         Given grads_and_vars obtained from tensorflow graph, and step_size, update variable values in
         DataUnit. Notice, it is not a simple assignment. For [Wxx, Wxxu, Wxu], corresponding [A, B, C]
@@ -2442,21 +2473,29 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         """
         if variable_names_in_graph is None:
             variable_names_in_graph = self.variable_names_in_graph
-        values = [-val[0] * step_size + val[1] for val in grads_and_vars]
+        if update_parameters is None:
+            update_parameters = variable_names_in_graph
+
+        # values = [-val[0] * step_size + val[1] for val in grads_and_vars]
+        values = self.apply_gradients(grads_and_vars, step_size, variable_names_in_graph)
         assert len(values) == len(variable_names_in_graph)
         for n, v in zip(variable_names_in_graph, values):
-            if isinstance(n, tuple):
-                if n[0] == 'Wxxu':
-                    self._secured_data[n[0]][n[1]] = v
-                    self._secured_data['B'][n[1]] = [v / self.get('t_delta')]
+            if n in update_parameters:
+                if isinstance(n, tuple):
+                    if n[0] == 'Wxxu':
+                        self._secured_data[n[0]][n[1]] = v
+                        self._secured_data['B'][n[1]] = [v / self.get('t_delta')]
+                    else:
+                        self._secured_data['hemodynamic_parameter'].set_value('region_' + str(n[1]), n[0], v)
                 else:
-                    self._secured_data['hemodynamic_parameter'].set_value('region_' + str(n[1]), n[0], v)
-            else:
-                if n == 'Wxx':
-                    self._secured_data['A'] = (v - np.eye(self.get('n_node'))) / self.get('t_delta')
-                elif n == 'Wxu':
-                    self._secured_data['C'] = v / self.get('t_delta')
-                self._secured_data[n] = v
+                    if n == 'Wxx':
+                        self._secured_data['A'] = (v - np.eye(self.get('n_node'))) / self.get('t_delta')
+                    elif n == 'Wxu':
+                        self._secured_data['C'] = v / self.get('t_delta')
+                    elif n == 'u_entire':
+                        self._secured_data['u'] = v[-self.get('n_time_point'):]
+                    # self._secured_data[n] = v
+
 
     def regenerate_data(self, u=None, initial_x_state=None, initial_h_state=None):
         """
@@ -2525,6 +2564,26 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         du_hat.complete_data_unit(start_category=1, if_check_property=False, if_show_message=False)
         return du_hat
 
+    def sum_gradients(self, gradients, variable_names_in_graph=None):
+        if variable_names_in_graph == None:
+            variable_names_in_graph = self.variable_names_in_graph
+
+        grads_and_vars = []
+        for idx, name in enumerate(variable_names_in_graph):
+            if name == 'u_entire':
+                summation = np.zeros(gradients[-1][idx][0][2])
+                for g in gradients:
+                    summation[g[idx][0][1]] = summation[g[idx][0][1]] + g[idx][0][0]
+                grads_and_vars.append((summation, gradients[-1][idx][1]))
+            else:
+                grads_and_vars.append((sum([gv[idx][0] for gv in gradients]), gradients[-1][idx][1]))
+        return grads_and_vars
+                
+
+
+
+
+
 
 
     def resample_data_unit(self, target_resolution_u=16, down_resolution_y=0.5, up_resolution_y=16):
@@ -2560,6 +2619,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
             du._secured_data['y_noised'] = sp.ndimage.zoom(du._secured_data['y_noised'], factor, order=3)
 
         du._secured_data['t_delta'] = 1 / target_resolution_u
+        du._secured_data['n_time_point'] = du._secured_data['u'].shape[0]
 
         return du
 

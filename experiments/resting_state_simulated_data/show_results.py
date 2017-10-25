@@ -145,13 +145,13 @@ def plot_effective_connectivity(du, du_rnn_w, du_rnn_wo, spm):
 
 
 CONDITION = 'h1_s0_n0'
-EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'estimation_x_nonlinearity_simulated_data')
+EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'resting_state_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data')
 RESULT_PATH = os.path.join(EXPERIMENT_PATH, 'results')
 IMAGE_PATH = os.path.join(EXPERIMENT_PATH, 'images')
 
-SIMULATION_X_NONLINEARITY = 'relu'
-ESTIMATION_X_NONLINEARITY = 'relu'
+SIMULATION_X_NONLINEARITY = 'None'
+ESTIMATION_X_NONLINEARITY = 'None'
 CORE_PATH = os.path.join(DATA_PATH, 'core_' + SIMULATION_X_NONLINEARITY + '.pkl')
 DCM_RNN_RESULT_PATH = os.path.join(RESULT_PATH, 'estimation_' + CONDITION + '.pkl')
 SPM_RESULT_PATH = os.path.join(RESULT_PATH, 'saved_data_' + CONDITION + '_simulation_' +
@@ -327,3 +327,26 @@ plt.plot(t_true, k_true)
 plt.plot(t_rnn, k_rnn)
 plt.plot(t_spm, k_spm)
 '''
+
+from scipy.fftpack import dct, idct
+T = 300
+t_delta = 1 / 16.
+N = int(T / t_delta)
+t = np.array(range(N)) * t_delta
+w = np.array(range(1, N + 1)).astype(np.float32) * np.pi / N
+f = w / 2 * np.pi
+m = np.power(f, -0.1)
+m = m / np.sum(m)
+
+m = np.zeros(N)
+m[3] = 1
+
+f = np.array(range(1, N + 1)).astype(np.float32)
+m = np.power(f, -0.000001)
+m = m / np.sum(m)
+s = idct(m)
+plt.subplot(2, 1, 1)
+plt.plot(f, m)
+plt.subplot(2, 1, 2)
+plt.plot(t, s)
+

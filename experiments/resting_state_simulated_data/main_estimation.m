@@ -15,8 +15,8 @@ elseif strcmp(CONDITION, 'h1_s1_n1')
     SETTINGS.(CONDITION).if_noised_y = true;
 end
 
-SIMULATION_X_NONLINEARITY = 'relu';
-EXPERIMENT_PATH = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN/experiments/estimation_x_nonlinearity_simulated_data';
+SIMULATION_X_NONLINEARITY = 'None';
+EXPERIMENT_PATH = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN/experiments/resting_state_simulated_data';
 DATA_PATH = fullfile(EXPERIMENT_PATH, 'data');
 RESULTS_PATH = fullfile(EXPERIMENT_PATH, 'results');
 READ_PATH = fullfile(DATA_PATH, ['DCM_initial_', SIMULATION_X_NONLINEARITY, '.mat']);
@@ -44,13 +44,19 @@ initials.B = zeros(n_node, n_node, n_stimuli);
 initials.C = zeros(n_node, n_stimuli);
 initials.C(1, 1) = 1;
 initials.C(2, 2) = 1;
+initials.C(3, 3) = 1;
 initials.transit = log(struct2vector(h_parameters.tao)./ 2);
 initials.decay = log(struct2vector(h_parameters.k)./ 0.64);
 initials.epcilon = log(mean(struct2vector(h_parameters.epsilon)));
 DCM_corrected.options.P = initials;
 
+%% notify SPM that is a rsfMRI analysis
+DCM_corrected.U.u = zeros(size(DCM_corrected.U.u));
+DCM_corrected.options.stochastic = 1;
+
 %% estimation
 DCM_estimated = spm_dcm_estimate_modified(DCM_corrected);
+
 
 %% check results
 y_true = DCM_estimated.Y.y / DCM_estimated.Y.scale;
@@ -58,11 +64,11 @@ y_predicted = (DCM_estimated.Y.y - DCM_estimated.R) / DCM_estimated.Y.scale;
 n_node = double(DCM_initial.du_data.n_node);
 
 
-
 for n = 1: n_node
     subplot(n_node, 1, n)
     hold on
     plot(y_true(:, n))
+    % plot(DCM_estimated.R(:,n))
     plot(y_predicted(:, n), '--')
     hold off
 end

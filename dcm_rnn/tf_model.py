@@ -987,26 +987,29 @@ class DcmRnn(Initialization):
         if self.if_resting_state:
             with tf.variable_scope(self.variable_scope_name_u_entire):
                 self.u_entire = tf.get_variable(name='u_entire', dtype=tf.float32,
-                                                shape=[self.n_time_point, self.n_stimuli])
+                                                initializer=tf.constant_initializer(0.0),
+                                                shape=[self.n_time_point + self.shift_data, self.n_stimuli])
                 self.u_index_place_holder = tf.placeholder(dtype=tf.int32, shape=[None],
                                                            name='u_index_place_holder')
-
+            '''
             def f1():
                 return tf.reshape(self.u_entire[u_index_previous * self.n_recurrent_step + n], [-1, 1, self.n_stimuli])
 
             def f2():
                 return tf.constant(np.zeros((None, 1, self.n_stimuli)).astype(np.float32))
+            '''
+
 
             self.u = []
             self.u_previous = []
             for n in range(self.n_recurrent_step):
                 with tf.variable_scope(self.variable_scope_name_u):
-                    self.u.append(tf.gather(self.u_entire, self.u_index_place_holder * self.n_recurrent_step + n))
+                    self.u.append(tf.gather(self.u_entire, (self.u_index_place_holder + 1) * self.shift_data + n))
 
-                    u_index_previous = self.u_index_place_holder - 1
+                    # u_index_previous = tf.maximum(self.u_index_place_holder - 1, 0)
                     # self.u_previous.append(tf.cond(tf.greater_equal(u_index_previous, 0), f1, f2))
                     self.u_previous.append(tf.gather(self.u_entire,
-                                                       u_index_previous * self.n_recurrent_step + n))
+                                                     self.u_index_place_holder * self.shift_data + n))
 
             with tf.variable_scope(self.variable_scope_name_u_stacked):
                 self.u_stacked = tf.stack(self.u, 1, name='u_stacked')
@@ -1057,7 +1060,7 @@ class DcmRnn(Initialization):
         self.add_output_layer_parallel(self.h_predicted)
 
         # define loss and optimizer
-        self.y_true = tf.placeholder(dtype=tf.float32, shape=[self.batch_size, self.n_recurrent_step, self.n_region],
+        self.y_true = tf.placeholder(dtype=tf.float32, shape=[None, self.n_recurrent_step, self.n_region],
                                      name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
             self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
@@ -1157,7 +1160,7 @@ class DcmRnn(Initialization):
         :return:
         """
         signal_length = tensor.get_shape().as_list()[axis]
-        batch_size = tensor.get_shape().as_list()[0]
+        batch_size = tf.shape(tensor)[0]
 
         # build operator matrices
         first_order_difference_operator = np.diag([1] * signal_length) + np.diag([-1] * (signal_length - 1), 1)
@@ -1172,11 +1175,11 @@ class DcmRnn(Initialization):
 
         first_order_difference_operator = tf.reshape(first_order_difference_operator,
                                                      (-1, signal_length, signal_length))
-        first_order_difference_operator = tf.tile(first_order_difference_operator, [-1, 1, 1])
+        first_order_difference_operator = tf.tile(first_order_difference_operator, [batch_size, 1, 1])
 
         second_order_difference_operator = tf.reshape(second_order_difference_operator,
                                                       (-1, signal_length, signal_length))
-        second_order_difference_operator = tf.tile(second_order_difference_operator, [-1, 1, 1])
+        second_order_difference_operator = tf.tile(second_order_difference_operator, [batch_size, 1, 1])
 
         if axis == 1:
             first_order_difference = tf.matmul(first_order_difference_operator, tensor)
