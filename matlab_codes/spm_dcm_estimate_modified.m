@@ -249,7 +249,13 @@ hC(i,i) = exp(-16);
 %%%% MODIFIED 
 % M.f  = 'spm_fx_fmri'
 M.f  = 'spm_fx_fmri_modified';            % equations of motion
-M.g  = 'spm_gx_fmri';                     % observation equation
+%%%% MODIFIED 
+if isfield(DCM,'g')
+    M.g  = DCM.g; 
+else
+    M.g  = 'spm_gx_fmri';                     % observation equation
+end
+display(['M.g: ', M.g])
 M.x  = x;                                 % initial condition (states)
 M.pE = pE;                                % prior expectation (parameters)
 M.pC = pC;                                % prior covariance  (parameters)

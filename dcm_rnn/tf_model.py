@@ -23,6 +23,7 @@ class DcmRnn(Initialization):
 
                  variable_scope_name_x_parameter=None,
                  variable_scope_name_x=None,
+                 variable_scope_name_x_entire=None,
                  variable_scope_name_x_tailing=None,
                  variable_scope_name_x_stacked=None,
 
@@ -83,6 +84,7 @@ class DcmRnn(Initialization):
 
         self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
         self.variable_scope_name_x = variable_scope_name_x or 'cell_x'
+        self.variable_scope_name_x_entire = variable_scope_name_x_entire or 'x_entire'
         self.variable_scope_name_x_tailing = variable_scope_name_x_tailing or 'cell_x_tailing'
         self.variable_scope_name_x_stacked = variable_scope_name_x_stacked or 'x_stacked'
 
@@ -127,7 +129,8 @@ class DcmRnn(Initialization):
 
     def set_up_loss_weighting(self):
         self.loss_weighting = \
-            {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1., 'smooth': 4.}
+            {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1., 'smooth': 4.,
+             'u_coefficient_sparsity': 5}
 
     def create_shared_variables_x(self, neural_parameter_initial):
         """
@@ -942,6 +945,7 @@ class DcmRnn(Initialization):
         self.loss_sparsity = tf.reduce_mean(tf.concat([loss_Wxx, loss_Wxxu, loss_Wxu], axis=0), name="loss_sparsity")
         return self.loss_sparsity
 
+
     def add_loss_prior(self, h_parameters=None, loss_weighting=None):
         if h_parameters == None:
             h_parameters = self.h_parameters
@@ -955,6 +959,7 @@ class DcmRnn(Initialization):
         self.loss_prior = tf.reduce_mean(temp, name="loss_prior")
         return self.loss_prior
 
+
     def update_h_parameters_in_graph(self, sess, h_parameters_updated):
         """
         :param sess: 
@@ -962,6 +967,22 @@ class DcmRnn(Initialization):
         :return:
         """
         sess.run(tf.assign(self.h_parameters, h_parameters_updated))
+
+    def build_main_graph(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
+        """
+        The main graph of dcm_rnn, used to infer effective connectivity given fMRI signal and stimuli.
+        :param neural_parameter_initial:
+        :param hemodynamic_parameter_initial:
+        :param model_mode: one of ['series' or 'parallel']. if 'parallel', the single-sample parallelism is used.
+        :param extensions: optional extensions of DCM_RNN
+        :return:
+        """
+        if self.model_mode == 'parallel':
+            self.build_main_graph_parallel(neural_parameter_initial, hemodynamic_parameter_initial)
+        elif self.model_mode == 'series':
+            self.build_main_graph_series(neural_parameter_initial, hemodynamic_parameter_initial)
+        else:
+            raise ValueError('DCM-RNN model_mode should be one of "parallel" or "series".')
 
     def build_main_graph_parallel(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
         """
@@ -986,9 +1007,20 @@ class DcmRnn(Initialization):
         # input stimuli u
         if self.if_resting_state:
             with tf.variable_scope(self.variable_scope_name_u_entire):
+                '''
+                self.u_coefficient_entire = \
+                    tf.get_variable(name='u_coefficient_entire', dtype=tf.complex64,
+                                    initializer=tf.constant_initializer(0.0),
+                                    shape=[np.ceil((self.n_time_point + self.shift_data) / 2) + 1, self.n_stimuli])
+                self.u_entire = tf.transpose(tf.spectral.irfft(tf.transpose(self.u_coefficient_entire)))
+                self.u_entire = tf.cast(self.u_entire, dtype=tf.float32)
+                '''
+
+
                 self.u_entire = tf.get_variable(name='u_entire', dtype=tf.float32,
                                                 initializer=tf.constant_initializer(0.0),
                                                 shape=[self.n_time_point + self.shift_data, self.n_stimuli])
+
                 self.u_index_place_holder = tf.placeholder(dtype=tf.int32, shape=[None],
                                                            name='u_index_place_holder')
             '''
@@ -998,7 +1030,6 @@ class DcmRnn(Initialization):
             def f2():
                 return tf.constant(np.zeros((None, 1, self.n_stimuli)).astype(np.float32))
             '''
-
 
             self.u = []
             self.u_previous = []
@@ -1067,14 +1098,52 @@ class DcmRnn(Initialization):
             self.loss_sparsity = self.add_loss_sparsity()
             self.loss_prior = self.add_loss_prior(self.h_parameters)
             if self.if_resting_state:
+
                 u_stacked_backtracked = tf.concat(
                     [self.u_stacked_previous[:, self.shift_data - 2: self.shift_data, :], self.u_stacked], axis=1)
-                self.loss_smooth = self.mse(self.second_order_smooth_parallel(u_stacked_backtracked))
-                self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
-                                                 self.loss_weighting['sparsity'] * self.loss_sparsity,
-                                                 self.loss_weighting['prior'] * self.loss_prior,
-                                                 self.loss_weighting['smooth'] * self.loss_smooth],
-                                                name='loss_total')
+                self.loss_u_smooth = self.mse(self.second_order_smooth_parallel(u_stacked_backtracked))
+
+                self.loss_u_energy = self.mse(self.u_entire)
+                '''
+                self.u_coefficient_entire = tf.spectral.rfft(tf.transpose(self.u_entire))
+                mask = np.linspace(1, self.u_coefficient_entire.get_shape().as_list()[1],
+                                   self.u_coefficient_entire.get_shape().as_list()[1])
+                mask = np.tile(mask, [self.u_coefficient_entire.get_shape().as_list()[0], 1])
+                self.loss_u_coefficient_sparsity = tf.reduce_mean(
+                    tf.abs(tf.reshape(self.u_coefficient_entire * mask, [-1])))
+                self.loss_u_coefficient_sparsity = tf.cast(self.loss_u_coefficient_sparsity, dtype=tf.float32)
+                '''
+                self.loss_weighting_in_graph = {}
+                self.loss_weighting_in_graph['prediction'] = \
+                    tf.get_variable('loss_weight_prediction',
+                                    initializer=self.loss_weighting['prediction'],
+                                    trainable=False)
+                self.loss_weighting_in_graph['sparsity'] = \
+                    tf.get_variable('loss_weight_sparsity',
+                                    initializer=self.loss_weighting['sparsity'],
+                                    trainable=False)
+                self.loss_weighting_in_graph['prior'] = \
+                    tf.get_variable('loss_weight_prior',
+                                    initializer=self.loss_weighting['prior'],
+                                    trainable=False)
+                self.loss_weighting_in_graph['u_smooth'] = \
+                    tf.get_variable('loss_weight_u_smooth',
+                                    initializer=self.loss_weighting['u_smooth'],
+                                    trainable=False)
+                self.loss_weighting_in_graph['u_energy'] = \
+                    tf.get_variable('loss_weight_u_energy',
+                                    initializer=self.loss_weighting['u_energy'],
+                                    trainable=False)
+
+                self.loss_total = tf.reduce_sum([
+                    self.loss_weighting_in_graph['prediction'] * self.loss_prediction,
+                    self.loss_weighting_in_graph['sparsity'] * self.loss_sparsity,
+                    self.loss_weighting_in_graph['prior'] * self.loss_prior,
+                    self.loss_weighting_in_graph['u_smooth'] * self.loss_u_smooth,
+                    self.loss_weighting_in_graph['u_energy'] * self.loss_u_energy],
+                    #tf.constant(self.loss_weighting['u_coefficient_sparsity'],
+                    #            name='loss_weight_u_coefficient_sparsity') * self.loss_u_coefficient_sparsity],
+                    name='loss_total')
             else:
                 self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
                                                  self.loss_weighting['sparsity'] * self.loss_sparsity,
@@ -1085,8 +1154,8 @@ class DcmRnn(Initialization):
             # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
             self.opt = tf.train.GradientDescentOptimizer(self.learning_rate)
             self.grads_and_vars = self.opt.compute_gradients(self.loss_total, tf.trainable_variables())
-            self.processed_grads_and_vars = self.grads_and_vars
-            self.opt.apply_gradients(self.processed_grads_and_vars)
+            # self.processed_grads_and_vars = self.grads_and_vars
+            # self.opt.apply_gradients(self.processed_grads_and_vars)
 
             # define summarizer
             self.variable_summaries(self.loss_prediction)
@@ -1096,21 +1165,98 @@ class DcmRnn(Initialization):
             self.merged_summary = tf.summary.merge_all()
             self.summary_writer = tf.summary.FileWriter(self.log_directory, tf.get_default_graph())
 
-    def build_main_graph(self, neural_parameter_initial, hemodynamic_parameter_initial=None):
-        """
-        The main graph of dcm_rnn, used to infer effective connectivity given fMRI signal and stimuli.
-        :param neural_parameter_initial:
-        :param hemodynamic_parameter_initial:
-        :param model_mode: one of ['series' or 'parallel']. if 'parallel', the single-sample parallelism is used.
-        :param extensions: optional extensions of DCM_RNN
-        :return:
-        """
-        if self.model_mode == 'parallel':
-            self.build_main_graph_parallel(neural_parameter_initial, hemodynamic_parameter_initial)
-        elif self.model_mode == 'series':
-            self.build_main_graph_series(neural_parameter_initial, hemodynamic_parameter_initial)
+
+    def build_x_graph(self, hemodynamic_parameter_initial=None):
+        if hemodynamic_parameter_initial is None:
+            self.hemodynamic_parameter_initial = \
+                self.get_standard_hemodynamic_parameters(self.n_region).astype(np.float32)
         else:
-            raise ValueError('DCM-RNN model_mode should be one of "parallel" or "series".')
+            self.hemodynamic_parameter_initial = hemodynamic_parameter_initial
+
+        with tf.variable_scope(self.variable_scope_name_x_entire):
+            self.x_entire = tf.get_variable(name='x_entire', dtype=tf.float32,
+                                            initializer=tf.constant_initializer(0.0),
+                                            shape=[self.n_time_point + self.shift_data, self.n_region])
+            self.x_index_place_holder = tf.placeholder(dtype=tf.int32, shape=[None],
+                                                       name='x_index_place_holder')
+
+        self.x = []
+        self.x_previous = []
+        for n in range(self.n_recurrent_step):
+            with tf.variable_scope(self.variable_scope_name_x):
+                self.x.append(tf.gather(self.x_entire, (self.x_index_place_holder + 1) * self.shift_data + n))
+                self.x_previous.append(tf.gather(self.x_entire, self.x_index_place_holder * self.shift_data + n))
+
+        self.x_tailing = []
+        for n in range(self.shift_x_y):
+            with tf.variable_scope(self.variable_scope_name_x):
+                self.x_tailing.append(tf.zeros_like(self.x[0], name='x_tailing_' + str(n)))
+
+        self.x_extended = self.x + self.x_tailing
+
+        with tf.variable_scope(self.variable_scope_name_x_stacked):
+            self.x_stacked = tf.stack(self.x, 1, name='x_stacked')
+            self.x_stacked_previous = tf.stack(self.x_previous, 1, name='x_stacked_previous')
+
+        # h layer
+        self.h_parameters = self.create_shared_variables_h(self.hemodynamic_parameter_initial)
+        with tf.variable_scope(self.variable_scope_name_h_initial):
+            h_state_initial = \
+                self.set_initial_hemodynamic_state_as_inactivated(n_node=self.n_region).astype(np.float32)
+            h_state_initial = np.expand_dims(h_state_initial, 0)
+            h_state_initial = np.tile(h_state_initial, (self.batch_size, 1, 1))
+            self.h_state_initial = \
+                tf.get_variable('h_initial_segment',
+                                initializer=h_state_initial,
+                                trainable=False)
+        self.add_hemodynamic_layer_parallel(self.x_extended, self.h_state_initial)
+
+        # output layer
+        self.add_output_layer_parallel(self.h_predicted)
+
+        # define loss and optimizer
+        self.y_true = tf.placeholder(dtype=tf.float32, shape=[None, self.n_recurrent_step, self.n_region],
+                                     name="y_true")
+
+        with tf.variable_scope(self.variable_scope_name_loss):
+            self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
+            self.loss_prior = self.add_loss_prior(self.h_parameters)
+
+
+            x_stacked_backtracked = tf.concat(
+                [self.x_stacked_previous[:, self.shift_data - 2: self.shift_data, :], self.x_stacked], axis=1)
+            self.loss_x_smooth = self.mse(self.second_order_smooth_parallel(x_stacked_backtracked))
+
+            self.loss_weighting_in_graph = {}
+            self.loss_weighting_in_graph['prediction'] = \
+                tf.get_variable('loss_weight_prediction',
+                                initializer=self.loss_weighting['prediction'],
+                                trainable=False)
+            self.loss_weighting_in_graph['prior'] = \
+                tf.get_variable('loss_weight_prior',
+                                initializer=self.loss_weighting['prior'],
+                                trainable=False)
+            self.loss_weighting_in_graph['x_smooth'] = \
+                tf.get_variable('loss_weight_x_smooth',
+                                initializer=self.loss_weighting['x_smooth'],
+                                trainable=False)
+
+            self.loss_total = tf.reduce_sum([
+                self.loss_weighting_in_graph['prediction'] * self.loss_prediction,
+                self.loss_weighting_in_graph['prior'] * self.loss_prior,
+                self.loss_weighting_in_graph['x_smooth'] * self.loss_x_smooth],
+                name='loss_total')
+
+        if self.if_training:
+            self.opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+            self.grads_and_vars = self.opt.compute_gradients(self.loss_total, tf.trainable_variables())
+
+            # define summarizer
+            self.variable_summaries(self.loss_prediction)
+            self.variable_summaries(self.loss_prior)
+            self.variable_summaries(self.loss_total)
+            self.merged_summary = tf.summary.merge_all()
+            self.summary_writer = tf.summary.FileWriter(self.log_directory, tf.get_default_graph())
 
     # unitilies
     def mse(self, tensor1, tensor2=0., name=None):

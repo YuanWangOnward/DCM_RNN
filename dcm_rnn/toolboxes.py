@@ -16,7 +16,7 @@ import copy
 import re
 from collections import Iterable
 import tensorflow as tf
-
+from math import factorial
 
 def cdr(relative_path, if_print=False):
     file_path = os.path.dirname(os.path.realpath(__file__))
@@ -384,6 +384,7 @@ def ista(A, Y, alpha_mask=1, support=None, prior=None):
         warnings.warn("Hit MAX_ITERATION")
 
     # print('', end='', flush=True)
+    loss_list = [v for v in loss_list if v > 0]
     plt.plot(np.log(loss_list))
     plt.xlabel('Iteration index')
     plt.ylabel('Total loss (ln)')
@@ -843,7 +844,7 @@ class Initialization:
         :return: np.array, random input, size (n_time_point, n_stimuli)
         """
         if u_type is None:
-            u_type =  self.u_type
+            u_type = self.u_type
         if u_type == 'box_train':
             def flip(num):
                 if num is 0:
@@ -898,9 +899,32 @@ class Initialization:
                 frequencies = [np.random.uniform(self.u_frequency_low, self.u_frequency_high) for _ in range(n)]
                 u[:, n_s] = np.sum([np.sin(2 * np.pi * frequency * t) for frequency in frequencies], axis=0) / n / 10
             return u
-        elif u_type == 'power_law':
-            beta = np.random.uniform(self.u_power_law_beta_low, self.u_power_law_beta_high)
+        elif u_type == 'auto_regressor':
+            '''
+                autoregressor_length = int(6 / t_delta)
+                # autoregressor = np.ones((autoregressor_length, n_stimuli)) / autoregressor_length
+                autoregressor = np.array(range(1, 1 + autoregressor_length))
+                autoregressor = autoregressor / sum(autoregressor)
+                autoregressor = np.tile(autoregressor, [n_stimuli, 1]).transpose()
+                e = np.random.randn(n_time_point, n_stimuli) * 0.1
+                # e = np.random.rand(n_time_point, n_stimuli) - 0.5
+                u = copy.deepcopy(e)
+                for i in range(autoregressor_length, len(e)):
+                    u[i, :] = np.sum(u[i - autoregressor_length: i, :] * autoregressor, axis=0) + e[i, :]
+            '''
+            pole = 0.99
+            order = 1
+            e = np.random.randn(n_time_point, n_stimuli) * 0.005
 
+            a = [factorial(order) / factorial(i) / factorial(order - i) * np.power(pole, i) * np.power(-1., i + 1) for i
+                 in range(1, order + 1)]
+            a = [a[-i] for i in range(1, len(a) + 1)]
+            a = np.array(a)
+            a = np.tile(a, [n_stimuli, 1]).transpose()
+            u = copy.deepcopy(e)
+            for i in range(len(a), len(e)):
+                u[i, :] = np.sum(u[i - len(a): i, :] * a, axis=0) + e[i, :]
+            return u
         else:
             raise ValueError(u_type + ' is not a proper stimuli input. Supported stimulus types include ' +
                              ' '.join(self.u_type_supported))
@@ -2137,7 +2161,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                                                                    self._secured_data['t_delta'])
         elif para is 'u_type':
             if flag_value is True:
-                self._secured_data['u_type'] = 'sine'
+                self._secured_data['u_type'] = 'auto_regressor'
             else:
                 self._secured_data['u_type'] = 'box_train'
         elif para is 'A':
@@ -2435,7 +2459,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         names_in_model = []
         for name in names_in_graph:
             name_core = name[name.index('/') + 1: name.index(':')]
-            if name_core in ['u_stacked', 'u_entire']:
+            if name_core in ['u_stacked', 'u_entire', 'x_entire']:
                 names_in_model.append(name_core)
             elif '_' in name_core:
                 temp = name_core.split('_')
@@ -2494,6 +2518,8 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                         self._secured_data['C'] = v / self.get('t_delta')
                     elif n == 'u_entire':
                         self._secured_data['u'] = v[-self.get('n_time_point'):]
+                    elif n == 'x_entire':
+                        self._secured_data['x'] = v[-self.get('n_time_point'):]
                     # self._secured_data[n] = v
 
 
@@ -2570,7 +2596,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
         grads_and_vars = []
         for idx, name in enumerate(variable_names_in_graph):
-            if name == 'u_entire':
+            if name in ['u_entire', 'x_entire']:
                 summation = np.zeros(gradients[-1][idx][0][2])
                 for g in gradients:
                     summation[g[idx][0][1]] = summation[g[idx][0][1]] + g[idx][0][0]

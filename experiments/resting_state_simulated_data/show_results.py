@@ -328,7 +328,7 @@ plt.plot(t_rnn, k_rnn)
 plt.plot(t_spm, k_spm)
 '''
 
-from scipy.fftpack import dct, idct
+from scipy.fftpack import dct, idct, ifft
 T = 300
 t_delta = 1 / 16.
 N = int(T / t_delta)
@@ -342,11 +342,31 @@ m = np.zeros(N)
 m[3] = 1
 
 f = np.array(range(1, N + 1)).astype(np.float32)
-m = np.power(f, -0.000001)
+m = np.power(f, -1)
 m = m / np.sum(m)
-s = idct(m)
+m[:int(N /4)] =0
+m[0::8] = 0
+m[1::8] = 0
+m[2::8] = 0
+
+s = np.real(idct(m))
 plt.subplot(2, 1, 1)
 plt.plot(f, m)
 plt.subplot(2, 1, 2)
 plt.plot(t, s)
+
+N = 5 * 60 * 16
+a = np.array([0.05, 0.1, 0.125, 0.15, 0.2])
+n = len(a)
+
+for j in range(4):
+    plt.subplot(4, 2, 2 * j + 1)
+    e = np.random.rand(N, 1)
+    w = copy.deepcopy(e)
+    for i in range(n, N):
+        w[i] = np.sum(w[i - n: i].transpose() * a) + e[i]
+    plt.plot(w)
+    plt.subplot(4, 2, 2 * j + 2)
+    plt.plot(dct(w))
+
 

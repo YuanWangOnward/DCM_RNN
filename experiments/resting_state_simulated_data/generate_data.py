@@ -71,9 +71,9 @@ du._secured_data['t_scan'] = 5 * 60
 du._secured_data['n_node'] = 3
 du._secured_data['n_stimuli'] = 3
 
-du._secured_data['A'] = np.array([[-0.8, 0, 0],
-                                  [0, -0.8, 0],
-                                  [0.4, -0.4, -0.8]])
+du._secured_data['A'] = np.array([[-0.4, 0, 0.],
+                                  [0., -0.4, 0],
+                                  [0.2, 0.2, -0.4]])
 du._secured_data['B'] = [np.array([[0, 0, 0],
                                    [0, 0, 0],
                                    [0, 0, 0],
