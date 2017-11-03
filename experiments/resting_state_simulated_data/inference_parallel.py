@@ -43,13 +43,12 @@ import math as mth
 from scipy.interpolate import interp1d
 
 
-MAX_EPOCHS = 36
+MAX_EPOCHS = 8
 CHECK_STEPS = 1
-N_RECURRENT_STEP = 192
+N_RECURRENT_STEP = 64
 DATA_SHIFT = 2
 MAX_BACK_TRACK = 4
-MAX_CHANGE = 0.0015
-U_UPDATE_FACTOR = 0.5    # the max update of u is MAX_CHANGE * X_UPDATE_FACTOR
+MAX_CHANGE = 0.01
 BATCH_RANDOM_DROP_RATE = 1.
 BATCH_SIZE = 128
 
@@ -59,7 +58,7 @@ ESTIMATION_X_NONLINEARITY = 'None'
 IF_RESTING_STATE = True
 
 # tf.reset_default_graph()
-CONDITION = 'h1_s0_n0'
+CONDITION = 'h0_s0_n0'
 SETTINGS = {}
 SETTINGS['h0_s0_n0'] = {'if_update_h_parameter': False,
                         'if_extended_support': False,
@@ -107,6 +106,21 @@ else:
                        }
 
 trainable_flags['Wxu'] = False
+trainable_flags = {'Wxx': False,
+                       'Wxxu': False,
+                       'Wxu': False,
+                       'alpha': False,
+                       'E0': False,
+                       'k': False,
+                       'gamma': False,
+                       'tao': False,
+                       'epsilon': False,
+                       'V0': False,
+                       'TE': False,
+                       'r0': False,
+                       'theta0': False,
+                       'x_h_coupling': False
+                       }
 
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'resting_state_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data', 'du_DCM_RNN_' + SIMULATION_X_NONLINEARITY + '.pkl')
@@ -169,10 +183,6 @@ dr.x_parameter_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARI
 dr.trainable_variables_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 dr.trainable_variables_names = [v.name for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 du_hat.variable_names_in_graph = du_hat.parse_variable_names(dr.trainable_variables_names)
-du_hat.global_variable_indexes = copy.deepcopy(du_hat.parse_variable_names(dr.trainable_variables_names))
-du_hat.global_variable_indexes.remove('u_entire')
-du_hat.global_variable_indexes = [du_hat.variable_names_in_graph.index(n) for n in du_hat.global_variable_indexes]
-du_hat.local_variable_indexes = [0]
 
 # prepare data for training
 data = {
@@ -196,14 +206,13 @@ dr.update_variables_in_graph(isess, dr.x_parameter_nodes,
                              [x_parameter_initial_in_graph['Wxx']]
                              + x_parameter_initial_in_graph['Wxxu']
                              + [x_parameter_initial_in_graph['Wxu']])
-'''
+
 dr.update_variables_in_graph(isess, dr.x_parameter_nodes,
                              [x_parameter_initial_in_graph['Wxx']]
                              + x_parameter_initial_in_graph['Wxxu']
                              )
-isess.run(tf.assign(dr.loss_weighting_in_graph['u_smooth'], 100.))
-isess.run(tf.assign(dr.loss_weighting_in_graph['u_energy'], 1.))
-isess.run(tf.assign(dr.loss_weighting_in_graph['prior'], 0.02))
+'''
+isess.run(tf.assign(dr.loss_weighting_in_graph['prior'], 0.1))
 isess.run(tf.assign(dr.loss_weighting_in_graph['sparsity'], 0.0))
 
 print('start inference')
@@ -240,26 +249,48 @@ for epoch in range(MAX_EPOCHS):
     # du_hat.regenerate_data()
     y_hat_original = du_hat.get('y')
     loss_prediction_original = tb.mse(y_hat_original, du.get('y'))
-    loss_prediction_original_backup = loss_prediction_original
-    # print('loss_prediction_original = ' + str(loss_prediction_original))
 
     # adaptive step size, making max value change dr.max_parameter_change_per_iteration
-    max_gradient = max([np.max(np.abs(np.array(g[0])).flatten()) for g in
-                        [grads_and_vars[i] for i in du_hat.local_variable_indexes]])
-    STEP_SIZE = dr.max_parameter_change_per_iteration / max_gradient * U_UPDATE_FACTOR
-    print('max gradient of local variables:    ' + str(max_gradient))
+    max_gradient = max_gradient = max([np.max(np.abs(np.array(g[0])).flatten()) for g in grads_and_vars])
+    STEP_SIZE = dr.max_parameter_change_per_iteration / max_gradient
+    print('max gradient:    ' + str(max_gradient))
     print('Initial step size:    ' + str(STEP_SIZE))
 
     # try to find proper step size
     step_size = STEP_SIZE
     count = 0
-    du_hat.update_trainable_variables(grads_and_vars, step_size, update_parameters=['u_entire'])
+    du_hat.update_trainable_variables(grads_and_vars, step_size, du_hat.variable_names_in_graph,
+                                      update_parameters=du_hat.variable_names_in_graph[3:])
+    Wxx = du_hat.get('Wxx')
+    stable_flag = du.check_transition_matrix(Wxx, 1.)
+    while not stable_flag:
+        count += 1
+        if count == dr.max_back_track_steps:
+            step_size = 0.
+            # dr.decrease_max_parameter_change_per_iteration()
+        else:
+            step_size = step_size / 2
+        warnings.warn('not stable')
+        print('step_size=' + str(step_size))
+        du_hat.update_trainable_variables(grads_and_vars, step_size, du_hat.variable_names_in_graph,
+                                          update_parameters=du_hat.variable_names_in_graph[3:])
+        Wxx = du_hat.get('Wxx')
+        stable_flag = du.check_transition_matrix(Wxx, 1.)
+
     try:
+        dr.update_variables_in_graph(isess, dr.trainable_variables_nodes,
+                                     [-val[0] * step_size + val[1] for val in grads_and_vars])
+        u_entire = isess.run(dr.u_entire)
+        du_hat._secured_data['u'] = u_entire[-du.get('n_time_point'):]
+
+        du_hat.update_trainable_variables(grads_and_vars, step_size, du_hat.variable_names_in_graph,
+                                          update_parameters=du_hat.variable_names_in_graph[3:])
         du_hat.regenerate_data()
         y_hat = du_hat.get('y')
         loss_prediction = tb.mse(y_hat, du.get('y'))
     except:
         loss_prediction = float('inf')
+
     while loss_prediction > loss_prediction_original or np.isnan(loss_prediction):
         count += 1
         if count == dr.max_back_track_steps:
@@ -269,7 +300,13 @@ for epoch in range(MAX_EPOCHS):
             step_size = step_size / 2
         print('step_size=' + str(step_size))
         try:
-            du_hat.update_trainable_variables(grads_and_vars, step_size)
+            dr.update_variables_in_graph(isess, dr.trainable_variables_nodes,
+                                         [-val[0] * step_size + val[1] for val in grads_and_vars])
+            u_entire = isess.run(dr.u_entire)
+            du_hat._secured_data['u'] = u_entire[-du.get('n_time_point'):]
+
+            du_hat.update_trainable_variables(grads_and_vars, step_size, du_hat.variable_names_in_graph,
+                                              update_parameters=du_hat.variable_names_in_graph[3:])
             du_hat.regenerate_data()
             y_hat = du_hat.get('y')
             loss_prediction = tb.mse(y_hat, du.get('y'))
@@ -278,78 +315,12 @@ for epoch in range(MAX_EPOCHS):
         if step_size == 0.0:
             break
 
+    # update parameters in graph with found step_size
     if step_size > 0:
-        dr.update_variables_in_graph(isess,
-                                     [dr.trainable_variables_nodes[i] for i in du_hat.local_variable_indexes],
-                                     [-val[0] * step_size + val[1] for val in
-                                      [grads_and_vars[i] for i in du_hat.local_variable_indexes]])
+        dr.update_variables_in_graph(isess, dr.trainable_variables_nodes,
+                                     [-val[0] * step_size + val[1] for val in grads_and_vars])
 
-    if epoch > 0:
-        # adaptive step size, making max value change dr.max_parameter_change_per_iteration
-        max_gradient = max([np.max(np.abs(np.array(g[0])).flatten()) for g in
-                            [grads_and_vars[i] for i in du_hat.global_variable_indexes]])
-        STEP_SIZE = dr.max_parameter_change_per_iteration / max_gradient
-        print('max gradient of global variables:    ' + str(max_gradient))
-        print('Initial step size:    ' + str(STEP_SIZE))
-        # try to find proper step size
-        step_size = STEP_SIZE
-        count = 0
-        loss_prediction_original = loss_prediction
-        du_hat.update_trainable_variables(grads_and_vars, step_size,
-                                          update_parameters=[du_hat.variable_names_in_graph[i] for i in
-                                                             du_hat.global_variable_indexes])
-        Wxx = du_hat.get('Wxx')
-        stable_flag = du.check_transition_matrix(Wxx, 1.)
-        while not stable_flag:
-            count += 1
-            if count == dr.max_back_track_steps:
-                step_size = 0.
-                # dr.decrease_max_parameter_change_per_iteration()
-            else:
-                step_size = step_size / 2
-            warnings.warn('not stable')
-            print('step_size=' + str(step_size))
-            du_hat.update_trainable_variables(grads_and_vars, step_size)
-            Wxx = du_hat.get('Wxx')
-            stable_flag = du.check_transition_matrix(Wxx, 1.)
-
-        try:
-            # du_hat = regenerate_data(du, Wxx, Wxxu, Wxu, h_parameter_initial)
-            du_hat.regenerate_data()
-            y_hat = du_hat.get('y')
-            loss_prediction = tb.mse(y_hat, du.get('y'))
-        except:
-            loss_prediction = float('inf')
-
-        while loss_prediction > loss_prediction_original or np.isnan(loss_prediction):
-            count += 1
-            if count == dr.max_back_track_steps:
-                step_size = 0.
-                # dr.decrease_max_parameter_change_per_iteration()
-            else:
-                step_size = step_size / 2
-            print('step_size=' + str(step_size))
-            try:
-                du_hat.update_trainable_variables(grads_and_vars, step_size,
-                                                  update_parameters=[du_hat.variable_names_in_graph[i] for i in
-                                                                     du_hat.global_variable_indexes])
-                du_hat.regenerate_data()
-                y_hat = du_hat.get('y')
-                loss_prediction = tb.mse(y_hat, du.get('y'))
-            except:
-                pass
-            if step_size == 0.0:
-                break
-
-        # update parameters in graph with found step_size
-        if step_size > 0:
-            dr.update_variables_in_graph(isess,
-                                         [dr.trainable_variables_nodes[i] for i in du_hat.global_variable_indexes],
-                                         [-val[0] * step_size + val[1] for val in
-                                          [grads_and_vars[i] for i in du_hat.global_variable_indexes]])
-
-
-    loss_differences.append(loss_prediction_original_backup - loss_prediction)
+    loss_differences.append(loss_prediction_original - loss_prediction)
 
     # regenerate connector data
     data_hat['x_initial'] = tb.split(du_hat.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0)
@@ -359,9 +330,9 @@ for epoch in range(MAX_EPOCHS):
     batches = tb.random_drop(batches, ration=BATCH_RANDOM_DROP_RATE)
 
     print('applied step size:    ' + str(step_size))
-    print('loss_prediction_original:    ' + str(loss_prediction_original_backup))
+    print('loss_prediction_original:    ' + str(loss_prediction_original))
     print('reduced prediction:    ' + str(loss_differences[-1]))
-    print('reduced prediction persentage:    ' + str(loss_differences[-1] / loss_prediction_original_backup))
+    print('reduced prediction persentage:    ' + str(loss_differences[-1] / loss_prediction_original))
     print(du_hat.get('Wxx'))
     # print(du_hat.get('Wxxu'))
     # print(du_hat.get('Wxu'))
@@ -378,6 +349,11 @@ for i in range(dr.n_region):
     plt.plot(x_axis, du_hat.get('y')[:, i], '--')
 
 
+
+
+
+
+'''
 grads_and_vars, loss_total, loss_u_energy, loss_u_smooth, loss_sparsity, loss_prediction= \
             isess.run([dr.grads_and_vars,
                        dr.loss_total,
@@ -394,7 +370,7 @@ grads_and_vars, loss_total, loss_u_energy, loss_u_smooth, loss_sparsity, loss_pr
 
 
 
-'''
+
 grads_and_vars, x_monitor, x_monitor_stacked, y_predicted_stacked = \
             isess.run([dr.grads_and_vars, dr.x_monitor, dr.x_monitor_stacked, dr.y_predicted_stacked],
                       feed_dict={

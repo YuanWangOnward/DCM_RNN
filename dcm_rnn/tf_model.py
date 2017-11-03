@@ -20,6 +20,7 @@ class DcmRnn(Initialization):
 
                  variable_scope_name_u_stacked=None,
                  variable_scope_name_u_entire=None,
+                 variable_scope_name_u_parameter=None,
 
                  variable_scope_name_x_parameter=None,
                  variable_scope_name_x=None,
@@ -81,6 +82,7 @@ class DcmRnn(Initialization):
         self.variable_scope_name_u_stacked = variable_scope_name_u_stacked or 'u_stacked'
         self.variable_scope_name_u_entire = variable_scope_name_u_entire or 'u_entire'
         self.variable_scope_name_u = variable_scope_name_x or 'cell_u'
+        self.variable_scope_name_u_parameter = variable_scope_name_u_parameter or 'para_u'
 
         self.variable_scope_name_x_parameter = variable_scope_name_x_parameter or 'para_x'
         self.variable_scope_name_x = variable_scope_name_x or 'cell_x'
@@ -1006,7 +1008,7 @@ class DcmRnn(Initialization):
 
         # input stimuli u
         if self.if_resting_state:
-            with tf.variable_scope(self.variable_scope_name_u_entire):
+            with tf.variable_scope(self.variable_scope_name_u_parameter):
                 '''
                 self.u_coefficient_entire = \
                     tf.get_variable(name='u_coefficient_entire', dtype=tf.complex64,
@@ -1015,11 +1017,24 @@ class DcmRnn(Initialization):
                 self.u_entire = tf.transpose(tf.spectral.irfft(tf.transpose(self.u_coefficient_entire)))
                 self.u_entire = tf.cast(self.u_entire, dtype=tf.float32)
                 '''
+                self.neural_noise = [tf.get_variable(name='noise_s' + str(n), dtype=tf.float32,
+                                                    shape=[1, self.n_time_point + self.shift_data, 1],
+                                                     trainable=False) for n in range(self.n_stimuli)]
+                self.neural_filters = [tf.get_variable(name='filter_s' + str(n), dtype=tf.float32,
+                                                       shape=[16, 1, 64]) for n in range(self.n_stimuli)]
+                self.u_entire = [tf.reduce_mean(tf.squeeze(
+                    tf.nn.conv1d(self.neural_noise[n], self.neural_filters[n], 1, 'SAME')), axis=1)
+                    for n in range(self.n_region)]
 
+            with tf.variable_scope(self.variable_scope_name_u_entire):
+                self.u_entire = tf.stack(self.u_entire, axis=1)
 
+                '''
                 self.u_entire = tf.get_variable(name='u_entire', dtype=tf.float32,
                                                 initializer=tf.constant_initializer(0.0),
                                                 shape=[self.n_time_point + self.shift_data, self.n_stimuli])
+                '''
+
 
                 self.u_index_place_holder = tf.placeholder(dtype=tf.int32, shape=[None],
                                                            name='u_index_place_holder')
@@ -1099,12 +1114,13 @@ class DcmRnn(Initialization):
             self.loss_prior = self.add_loss_prior(self.h_parameters)
             if self.if_resting_state:
 
+                '''
                 u_stacked_backtracked = tf.concat(
                     [self.u_stacked_previous[:, self.shift_data - 2: self.shift_data, :], self.u_stacked], axis=1)
                 self.loss_u_smooth = self.mse(self.second_order_smooth_parallel(u_stacked_backtracked))
 
                 self.loss_u_energy = self.mse(self.u_entire)
-                '''
+                
                 self.u_coefficient_entire = tf.spectral.rfft(tf.transpose(self.u_entire))
                 mask = np.linspace(1, self.u_coefficient_entire.get_shape().as_list()[1],
                                    self.u_coefficient_entire.get_shape().as_list()[1])
@@ -1126,6 +1142,7 @@ class DcmRnn(Initialization):
                     tf.get_variable('loss_weight_prior',
                                     initializer=self.loss_weighting['prior'],
                                     trainable=False)
+                '''
                 self.loss_weighting_in_graph['u_smooth'] = \
                     tf.get_variable('loss_weight_u_smooth',
                                     initializer=self.loss_weighting['u_smooth'],
@@ -1134,14 +1151,15 @@ class DcmRnn(Initialization):
                     tf.get_variable('loss_weight_u_energy',
                                     initializer=self.loss_weighting['u_energy'],
                                     trainable=False)
+                '''
 
                 self.loss_total = tf.reduce_sum([
                     self.loss_weighting_in_graph['prediction'] * self.loss_prediction,
                     self.loss_weighting_in_graph['sparsity'] * self.loss_sparsity,
-                    self.loss_weighting_in_graph['prior'] * self.loss_prior,
-                    self.loss_weighting_in_graph['u_smooth'] * self.loss_u_smooth,
-                    self.loss_weighting_in_graph['u_energy'] * self.loss_u_energy],
-                    #tf.constant(self.loss_weighting['u_coefficient_sparsity'],
+                    self.loss_weighting_in_graph['prior'] * self.loss_prior],
+                    # self.loss_weighting_in_graph['u_smooth'] * self.loss_u_smooth,
+                    # self.loss_weighting_in_graph['u_energy'] * self.loss_u_energy],
+                    # tf.constant(self.loss_weighting['u_coefficient_sparsity'],
                     #            name='loss_weight_u_coefficient_sparsity') * self.loss_u_coefficient_sparsity],
                     name='loss_total')
             else:
@@ -1164,7 +1182,6 @@ class DcmRnn(Initialization):
             self.variable_summaries(self.loss_total)
             self.merged_summary = tf.summary.merge_all()
             self.summary_writer = tf.summary.FileWriter(self.log_directory, tf.get_default_graph())
-
 
     def build_x_graph(self, hemodynamic_parameter_initial=None):
         if hemodynamic_parameter_initial is None:

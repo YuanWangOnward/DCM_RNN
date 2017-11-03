@@ -66,7 +66,7 @@ du._secured_data['if_x_nonlinearity'] = False
 du._secured_data['if_resting_state'] = True
 
 du._secured_data['x_nonlinearity_type'] = SIMULATION_X_NONLINEARITY
-du._secured_data['t_delta'] = 1. / 64.
+du._secured_data['t_delta'] = 1. / 16.
 du._secured_data['t_scan'] = 5 * 60
 du._secured_data['n_node'] = 3
 du._secured_data['n_stimuli'] = 3
@@ -194,3 +194,57 @@ DCM['du_data'] = du._secured_data
 
 DCM_initial = DCM
 scipy.io.savemat(SAVE_PATH_MAT, mdict={'DCM_initial': DCM_initial})
+
+
+
+
+###############
+from scipy.fftpack import dct, idct
+for n in range(du.get('n_node')):
+    plt.subplot(3, 2, 2 * n + 1)
+    plt.plot(du.get('u')[:, n])
+    plt.subplot(3, 2, 2 * n + 2)
+    x = np.array(range(4800))
+    plt.plot(abs(dct(du.get('u')[:, n])))
+
+# split in to 128
+n_bins = 64
+n_time_point = 4800
+log_values = np.log(np.array(range(1, 1 + du.get('n_time_point'))))
+
+indexes = np.int32(np.exp(np.linspace(0, n_bins, n_bins + 2) * np.log(du.get('n_time_point')) / (n_bins + 2)))
+
+for i in range(len(indexes)):
+    if i > 0:
+        if indexes[i] == indexes[i - 1]:
+            temp = indexes == indexes[i]
+            temp[:i] = False
+            indexes[temp] = indexes[i] + 1
+
+
+indexes = np.array(sorted(list(set(indexes[0: -2]))))
+
+dct_matrix = dct(np.eye(n_time_point), norm='ortho')
+
+bases = dct_matrix[:, indexes]
+
+# bases = dct_matrix[:, np.int32(np.linspace(1, 4799, n_bins))]
+
+u_fitted = np.matmul(bases, np.matmul(bases.transpose(), du.get('u')))
+
+for n in range(du.get('n_node')):
+    plt.subplot(3, 1, n + 1)
+    plt.plot(du.get('u')[:, n])
+    plt.plot(u_fitted[:, n], '--')
+
+
+du_fit = copy.deepcopy(du)
+du_fit._secured_data['u'] = u_fitted
+du_fit.regenerate_data()
+for n in range(du.get('n_node')):
+    plt.subplot(3, 1, n + 1)
+    plt.plot(du.get('y')[:, n])
+    plt.plot(du_fit.get('y')[:, n], '--')
+
+
+
