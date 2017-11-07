@@ -71,9 +71,9 @@ du._secured_data['t_scan'] = 5 * 60
 du._secured_data['n_node'] = 3
 du._secured_data['n_stimuli'] = 3
 
-du._secured_data['A'] = np.array([[-0.4, 0, 0.],
-                                  [0., -0.4, 0],
-                                  [0.2, 0.2, -0.4]])
+du._secured_data['A'] = np.array([[-0.8, -0.4, 0.],
+                                  [0.4, -0.8, -0.4],
+                                  [0., 0.4, -0.8]])
 du._secured_data['B'] = [np.array([[0, 0, 0],
                                    [0, 0, 0],
                                    [0, 0, 0],
@@ -210,7 +210,6 @@ for n in range(du.get('n_node')):
 # split in to 128
 n_bins = 64
 n_time_point = 4800
-log_values = np.log(np.array(range(1, 1 + du.get('n_time_point'))))
 
 indexes = np.int32(np.exp(np.linspace(0, n_bins, n_bins + 2) * np.log(du.get('n_time_point')) / (n_bins + 2)))
 

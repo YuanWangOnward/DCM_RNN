@@ -6,7 +6,7 @@ import toolboxes as tb
 import warnings
 import pandas as pd
 from collections import Iterable
-
+from scipy.fftpack import dct, idct
 
 # import pandas as pd
 # from IPython.display import display
@@ -1016,20 +1016,52 @@ class DcmRnn(Initialization):
                                     shape=[np.ceil((self.n_time_point + self.shift_data) / 2) + 1, self.n_stimuli])
                 self.u_entire = tf.transpose(tf.spectral.irfft(tf.transpose(self.u_coefficient_entire)))
                 self.u_entire = tf.cast(self.u_entire, dtype=tf.float32)
-                '''
+                
                 self.neural_noise = [tf.get_variable(name='noise_s' + str(n), dtype=tf.float32,
                                                     shape=[1, self.n_time_point + self.shift_data, 1],
                                                      trainable=False) for n in range(self.n_stimuli)]
                 self.neural_filters = [tf.get_variable(name='filter_s' + str(n), dtype=tf.float32,
                                                        shape=[16, 1, 64]) for n in range(self.n_stimuli)]
+                '''
+                n_coefficient = 48
+                n_time_point = self.n_time_point
+                self.coefficient = tf.get_variable('coefficient', dtype=tf.float32,
+                                                   initializer=tf.constant_initializer(0.0),
+                                                   shape=[n_coefficient, self.n_stimuli])
+
+                # find proper dct bases
+                indexes = np.int32(
+                    np.exp(
+                        np.linspace(0, n_coefficient, n_coefficient + 2) * np.log(n_time_point) / (n_coefficient + 2)))
+
+                for i in range(len(indexes)):
+                    if i > 0:
+                        if indexes[i] == indexes[i - 1]:
+                            temp = indexes == indexes[i]
+                            temp[:i] = False
+                            indexes[temp] = indexes[i] + 1
+
+                indexes = np.array(sorted(list(set(indexes[0: -2]))))
+
+                dct_matrix = dct(np.eye(n_time_point), norm='ortho')
+
+                self.bases = dct_matrix[:, indexes].astype(np.float32)
+
+            with tf.variable_scope(self.variable_scope_name_u_entire):
+                self.u_entire = tf.matmul(self.bases, self.coefficient)
+
+                '''
                 self.u_entire = [tf.reduce_mean(tf.squeeze(
                     tf.nn.conv1d(self.neural_noise[n], self.neural_filters[n], 1, 'SAME')), axis=1)
                     for n in range(self.n_region)]
+                
+                
+
 
             with tf.variable_scope(self.variable_scope_name_u_entire):
                 self.u_entire = tf.stack(self.u_entire, axis=1)
 
-                '''
+                
                 self.u_entire = tf.get_variable(name='u_entire', dtype=tf.float32,
                                                 initializer=tf.constant_initializer(0.0),
                                                 shape=[self.n_time_point + self.shift_data, self.n_stimuli])

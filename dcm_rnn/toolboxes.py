@@ -589,6 +589,7 @@ class Initialization:
                  C_init_low=None, C_init_high=None,
                  u_type=None,
                  u_t_low=None, u_t_high=None,
+                 u_amplitude=None,
                  u_interval_t_low=None, u_interval_t_high=None,
                  u_skip_rate=None,
                  u_frequency_low=None, u_frequency_high=None,
@@ -635,6 +636,7 @@ class Initialization:
 
         self.u_type_supported = ['box_train', 'sine', 'power_law']
         self.u_type = u_type or 'box_train'
+        self.u_amplitude = u_amplitude or 1
         self.u_t_low = u_t_low or 5  # in second
         self.u_t_high = u_t_high or 10  # in second
         self.u_interval_t_low = u_interval_t_low or 5  # in second
@@ -890,7 +892,7 @@ class Initialization:
                         i_next = n_time_point
                     u[i_current:i_next, n_s] = value
                     i_current = i_next
-            return u
+            return u * self.u_amplitude
         elif u_type == 'sine':
             u = np.zeros((n_time_point, n_stimuli))
             t = np.array(range(n_time_point)) * t_delta
@@ -898,20 +900,8 @@ class Initialization:
             for n_s in range(n_stimuli):
                 frequencies = [np.random.uniform(self.u_frequency_low, self.u_frequency_high) for _ in range(n)]
                 u[:, n_s] = np.sum([np.sin(2 * np.pi * frequency * t) for frequency in frequencies], axis=0) / n / 10
-            return u
+            return u * self.u_amplitude
         elif u_type == 'auto_regressor':
-            '''
-                autoregressor_length = int(6 / t_delta)
-                # autoregressor = np.ones((autoregressor_length, n_stimuli)) / autoregressor_length
-                autoregressor = np.array(range(1, 1 + autoregressor_length))
-                autoregressor = autoregressor / sum(autoregressor)
-                autoregressor = np.tile(autoregressor, [n_stimuli, 1]).transpose()
-                e = np.random.randn(n_time_point, n_stimuli) * 0.1
-                # e = np.random.rand(n_time_point, n_stimuli) - 0.5
-                u = copy.deepcopy(e)
-                for i in range(autoregressor_length, len(e)):
-                    u[i, :] = np.sum(u[i - autoregressor_length: i, :] * autoregressor, axis=0) + e[i, :]
-            '''
             pole = 0.99
             order = 1
             e = np.random.randn(n_time_point, n_stimuli) * 0.005
@@ -924,7 +914,7 @@ class Initialization:
             u = copy.deepcopy(e)
             for i in range(len(a), len(e)):
                 u[i, :] = np.sum(u[i - len(a): i, :] * a, axis=0) + e[i, :]
-            return u
+            return u * self.u_amplitude
         else:
             raise ValueError(u_type + ' is not a proper stimuli input. Supported stimulus types include ' +
                              ' '.join(self.u_type_supported))
