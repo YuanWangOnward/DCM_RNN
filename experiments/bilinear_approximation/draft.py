@@ -49,7 +49,7 @@ SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results')
 
 
 TOTAL_BASE_NUMBER = 20
-SAMPLE_PER_BASE = 500
+SAMPLE_PER_BASE = 250
 
 # pool = Pool(os.cpu_count())
 # pool.map(build_a_base, range(TOTAL_BASE_NUMBER))
@@ -59,22 +59,22 @@ current_base_number = 0
 data_path = DATA_PATH + '/DB' + str(current_base_number) + '.pkl'
 current_data = []
 
-while len(current_data) < SAMPLE_PER_BASE:
-    # new and setting
-    du = tb.DataUnit()
-    du._secured_data['if_random_node_number'] = True
-    du._secured_data['if_random_stimuli'] = True
-    du._secured_data['if_random_x_state_initial'] = False
-    du._secured_data['if_random_h_state_initial'] = False
-    du._secured_data['t_delta'] = 0.25
-    du._secured_data['t_scan'] = 5 * 60
-    du.u_amplitude = 0.1
-    du.complete_data_unit(if_show_message=False, if_check_property=False)
 
-    # add cores
-    du_core = du.collect_parameter_core()
-    current_data.append(du_core)
-    print('Number of current cores base ' + str(len(current_data)))
+# new and setting
+du = tb.DataUnit()
+du._secured_data['if_random_node_number'] = True
+du._secured_data['if_random_stimuli'] = True
+du._secured_data['if_random_x_state_initial'] = False
+du._secured_data['if_random_h_state_initial'] = False
+du._secured_data['t_delta'] = 0.25
+du._secured_data['t_scan'] = 5 * 60
+# du.u_amplitude = 0.1
+du.complete_data_unit(if_show_message=False)
+
+# add cores
+du_core = du.collect_parameter_core()
+current_data.append(du_core)
+print('Number of current cores base ' + str(len(current_data)))
 
 # sort cores
 current_data = sorted(current_data, key=lambda x: x.get('n_node'))

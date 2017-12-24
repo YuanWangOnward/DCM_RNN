@@ -636,7 +636,7 @@ class Initialization:
 
         self.u_type_supported = ['box_train', 'sine', 'power_law']
         self.u_type = u_type or 'box_train'
-        self.u_amplitude = u_amplitude or 1
+        self.u_amplitude = u_amplitude or 0.1
         self.u_t_low = u_t_low or 5  # in second
         self.u_t_high = u_t_high or 10  # in second
         self.u_interval_t_low = u_interval_t_low or 5  # in second
@@ -1602,12 +1602,21 @@ class Scanner:
                  x_var_low=None, x_var_high=None,
                  h_value_low=None, h_value_high=None):
         self.snr_y = snr_y or 2
+        '''
         self.x_max_bound = x_max_bound or 8
         self.x_mean_bound = x_mean_bound or 2
         self.x_var_low = x_var_low or 0.1
         self.x_var_high = x_var_high or 4
         self.h_value_low = h_value_low or 0.125
         self.h_value_high = h_value_high or 8
+        '''
+        self.x_max_bound = x_max_bound or 2.
+        self.x_mean_bound = x_mean_bound or 0.2
+        self.x_var_low = x_var_low or 0.001
+        self.x_var_high = x_var_high or 0.05
+        self.h_value_low = h_value_low or 0.125
+        self.h_value_high = h_value_high or 8
+
 
     def scan_x(self, parameter_package):
         """

@@ -100,7 +100,8 @@ try, DCM.v;                  catch, DCM.v = size(DCM.Y.y,1);        end
 try, M.nograph = DCM.options.nograph; catch, M.nograph = spm('CmdLine');end
  
 % check max iterations
-%--------------------------------------------------------------------------
+%--------------------------------------------------------------------------\
+
 try
     DCM.options.maxit;
 catch    

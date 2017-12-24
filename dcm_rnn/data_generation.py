@@ -63,7 +63,7 @@ if __name__ == '__main__':
         if not os.path.exists(OUTPUT_DIR):
             os.makedirs(OUTPUT_DIR)
 
-    TOTAL_BASE_NUMBER = 20
+    TOTAL_BASE_NUMBER = 10
     SAMPLE_PER_BASE = 500
     pool = Pool(os.cpu_count())
     pool.map(build_a_base, range(TOTAL_BASE_NUMBER))
