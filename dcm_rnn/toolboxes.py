@@ -201,7 +201,7 @@ def make_batches(u, x, h, y, batch_size=128, if_shuffle=True, extra=None):
                 temp_u_previous = [temp_u_previous[i] for i in idx]
             elif 'index' in extra:
                 warnings.warn('Shuffle will cause index chaos.')
-                
+
 
     for i in range(0, len(temp_y), batch_size):
         batch = make_a_batch(temp_u[i: i + batch_size],
@@ -2458,7 +2458,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         names_in_model = []
         for name in names_in_graph:
             name_core = name[name.index('/') + 1: name.index(':')]
-            if name_core in ['u_stacked', 'u_entire', 'x_entire']:
+            if name_core in ['u_stacked', 'u_entire', 'x_entire', 'y_noise']:
                 names_in_model.append(name_core)
             elif '_' in name_core:
                 temp = name_core.split('_')
@@ -2603,7 +2603,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
             else:
                 grads_and_vars.append((sum([gv[idx][0] for gv in gradients]), gradients[-1][idx][1]))
         return grads_and_vars
-                
+
 
 
 

@@ -188,7 +188,9 @@ if DCM.options.nonlinear
     M.states = 1:n;
 else
     %%%%% MODIFIED
-    M.IS     = 'spm_int_modified';
+    % M.IS     = 'spm_int_modified';
+    % M.IS     = 'spm_int_J';
+    M.IS = DCM.IS;
 end
  
 % check for endogenous DCMs, with no exogenous driving effects

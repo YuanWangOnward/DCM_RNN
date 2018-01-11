@@ -1,5 +1,5 @@
 %% read DCM basic configuration created from python size
-CONDITION = 'h1_s1_n1';
+CONDITION = 'h1_s0_n1';
 SETTINGS = struct;
 if strcmp(CONDITION, 'h1_s0_n0')
     SETTINGS.(CONDITION) = struct;
@@ -12,6 +12,10 @@ elseif strcmp(CONDITION, 'h1_s1_n0')
 elseif strcmp(CONDITION, 'h1_s1_n1')
     SETTINGS.(CONDITION) = struct;
     SETTINGS.(CONDITION).if_extended_support = true;
+    SETTINGS.(CONDITION).if_noised_y = true;
+elseif strcmp(CONDITION, 'h1_s0_n1')
+    SETTINGS.(CONDITION) = struct;
+    SETTINGS.(CONDITION).if_extended_support = false;
     SETTINGS.(CONDITION).if_noised_y = true;
 end
 
@@ -32,6 +36,7 @@ if SETTINGS.(CONDITION).if_noised_y
     DCM_corrected.Y.y = DCM_corrected.Y.y_noised;
 end
 
+
 %% set initial values of parameters
 n_node = size(DCM_corrected.a, 1);
 n_stimuli = size(DCM_corrected.c, 2);
@@ -48,8 +53,12 @@ initials.decay = log(struct2vector(h_parameters.k)./ 0.64);
 initials.epcilon = log(mean(struct2vector(h_parameters.epsilon)));
 DCM_corrected.options.P = initials;
 
+%% chose integration method
+DCM_corrected.IS     = 'spm_int_J';
+
 %% estimation
 DCM_estimated = spm_dcm_estimate_modified(DCM_corrected);
+
 
 %% check results
 y_true = DCM_estimated.Y.y / DCM_estimated.Y.scale;
@@ -57,12 +66,12 @@ y_predicted = (DCM_estimated.Y.y - DCM_estimated.R) / DCM_estimated.Y.scale;
 n_node = double(DCM_initial.du_data.n_node);
 
 
-
 for n = 1: n_node
     subplot(n_node, 1, n)
     hold on
     plot(y_true(:, n))
     plot(y_predicted(:, n), '--')
+    % plot(DCM_estimated.R(:, n), '--')
     hold off
 end
 shg
@@ -95,13 +104,13 @@ transit = DCM_estimated.Ep.transit;
 decay = DCM_estimated.Ep.decay;
 epsilon = DCM_estimated.Ep.epsilon;
 
-% save(SAVE_PATH, 'a',...
-%     'b',...
-%     'c',...
-%     'transit',...
-%     'decay',...
-%     'epsilon',...
-%     'y_true', 'y_predicted')
+save(SAVE_PATH, 'a',...
+    'b',...
+    'c',...
+    'transit',...
+    'decay',...
+    'epsilon',...
+    'y_true', 'y_predicted')
     
 
 

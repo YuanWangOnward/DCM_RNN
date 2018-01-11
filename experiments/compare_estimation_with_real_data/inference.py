@@ -60,13 +60,13 @@ SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_dcm_rnn.pkl')
 SAVE_EXTENDED_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_dcm_rnn_extended.pkl')
 
 
-MAX_EPOCHS = 32 * 5
+MAX_EPOCHS = 32 * 3
 CHECK_STEPS = 1
 N_RECURRENT_STEP = 192
 DATA_SHIFT = 2
-MAX_BACK_TRACK = 16
+MAX_BACK_TRACK = 8
 MAX_CHANGE = 0.001
-BATCH_RANDOM_DROP_RATE = 0.5
+BATCH_RANDOM_DROP_RATE = 1.
 TARGET_T_DELTA = 1. / 16
 N_CONFOUNDS = 19
 
@@ -94,10 +94,10 @@ confounds = idct(np.eye(n_time_point)[:, :N_CONFOUNDS], axis=0, norm='ortho')
 # settings
 n_region = 3
 n_stimuli = 3
-A = -np.eye(n_region)
+A = -np.eye(n_region) * 0.25
 B = [np.zeros((n_region, n_region))] * n_region
 C = np.zeros((n_region, n_stimuli))
-C[0, 0] = 1
+C[0, 0] = 0.25
 x_parameter_initial = {'A': A, 'B': B, 'C': C}
 x_parameter_initial_in_graph = du.calculate_dcm_rnn_x_matrices(x_parameter_initial['A'],
                                                                x_parameter_initial['B'],
@@ -105,7 +105,8 @@ x_parameter_initial_in_graph = du.calculate_dcm_rnn_x_matrices(x_parameter_initi
                                                                TARGET_T_DELTA)
 h_parameter_initial = du.get('hemodynamic_parameter')
 
-loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'prior_x': 1.,
+                  'Wxx': 1./128, 'Wxxu': 1./128, 'Wxu': 1./128}
 trainable_flags = trainable_flags = {'Wxx': True,
                        'Wxxu': True,
                        'Wxu': True,
@@ -144,6 +145,8 @@ du_hat._secured_data['C'] = x_parameter_initial['C']
 du_hat._secured_data['hemodynamic_parameter'] = h_parameter_initial
 du_hat._secured_data['initial_x_state'] = du_hat.set_initial_neural_state_as_zeros(n_region)
 du_hat._secured_data['initial_h_state'] = du_hat.set_initial_hemodynamic_state_as_inactivated(n_region)
+du_hat._secured_data['x_nonlinearity_type'] = 'None'
+du_hat._secured_data['u_type'] = 'carbox'
 du_hat.complete_data_unit(start_category=2, if_check_property=False)
 
 
@@ -153,13 +156,18 @@ tf.reset_default_graph()
 dr = tfm.DcmRnn()
 dr.n_region = n_region
 dr.n_stimuli = n_stimuli
+dr.n_time_point = du_hat.get('n_time_point')
 dr.t_delta = TARGET_T_DELTA
 dr.shift_data = DATA_SHIFT
 dr.n_recurrent_step = N_RECURRENT_STEP
+dr.max_back_track_steps = MAX_BACK_TRACK
+dr.max_parameter_change_per_iteration = MAX_CHANGE
 dr.loss_weighting = loss_weighting
 dr.trainable_flags = trainable_flags
 dr.build_main_graph_parallel(neural_parameter_initial=x_parameter_initial,
                              hemodynamic_parameter_initial=h_parameter_initial)
+
+
 
 # process after building the main graph
 dr.support_masks = dr.setup_support_mask(mask)
@@ -180,7 +188,7 @@ data_hat = {
     'y': tb.split(y_target, n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)
 }
 for k in data_hat.keys():
-    data[k] = data_hat[k][: n_segments]
+    data_hat[k] = data_hat[k][: n_segments]
 for k in data.keys():
     data[k] = data[k][: n_segments]
 batches = tb.make_batches(data['u'], data_hat['x_initial'], data_hat['h_initial'], data_hat['y'],
@@ -194,6 +202,7 @@ dr.update_variables_in_graph(isess, dr.x_parameter_nodes,
                              [x_parameter_initial_in_graph['Wxx']]
                              + x_parameter_initial_in_graph['Wxxu']
                              + [x_parameter_initial_in_graph['Wxu']])
+
 
 print('start inference')
 loss_differences = []
@@ -301,6 +310,8 @@ for epoch in range(MAX_EPOCHS):
     data_hat['h_initial'] = tb.split(du_hat.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1)
     y_target = get_target_curve(du_hat.get('y'), confounds, spm_data['y_upsampled'])
     data_hat['y'] = tb.split(y_target, n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)
+    for k in data_hat.keys():
+        data_hat[k] = data_hat[k][: n_segments]
 
     batches = tb.make_batches(data['u'], data_hat['x_initial'],
                               data_hat['h_initial'], data_hat['y'],

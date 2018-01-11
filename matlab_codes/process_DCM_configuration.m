@@ -22,22 +22,27 @@ end
 % 19 cosine components in SPM
 n_time_point = DCM_out.v;
 temp = idct(eye(n_time_point));
-DCM_out.Y.X0 = temp(:, n_confound);
-% DCM.Y.X0 = 0;
+% DCM_out.Y.X0 = temp(:, n_confound);
+% DCM_out.Y.X0 = temp(:, end);
+% DCM_out.Y.X0 = 0;
+DCM_out.Y.X0 = zeros(n_time_point,1);
+
 
 % array of precision components
-DCM_out.Y.Q = {};
-n_time_point = DCM_out.v;
-n_region = DCM_out.n;
-for i = 1: n_region
-    Q = sparse(n_time_point * n_region, n_time_point * n_region);
-    index = [(i - 1) * n_time_point + 1 : i * n_time_point]';
-    index = repmat(index, 1, 2);
-    for idx = 1: size(index, 1)
-        Q(index(idx),  index(idx)) =1;
-    end
-    DCM_out.Y.Q{end + 1} = Q;
-end
+% DCM_out.Y.Q = {};
+% n_time_point = DCM_out.v;
+% n_region = DCM_out.n;
+% for i = 1: n_region
+%     Q = sparse(n_time_point * n_region, n_time_point * n_region);
+%     index = [(i - 1) * n_time_point + 1 : i * n_time_point]';
+%     index = repmat(index, 1, 2);
+%     for idx = 1: size(index, 1)
+%         Q(index(idx),  index(idx)) =1;
+%     end
+%     DCM_out.Y.Q{end + 1} = Q;
+% end
+DCM_out.Y.Q    = spm_Ce(ones(1,DCM_out.n)*DCM_out.v);
+
 
 % correct order of B matrices
 if DCM_out.du_data.n_stimuli > 1

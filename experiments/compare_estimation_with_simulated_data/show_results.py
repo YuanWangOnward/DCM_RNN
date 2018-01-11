@@ -121,7 +121,7 @@ def plot_effective_connectivity(du, du_rnn, spm):
     plt.legend()
     plt.ylabel('values')
 
-CONDITION = 'h1_s0_n0'
+CONDITION = 'h1_s0_n1'
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data')
 RESULT_PATH = os.path.join(EXPERIMENT_PATH, 'results')
@@ -137,7 +137,7 @@ core = tb.load_template(CORE_PATH)
 du = tb.DataUnit()
 du.load_parameter_core(core)
 du.recover_data_unit()
-if CONDITION == 'h1_s1_n1':
+if CONDITION[-1] =='1' :
     y_true = du.get('y_noised')[::128]
 else:
     y_true = du.get('y')[::128]
@@ -149,7 +149,7 @@ y_rnn.shape
 
 spm = sio.loadmat(SPM_RESULT_PATH)
 spm['b'] = np.rollaxis(spm['b'], 2)    # correct matlab-python transfer error
-y_spm = spm['y_predicted']
+y_spm = spm['y_predicted'][::32]
 y_spm.shape
 
 x_axis = np.array(range(0, len(y_true))) * 2
@@ -209,7 +209,7 @@ plt.plot(t_axis, du._secured_data['y'][:, 0])
 
 du.get('hemodynamic_parameter')
 
-du_rnn._secured_data['hemodynamic_parameter']  = du.get('hemodynamic_parameter')
+du_rnn._secured_data['hemodynamic_parameter'] = du.get('hemodynamic_parameter')
 t_rnn, k_rnn = du_rnn.get_hemodynamic_kernel()
 du_rnn.get('hemodynamic_parameter')
 plt.plot(t_rnn, k_rnn)

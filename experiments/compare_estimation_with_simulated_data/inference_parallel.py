@@ -51,7 +51,7 @@ MAX_BACK_TRACK = 16
 MAX_CHANGE = 0.001
 BATCH_RANDOM_DROP_RATE = 1.
 
-CONDITION = 'h1_s1_n0'
+CONDITION = 'h1_s0_n1'
 SETTINGS = {}
 SETTINGS['h0_s0_n0'] = {'if_update_h_parameter': False,
                         'if_extended_support': False,
@@ -64,6 +64,9 @@ SETTINGS['h1_s1_n0'] = {'if_update_h_parameter': True,
                         'if_noised_y': False}
 SETTINGS['h1_s1_n1'] = {'if_update_h_parameter': True,
                         'if_extended_support': True,
+                        'if_noised_y': True}
+SETTINGS['h1_s0_n1'] = {'if_update_h_parameter': True,
+                        'if_extended_support': False,
                         'if_noised_y': True}
 if SETTINGS[CONDITION]['if_update_h_parameter']:
     trainable_flags = {'Wxx': True,
@@ -117,7 +120,8 @@ x_parameter_initial['C'][0, 0] = 1.
 x_parameter_initial['C'][1, 1] = 1.
 h_parameter_initial = du.get('hemodynamic_parameter')
 
-loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'prior_x':1.,
+                  'Wxx': 1./128, 'Wxxu': 1./128, 'Wxu': 1./128}
 mask = du.create_support_mask()
 if SETTINGS[CONDITION]['if_extended_support']:
     mask['Wxx'] = np.ones((du.get('n_node'), du.get('n_node')))

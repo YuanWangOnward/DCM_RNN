@@ -160,7 +160,7 @@ x_axis = np.array(range(du_rnn.get('y').shape[0])) * du_rnn.get('t_delta')
 for i in range(du_rnn.get('n_stimuli')):
     plt.subplot(du_rnn.get('n_stimuli'), 1, i + 1)
     plt.plot(x_axis, du_rnn.extended_data['u_upsampled'][:, i], linewidth=1.0)
-    plt.xlim([0, 1510])
+    # plt.xlim([0, 1510])
     plt.xlabel('time (second)')
     plt.ylabel(original_data['stimulus_names'][i])
     if i < n_node - 1:
@@ -182,7 +182,7 @@ for i in range(n_node):
     plt.plot(x_axis, y_true[:, i], linewidth=1.0, label='Acquired')
     plt.plot(x_axis, y_rnn[:, i], '--', linewidth=1.2, label='DCM-RNN')
     plt.plot(x_axis, y_spm[:, i], '-.', linewidth=1.2, label='SPM')
-    plt.xlim([0, 1510])
+    #plt.xlim([0, 1510])
     plt.xlabel('time (second)')
     plt.ylabel(original_data['node_names'][i])
     plt.legend(loc=1)

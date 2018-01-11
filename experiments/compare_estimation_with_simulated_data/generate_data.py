@@ -54,6 +54,7 @@ SNR = 3
 
 
 du = tb.DataUnit()
+du.u_amplitude = 1.
 du._secured_data['if_random_neural_parameter'] = False
 du._secured_data['if_random_hemodynamic_parameter'] = False
 du._secured_data['if_random_x_state_initial'] = False
@@ -79,7 +80,7 @@ du._secured_data['B'] = [np.array([[0, 0, 0],
                                    [0, 0, 0]]),
                          np.array([[0., 0, 0],
                                    [0, 0, 0],
-                                   [0.2, 0, 0]])]
+                                   [-0.2, 0, 0]])]
 du._secured_data['C'] = np.array([[1.2, 0., 0.], [0., 1.2, 0.], [0., 0., 0.]]).reshape(3, 3)
 
 
@@ -143,15 +144,18 @@ du_original.recover_data_unit()
 du = du_original.resample_data_unit()
 pickle.dump(du, open(SAVE_PATH_PKL, 'wb'))
 
+
 # create DCM structure for SPM DCM
 core = tb.load_template(CORE_PATH)
 du = tb.DataUnit()
 du.load_parameter_core(core)
 du.recover_data_unit()
+du = du.resample_data_unit()
 
 mask = du.create_support_mask()
-down_sample_rate_u = 4
-down_sample_rate_y = 128
+down_sample_rate_u = 1
+# down_sample_rate_y = 128
+down_sample_rate_y = 1
 # covert to DCM needed by SPM
 DCM = {}
 DCM['a'] = mask['Wxx']
@@ -187,10 +191,10 @@ options['induced'] = 0.
 DCM['options'] = options
 
 # None will case trouble
-if du.x_nonlinearity is None:
-    du.x_nonlinearity = 'None'
-if du._secured_data['scanner'].x_nonlinearity is None:
-    du._secured_data['scanner'].x_nonlinearity = 'None'
+#if du.x_nonlinearity is None:
+#    du.x_nonlinearity = 'None'
+#if du._secured_data['scanner'].x_nonlinearity is None:
+#    du._secured_data['scanner'].x_nonlinearity = 'None'
 
 DCM['du'] = du
 DCM['du_data'] = du._secured_data
