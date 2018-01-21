@@ -1,5 +1,5 @@
 function [M] = prepare_model_configuration(P)
-% beginning part of spm_dcm_estimate
+% beginning part of spm_dcm_estimate_modified
  
 SVNid = '$Rev: 6755 $';
  
@@ -43,7 +43,8 @@ try, DCM.v;                  catch, DCM.v = size(DCM.Y.y,1);        end
 try, M.nograph = DCM.options.nograph; catch, M.nograph = spm('CmdLine');end
  
 % check max iterations
-%--------------------------------------------------------------------------
+%--------------------------------------------------------------------------\
+
 try
     DCM.options.maxit;
 catch    
@@ -90,12 +91,13 @@ v  = DCM.v;                             % number of scans
 if DCM.options.centre
     U.u = spm_detrend(U.u);
 end
- 
+
 % check scaling of Y (enforcing a maximum change of 4%
 %--------------------------------------------------------------------------
-%%%% MODIFIED
-scale   = max(max((Y.y))) - min(min((Y.y)));
-scale   = 4/max(scale,4);
+% MODIFIED
+% scale   = max(max((Y.y))) - min(min((Y.y)));
+% scale   = 4/max(scale,4);
+scale = 1;
 Y.y     = Y.y*scale;
 Y.scale = scale;
  
@@ -128,7 +130,10 @@ if DCM.options.nonlinear
     M.nsteps = round(max(Y.dt,1));
     M.states = 1:n;
 else
-    M.IS     = 'spm_int';
+    %%%%% MODIFIED
+    % M.IS     = 'spm_int_modified';
+    % M.IS     = 'spm_int_J';
+    M.IS = DCM.IS;
 end
  
 % check for endogenous DCMs, with no exogenous driving effects
@@ -187,8 +192,16 @@ hC(i,i) = exp(-16);
  
 % complete model specification
 %--------------------------------------------------------------------------
-M.f  = 'spm_fx_fmri';                     % equations of motion
-M.g  = 'spm_gx_fmri';                     % observation equation
+%%%% MODIFIED 
+% M.f  = 'spm_fx_fmri'
+M.f  = 'spm_fx_fmri_modified';            % equations of motion
+%%%% MODIFIED 
+if isfield(DCM,'g')
+    M.g  = DCM.g; 
+else
+    M.g  = 'spm_gx_fmri';                     % observation equation
+end
+display(['M.g: ', M.g])
 M.x  = x;                                 % initial condition (states)
 M.pE = pE;                                % prior expectation (parameters)
 M.pC = pC;                                % prior covariance  (parameters)
@@ -200,4 +213,3 @@ M.l  = size(x,1);
 M.N  = 64;
 M.dt = 32/M.N;
 M.ns = v;
- 

@@ -208,7 +208,7 @@ end
  
 % priors (and initial states)
 %--------------------------------------------------------------------------
-[pE,pC,x]  = spm_dcm_fmri_priors(DCM.a,DCM.b,DCM.c,DCM.d,DCM.options);
+[pE,pC,x]  = spm_dcm_fmri_priors_modified(DCM.a,DCM.b,DCM.c,DCM.d,DCM.options);
 str        = 'Using specified priors ';
 str        = [str '(any changes to DCM.a,b,c,d will be ignored)\n'];
  

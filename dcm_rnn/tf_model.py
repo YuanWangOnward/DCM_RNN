@@ -1236,7 +1236,9 @@ class DcmRnn(Initialization):
                 #                                  self.loss_weighting['prior'] * self.loss_prior], name='loss_total')
                 self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
                                                  self.loss_weighting['prior_x'] * self.loss_prior_x,
-                                                 self.loss_weighting['prior'] * self.loss_prior_h], name='loss_total')
+                                                 self.loss_weighting['prior'] * self.loss_prior_h,
+                                                 tf.square(self.y_noise - 6) / 256],
+                                                    name='loss_total')
 
         if self.if_training:
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)

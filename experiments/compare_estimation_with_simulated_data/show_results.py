@@ -115,13 +115,13 @@ def plot_effective_connectivity(du, du_rnn, spm):
 
     plt.bar(left, heights['true'], width, label='True')
     plt.bar(left + width, heights['rnn'], width, label='DCM-RNN estimation')
-    plt.bar(left + width * 2, heights['spm'], width, label='SPM estimation')
+    plt.bar(left + width * 2, heights['spm'], width, label='DCM-SPM estimation')
     plt.xticks(left + width, tickets, rotation='vertical')
     plt.grid()
     plt.legend()
     plt.ylabel('values')
 
-CONDITION = 'h1_s0_n1'
+CONDITION = 'h1_s0_n0'
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data')
 RESULT_PATH = os.path.join(EXPERIMENT_PATH, 'results')
@@ -132,42 +132,134 @@ DCM_RNN_RESULT_PATH = os.path.join(RESULT_PATH, 'estimation_' + CONDITION + '.pk
 SPM_RESULT_PATH = os.path.join(RESULT_PATH, 'saved_data_' + CONDITION + '.mat')
 
 
-# show estimation curves
+# recover data
 core = tb.load_template(CORE_PATH)
 du = tb.DataUnit()
 du.load_parameter_core(core)
 du.recover_data_unit()
-if CONDITION[-1] =='1' :
-    y_true = du.get('y_noised')[::128]
-else:
-    y_true = du.get('y')[::128]
-y_true.shape
 
 du_rnn = pickle.load(open(DCM_RNN_RESULT_PATH, 'rb'))
-y_rnn = du_rnn.get('y')[::32]
-y_rnn.shape
 
 spm = sio.loadmat(SPM_RESULT_PATH)
 spm['b'] = np.rollaxis(spm['b'], 2)    # correct matlab-python transfer error
-y_spm = spm['y_predicted'][::32]
-y_spm.shape
 
-x_axis = np.array(range(0, len(y_true))) * 2
+
+# show input
+u = du_rnn.get('u')
+x_axis = np.array(range(0, len(u))) / 16
+plt.figure()
+for i in range(du.get('n_stimuli')):
+    plt.subplot(du.get('n_stimuli'), 1, i + 1)
+    plt.plot(x_axis, u[:, i], alpha=1, linewidth=1.0)
+    plt.xlim([0, 410])
+    plt.xlabel('time (second)')
+    plt.ylabel('stimulus_ ' + str(i))
+    if i < du.get('n_node') - 1:
+        plt.gca().axes.get_xaxis().set_visible(False)
+plt.savefig(os.path.join(IMAGE_PATH, 'input_' + CONDITION + '.png'), bbox_inches='tight')
+
+
+# show simulated curves
+y_rnn_simulation = du.get('y')
+y_spm_simulation = spm['y_spm_simulation']
+x_axis = np.array(range(0, len(y_rnn_simulation))) / 64
+plt.figure()
 for i in range(du.get('n_node')):
     plt.subplot(du.get('n_node'), 1, i + 1)
-    plt.plot(x_axis, y_true[:, i], label='True',  alpha=1, linewidth=1.0)
-    plt.plot(x_axis, y_rnn[:, i], '--', label='DCM-RNN', alpha=1, linewidth=1.0)
-    plt.plot(x_axis, y_spm[:, i], '-.', label='SPM', alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_rnn_simulation[:, i], label='DCM-RNN',  alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_spm_simulation[:, i], '--', label='DCM-SPM', alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_rnn_simulation[:, i] - y_spm_simulation[:, i], '-.', label='Error', alpha=1, linewidth=1.0)
     plt.xlim([0, 410])
     plt.xlabel('time (second)')
     plt.ylabel('node_ ' + str(i))
     if i < du.get('n_node') - 1:
         plt.gca().axes.get_xaxis().set_visible(False)
     plt.legend()
-plt.savefig(os.path.join(IMAGE_PATH, 'y_curves_' + CONDITION + '.png'), bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'y_simulation_' + CONDITION + '.png'), bbox_inches='tight')
+print('y simulation rMSE = ' + str(tb.rmse(y_rnn_simulation, y_spm_simulation)))
 
-print('DCM-RNN y rMSE = ' + str(tb.rmse(y_rnn, y_true)))
-print('SPM DCM y rMSE = ' + str(tb.rmse(y_spm, y_true)))
+
+# check interpolation of RNN
+y_true = du.get('y')[::4]
+y_interpolated = du_rnn.y_true
+x_axis = np.array(range(0, len(y_true))) / 16
+plt.figure()
+for i in range(du.get('n_node')):
+    plt.subplot(du.get('n_node'), 1, i + 1)
+    plt.plot(x_axis, y_true[:, i], label='True',  alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_interpolated[:, i], '--', label='DCM-RNN', alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_interpolated[:, i] - y_true[:, i], '-.', label='Error', alpha=1, linewidth=1.0)
+    plt.xlim([0, 410])
+    plt.xlabel('time (second)')
+    plt.ylabel('node_ ' + str(i))
+    if i < du.get('n_node') - 1:
+        plt.gca().axes.get_xaxis().set_visible(False)
+    plt.legend()
+# plt.savefig(os.path.join(IMAGE_PATH, 'y_interpolation_rnn_' + CONDITION + '.png'), bbox_inches='tight')
+print('DCM-RNN y interpolation rMSE = ' + str(tb.rmse(y_interpolated, y_true)))
+
+
+# show estimation curves (RNN)
+y_true = du_rnn.y_true
+y_rnn = du_rnn.get('y')
+x_axis = np.array(range(0, len(y_true))) / 16
+plt.figure()
+for i in range(du.get('n_node')):
+    plt.subplot(du.get('n_node'), 1, i + 1)
+    plt.plot(x_axis, y_true[:, i], label='True',  alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_rnn[:, i], '--', label='DCM-RNN', alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_rnn[:, i] - y_true[:, i], '-.', label='Error', alpha=1, linewidth=1.0)
+    plt.xlim([0, 410])
+    plt.xlabel('time (second)')
+    plt.ylabel('node_ ' + str(i))
+    if i < du.get('n_node') - 1:
+        plt.gca().axes.get_xaxis().set_visible(False)
+    plt.legend()
+plt.savefig(os.path.join(IMAGE_PATH, 'y_estimation_rnn_' + CONDITION + '.png'), bbox_inches='tight')
+print('DCM-RNN y estimation rMSE = ' + str(tb.rmse(y_rnn, y_true)))
+
+
+
+# check interpolation of SPM
+y_true = spm['y_spm_simulation'][::4]
+y_interpolated = spm['y_true']
+x_axis = np.array(range(0, len(y_true))) / 16
+plt.figure()
+for i in range(du.get('n_node')):
+    plt.subplot(du.get('n_node'), 1, i + 1)
+    plt.plot(x_axis, y_true[:, i], label='True',  alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_interpolated[:, i], '--', label='DCM-SPM', alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_interpolated[:, i] - y_true[:, i], '-.', label='Error', alpha=1, linewidth=1.0)
+    plt.xlim([0, 410])
+    plt.xlabel('time (second)')
+    plt.ylabel('node_ ' + str(i))
+    if i < du.get('n_node') - 1:
+        plt.gca().axes.get_xaxis().set_visible(False)
+    plt.legend()
+# plt.savefig(os.path.join(IMAGE_PATH, 'y_interpolation_spm_' + CONDITION + '.png'), bbox_inches='tight')
+print('DCM-SPM y interpolation rMSE = ' + str(tb.rmse(y_interpolated, y_true)))
+
+
+
+# show estimation curves (SPM)
+y_true = spm['y_true']
+y_spm = spm['y_predicted']
+x_axis = np.array(range(0, len(y_true))) / 16
+plt.figure()
+for i in range(du.get('n_node')):
+    plt.subplot(du.get('n_node'), 1, i + 1)
+    plt.plot(x_axis, y_true[:, i], label='True',  alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_spm[:, i], '--', label='DCM-SPM', alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_spm[:, i] - y_true[:, i], '-.', label='Error', alpha=1, linewidth=1.0)
+    plt.xlim([0, 410])
+    plt.xlabel('time (second)')
+    plt.ylabel('node_ ' + str(i))
+    if i < du.get('n_node') - 1:
+        plt.gca().axes.get_xaxis().set_visible(False)
+    plt.legend()
+plt.savefig(os.path.join(IMAGE_PATH, 'y_estimation_spm_' + CONDITION + '.png'), bbox_inches='tight')
+print('DCM-SPM y estimation rMSE = ' + str(tb.rmse(y_spm, y_true)))
+
 
 ## plot the effective connectivity
 plt.figure()

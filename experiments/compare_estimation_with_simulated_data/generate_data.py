@@ -92,7 +92,7 @@ du._secured_data['C'] = np.array([[1.2, 0., 0.], [0., 1.2, 0.], [0., 0., 0.]]).r
 # alpha = H(4) = 0.32
 # E0 = H(5) = 0.4
 # nu0 = theta0 = 40.3
-# epsilon as in put P.epsilon, epsilon = exp(P.epsilon)
+# epsilon as in put P.epsilon, epsilon = exp(P.epsilon), initial of P.epsilon is 0
 hemodynamic_parameter = du.get_standard_hemodynamic_parameters(du.get('n_node'))
 hemodynamic_parameter['alpha'] = 0.32
 hemodynamic_parameter['E0'] = 0.4
@@ -100,7 +100,7 @@ hemodynamic_parameter['k'] = 0.64
 hemodynamic_parameter['gamma'] = 0.32
 hemodynamic_parameter['tao'] = 2.
 
-hemodynamic_parameter['epsilon'] = 0.4
+hemodynamic_parameter['epsilon'] = 1.
 hemodynamic_parameter['V0'] = 4.
 hemodynamic_parameter['TE'] = 0.04
 hemodynamic_parameter['r0'] = 25.
@@ -145,19 +145,24 @@ du = du_original.resample_data_unit()
 pickle.dump(du, open(SAVE_PATH_PKL, 'wb'))
 
 
+
 # create DCM structure for SPM DCM
 core = tb.load_template(CORE_PATH)
 du = tb.DataUnit()
 du.load_parameter_core(core)
 du.recover_data_unit()
+DCM = {}
+DCM['u_original'] = du.get('u')
+DCM['y_rnn_simulation'] = du.get('y')
 du = du.resample_data_unit()
+DCM['u_down_sampled'] = du.get('u')
 
 mask = du.create_support_mask()
 down_sample_rate_u = 1
 # down_sample_rate_y = 128
 down_sample_rate_y = 1
 # covert to DCM needed by SPM
-DCM = {}
+
 DCM['a'] = mask['Wxx']
 DCM['b'] = np.stack(mask['Wxxu'], axis=2)
 DCM['c'] = mask['Wxu']

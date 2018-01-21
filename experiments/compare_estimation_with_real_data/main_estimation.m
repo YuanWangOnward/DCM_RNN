@@ -15,13 +15,13 @@ DCM_corrected = DCM_initial;
 n_node = size(DCM_corrected.a, 1);
 n_stimuli = size(DCM_corrected.c, 2);
 initials = struct;
-initials.A = -eye(n_node) * 0.25;
+initials.A = -eye(n_node) * 0.5;
 initials.B = zeros(n_node, n_node, n_stimuli);
 initials.C = zeros(n_node, n_stimuli);
-initials.C(1, 1) = 0.25;
+initials.C(1, 1) = 0.;
 initials.transit = zeros(n_node, 1);
 initials.decay = zeros(n_node, 1);
-initials.epcilon = log(0.4);
+initials.epcilon = 1;
 DCM_corrected.options.P = initials;
 
 %% confirm integration method

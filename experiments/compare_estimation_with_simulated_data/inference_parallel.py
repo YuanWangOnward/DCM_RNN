@@ -41,17 +41,18 @@ import copy
 import pandas as pd
 import math as mth
 from scipy.interpolate import interp1d
+import time
 
 
 MAX_EPOCHS = 32 * 3
 CHECK_STEPS = 1
 N_RECURRENT_STEP = 192
-DATA_SHIFT = 2
+DATA_SHIFT = 1
 MAX_BACK_TRACK = 16
-MAX_CHANGE = 0.001
+MAX_CHANGE = 0.0005
 BATCH_RANDOM_DROP_RATE = 1.
 
-CONDITION = 'h1_s0_n1'
+CONDITION = 'h1_s0_n0'
 SETTINGS = {}
 SETTINGS['h0_s0_n0'] = {'if_update_h_parameter': False,
                         'if_extended_support': False,
@@ -72,12 +73,12 @@ if SETTINGS[CONDITION]['if_update_h_parameter']:
     trainable_flags = {'Wxx': True,
                        'Wxxu': True,
                        'Wxu': True,
-                       'alpha': True,
-                       'E0': True,
+                       'alpha': False,
+                       'E0': False,
                        'k': True,
-                       'gamma': True,
+                       'gamma': False,
                        'tao': True,
-                       'epsilon': False,
+                       'epsilon': True,
                        'V0': False,
                        'TE': False,
                        'r0': False,
@@ -104,6 +105,7 @@ else:
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data', 'du_DCM_RNN.pkl')
 SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_' + CONDITION + '.pkl')
+timer = {}
 
 # load data
 du = tb.load_template(DATA_PATH)
@@ -120,8 +122,8 @@ x_parameter_initial['C'][0, 0] = 1.
 x_parameter_initial['C'][1, 1] = 1.
 h_parameter_initial = du.get('hemodynamic_parameter')
 
-loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'prior_x':1.,
-                  'Wxx': 1./128, 'Wxxu': 1./128, 'Wxu': 1./128}
+loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'prior_x': 1.,
+                  'Wxx': 1./64, 'Wxxu': 1./1, 'Wxu': 1./1}
 mask = du.create_support_mask()
 if SETTINGS[CONDITION]['if_extended_support']:
     mask['Wxx'] = np.ones((du.get('n_node'), du.get('n_node')))
@@ -137,6 +139,7 @@ du_hat = du.initialize_a_training_unit(x_parameter_initial_in_graph['Wxx'],
                                        np.array(h_parameter_initial))
 
 # build tensorflow model
+timer['build_model'] = time.time()
 print('building model')
 dr = tfm.DcmRnn()
 dr.collect_parameters(du)
@@ -179,6 +182,7 @@ batches = tb.make_batches(data['u'], data_hat['x_initial'], data_hat['h_initial'
                           batch_size=dr.batch_size, if_shuffle=True)
 
 print('start session')
+timer['start_session'] = time.time()
 # start session
 isess = tf.InteractiveSession()
 isess.run(tf.global_variables_initializer())
@@ -193,6 +197,7 @@ step_sizes = []
 for epoch in range(MAX_EPOCHS):
     print('')
     print('epoch:    ' + str(epoch))
+    timer['epoch_' + str(epoch)] = time.time()
     gradients = []
 
     # bar = progressbar.ProgressBar(max_value=len(batches))
@@ -312,8 +317,12 @@ for epoch in range(MAX_EPOCHS):
     print(du_hat.get('Wxu'))
     print(du_hat.get('hemodynamic_parameter'))
     pickle.dump(du_hat, open(SAVE_PATH, 'wb'))
-
+timer['end'] = time.time()
 print('optimization finished.')
+
+du_hat.y_true = du.get('y')
+du_hat.timer = timer
+pickle.dump(du_hat, open(SAVE_PATH, 'wb'))
 
 for i in range(dr.n_region):
     plt.subplot(dr.n_region, 1, i + 1)

@@ -1,5 +1,5 @@
 %% read DCM basic configuration created from python size
-CONDITION = 'h1_s0_n1';
+CONDITION = 'h1_s0_n0';
 SETTINGS = struct;
 if strcmp(CONDITION, 'h1_s0_n0')
     SETTINGS.(CONDITION) = struct;
@@ -36,8 +36,51 @@ if SETTINGS.(CONDITION).if_noised_y
     DCM_corrected.Y.y = DCM_corrected.Y.y_noised;
 end
 
+%% chose integration method
+DCM_corrected.IS     = 'spm_int_J';
 
-%% set initial values of parameters
+%% run simulation first to avoid bias
+n_node = size(DCM_corrected.a, 1);
+n_stimuli = size(DCM_corrected.c, 2);
+h_parameters = DCM_corrected.du_data.hemodynamic_parameter;
+
+initials = struct;
+initials.A = [-0.8 0 0; 0 -0.8 0; 0.4 0.4 -0.8];
+initials.B = zeros(n_node, n_node, n_stimuli);
+initials.B(3, 1, 3)=-0.2;
+initials.C = zeros(n_node, n_stimuli);
+initials.C(1, 1) = 1.2;
+initials.C(2, 2) = 1.2;
+initials.D =zeros(n_node, n_node, n_stimuli);  % delay is not used
+initials.transit = log(struct2vector(h_parameters.tao)./ 2);
+initials.decay = log(struct2vector(h_parameters.k)./ 0.64);
+initials.epsilon = log(mean(struct2vector(h_parameters.epsilon)));
+DCM_corrected.options.P = initials;
+
+DCM_corrected.U.u = DCM_corrected.u_original;
+DCM_corrected.U.dt = 1 / 64;
+% DCM_corrected.v = length(DCM_corrected.u_original);
+
+M = prepare_model_configuration(DCM_corrected);
+y_spm_simulation = spm_int_J(initials, M, DCM_corrected.U);
+
+% check results
+y_rnn = DCM_corrected.y_rnn_simulation;
+n_node = double(DCM_initial.du_data.n_node);
+for n = 1: n_node
+    subplot(n_node, 1, n)
+    hold on
+    plot(y_rnn(:, n))
+    plot(y_spm_simulation(:, n), '--')
+    plot(y_spm_simulation(:, n)-y_rnn(:, n), '.')
+    % plot(DCM_estimated.R(:, n), '--')
+    hold off
+end
+shg
+norm(y_rnn-y_spm_simulation)/norm(y_spm_simulation)
+
+
+%% set initial values of parameters for estimation
 n_node = size(DCM_corrected.a, 1);
 n_stimuli = size(DCM_corrected.c, 2);
 h_parameters = DCM_corrected.du_data.hemodynamic_parameter;
@@ -50,22 +93,62 @@ initials.C(1, 1) = 1;
 initials.C(2, 2) = 1;
 initials.transit = log(struct2vector(h_parameters.tao)./ 2);
 initials.decay = log(struct2vector(h_parameters.k)./ 0.64);
-initials.epcilon = log(mean(struct2vector(h_parameters.epsilon)));
+initials.epsilon = log(mean(struct2vector(h_parameters.epsilon)));
 DCM_corrected.options.P = initials;
 
-%% chose integration method
-DCM_corrected.IS     = 'spm_int_J';
+%% re-sample spm simulated data for estimation
+down_sample_factor = 128;
+up_sample_factor = 32;
+% y_temp = y_spm_simulation(1:down_sample_factor:end,:);
+% y_resampled = zeros(round(length(y_spm_simulation) / down_sample_factor * ...
+%     up_sample_factor), n_node);
+% for n = 1: n_node
+%     y_resampled(:,n) = interp(y_temp(:,n), up_sample_factor);
+% end
+% DCM_corrected.U.dt = 1 / 16;
+% DCM_corrected.U.u = DCM_corrected.u_down_sampled;
+% DCM_corrected.Y.y = y_resampled;
+
+n_down_sampled = round(length(y_spm_simulation) / down_sample_factor) + 1;
+y_down_sampled = y_spm_simulation([1:down_sample_factor:end end],:);
+x_down_sampled = [0:n_down_sampled - 1] / (n_down_sampled - 1);
+
+n_up_sampled = round((n_down_sampled - 1) * up_sample_factor) + 1;
+x_up_sampled = [0: n_up_sampled - 1] / (n_up_sampled - 1);
+y_up_sampled = interp1(x_down_sampled,y_down_sampled,x_up_sampled,'spline');
+
+y_resampled = y_up_sampled(1:end -1, :);
+
+DCM_corrected.U.dt = 1 / 16;
+DCM_corrected.U.u = DCM_corrected.u_down_sampled;
+DCM_corrected.Y.y = y_resampled;
+
+% check results
+x_axis = [1:length(y_resampled)] / length(y_resampled);
+for n = 1: n_node
+    subplot(n_node, 1, n)
+    hold on
+    plot(x_axis, y_spm_simulation(1:4:end, n))
+    plot(x_axis, y_resampled(:, n), '--')
+    plot(x_axis, y_resampled(:, n)-y_spm_simulation(1:4:end, n), '.')
+    % plot(DCM_estimated.R(:, n), '--')
+    hold off
+end
+shg
+norm(y_resampled(:, n)-y_spm_simulation(1:4:end, n))/norm(y_spm_simulation(1:4:end, n))
+
+
 
 %% estimation
 DCM_estimated = spm_dcm_estimate_modified(DCM_corrected);
 
 
 %% check results
-y_true = DCM_estimated.Y.y / DCM_estimated.Y.scale;
+y_true = DCM_corrected.Y.y;
 y_predicted = (DCM_estimated.Y.y - DCM_estimated.R) / DCM_estimated.Y.scale;
 n_node = double(DCM_initial.du_data.n_node);
 
-
+figure
 for n = 1: n_node
     subplot(n_node, 1, n)
     hold on
@@ -110,7 +193,7 @@ save(SAVE_PATH, 'a',...
     'transit',...
     'decay',...
     'epsilon',...
-    'y_true', 'y_predicted')
+    'y_spm_simulation', 'y_true', 'y_predicted')
     
 
 

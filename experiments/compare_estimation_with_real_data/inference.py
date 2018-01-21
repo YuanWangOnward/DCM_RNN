@@ -60,9 +60,9 @@ SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_dcm_rnn.pkl')
 SAVE_EXTENDED_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_dcm_rnn_extended.pkl')
 
 
-MAX_EPOCHS = 32 * 3
+MAX_EPOCHS = 32 * 5
 CHECK_STEPS = 1
-N_RECURRENT_STEP = 192
+N_RECURRENT_STEP = 256
 DATA_SHIFT = 2
 MAX_BACK_TRACK = 8
 MAX_CHANGE = 0.001
@@ -94,10 +94,10 @@ confounds = idct(np.eye(n_time_point)[:, :N_CONFOUNDS], axis=0, norm='ortho')
 # settings
 n_region = 3
 n_stimuli = 3
-A = -np.eye(n_region) * 0.25
+A = -np.eye(n_region) * 0.5
 B = [np.zeros((n_region, n_region))] * n_region
 C = np.zeros((n_region, n_stimuli))
-C[0, 0] = 0.25
+C[0, 0] = 0.
 x_parameter_initial = {'A': A, 'B': B, 'C': C}
 x_parameter_initial_in_graph = du.calculate_dcm_rnn_x_matrices(x_parameter_initial['A'],
                                                                x_parameter_initial['B'],
@@ -346,6 +346,7 @@ du_hat.extended_data['u_upsampled'] = spm_data['u_upsampled']
 du_hat.extended_data['y_upsampled'] = spm_data['y_upsampled']
 du_hat.extended_data['y_reproduced'] = y_reproduced
 du_hat.extended_data['confounds'] = confounds
+du_hat.extended_data['y_noise'] = isess.run(dr.y_noise)
 pickle.dump(du_hat, open(SAVE_EXTENDED_PATH, 'wb'))
 
 
