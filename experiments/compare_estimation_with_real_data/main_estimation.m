@@ -18,10 +18,9 @@ initials = struct;
 initials.A = -eye(n_node) * 0.5;
 initials.B = zeros(n_node, n_node, n_stimuli);
 initials.C = zeros(n_node, n_stimuli);
-initials.C(1, 1) = 0.;
 initials.transit = zeros(n_node, 1);
 initials.decay = zeros(n_node, 1);
-initials.epcilon = 1;
+initials.epcilon = 0;
 DCM_corrected.options.P = initials;
 
 %% confirm integration method
@@ -30,7 +29,6 @@ DCM_corrected.IS = 'spm_int_J';
 %% estimation
 DCM_estimated = spm_dcm_estimate_modified(DCM_corrected);
 % DCM_estimated = spm_dcm_estimate(DCM_corrected);
-
 
 %% check results
 y_true = DCM_estimated.Y.y / DCM_estimated.Y.scale;

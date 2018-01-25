@@ -125,8 +125,8 @@ def plot_effective_connectivity(original_data, du_rnn, spm):
     n_bar = len(tickets)
     left = np.array(range(n_bar)) * 3
 
-    plt.bar(left, heights['rnn'], width, label='DCM-RNN estimation')
-    plt.bar(left + width, heights['spm'], width, label='SPM estimation')
+    plt.bar(left, heights['rnn'], width, label='DCM-RNN')
+    plt.bar(left + width, heights['spm'], width, label='DCM-SPM')
     plt.xticks(left + width / 2, tickets, rotation='vertical')
     plt.grid()
     plt.legend()
@@ -160,7 +160,7 @@ x_axis = np.array(range(du_rnn.get('y').shape[0])) * du_rnn.get('t_delta')
 for i in range(du_rnn.get('n_stimuli')):
     plt.subplot(du_rnn.get('n_stimuli'), 1, i + 1)
     plt.plot(x_axis, du_rnn.extended_data['u_upsampled'][:, i], linewidth=1.0)
-    # plt.xlim([0, 1510])
+    plt.xlim([0, 1510])
     plt.xlabel('time (second)')
     plt.ylabel(original_data['stimulus_names'][i])
     if i < n_node - 1:
@@ -174,15 +174,16 @@ plt.savefig(os.path.join(IMAGE_PATH, 'input.png'), bbox_inches='tight')
 y_true = spm['y_true']
 y_rnn = du_rnn.resample(du_rnn.extended_data['y_reproduced'], y_true.shape, order=3)
 y_spm = spm['y_predicted']
-x_axis = np.array(range(spm['y_predicted'].shape[0])) * original_data['TR']
+x_axis = np.array(range(y_rnn.shape[0])) * du_rnn.get('t_delta')
 
 # plt.figure(figsize=(8, 4), dpi=300)
+plt.figure()
 for i in range(n_node):
     plt.subplot(n_node, 1, i + 1)
-    plt.plot(x_axis, y_true[:, i], linewidth=1.0, label='Acquired')
+    plt.plot(x_axis, y_true[:, i], linewidth=1.0, label='True')
     plt.plot(x_axis, y_rnn[:, i], '--', linewidth=1.2, label='DCM-RNN')
-    plt.plot(x_axis, y_spm[:, i], '-.', linewidth=1.2, label='SPM')
-    #plt.xlim([0, 1510])
+    plt.plot(x_axis, y_spm[:, i], '-.', linewidth=1.2, label='DCM-SPM')
+    plt.xlim([0, 1510])
     plt.xlabel('time (second)')
     plt.ylabel(original_data['node_names'][i])
     plt.legend(loc=1)
@@ -195,6 +196,20 @@ plt.savefig(os.path.join(IMAGE_PATH, 'fMRIs.png'), bbox_inches='tight')
 
 print('DCM-RNN y rMSE = ' + str(tb.rmse(y_rnn, y_true)))
 print('SPM DCM y rMSE = ' + str(tb.rmse(y_spm, y_true)))
+
+## plot the effective connectivity
+plt.figure()
+plot_effective_connectivity(original_data, du_rnn, spm)
+plt.savefig(os.path.join(IMAGE_PATH, 'ABC.png'), bbox_inches='tight')
+
+# calculate rmse
+connectivity_rnn = combine_abc(du_rnn.get('A'), du_rnn.get('B'), du_rnn.get('C'))
+connectivity_spm = combine_abc(spm['a'], spm['b'], spm['c'])
+
+print('DCM-RNN connectivity l1 = ' + str(sum(abs(connectivity_rnn))))
+print('SPM DCM connectivity l1 = ' + str(sum(abs(connectivity_spm))))
+
+'''
 
 
 # plt hemodynamic kernels
@@ -216,15 +231,4 @@ t_spm, k_spm = du_spm.get_hemodynamic_kernel()
 plt.plot(t_rnn, k_rnn)
 plt.plot(t_spm, k_spm)
 
-
-## plot the effective connectivity
-plt.figure()
-plot_effective_connectivity(original_data, du_rnn, spm)
-plt.savefig(os.path.join(IMAGE_PATH, 'ABC.png'), bbox_inches='tight')
-
-# calculate rmse
-connectivity_rnn = combine_abc(du_rnn.get('A'), du_rnn.get('B'), du_rnn.get('C'))
-connectivity_spm = combine_abc(spm['a'], spm['b'], spm['c'])
-
-print('DCM-RNN connectivity l1 = ' + str(sum(abs(connectivity_rnn))))
-print('SPM DCM connectivity l1 = ' + str(sum(abs(connectivity_spm))))
+'''

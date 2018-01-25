@@ -1237,7 +1237,7 @@ class DcmRnn(Initialization):
                 self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
                                                  self.loss_weighting['prior_x'] * self.loss_prior_x,
                                                  self.loss_weighting['prior'] * self.loss_prior_h,
-                                                 tf.square(self.y_noise - 6) / 256],
+                                                 0.5 * tf.square(self.y_noise - 6) / 256],
                                                     name='loss_total')
 
         if self.if_training:

@@ -66,7 +66,7 @@ if __name__ == '__main__':
         plt.figure(1)
         plt.bar(data[1][:n_bin - 1] * 100, data[0][:n_bin - 1] / sum(data[0]) * 100, width=(bins[1] - bins[0]) * 100,
                 alpha=0.75, label=labels[n])
-        plt.xlabel('relative mean square error (%)')
+        plt.xlabel('relative root mean square error (%)')
         plt.ylabel('percentage (%)')
         plt.legend()
 

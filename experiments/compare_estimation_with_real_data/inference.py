@@ -60,13 +60,13 @@ SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_dcm_rnn.pkl')
 SAVE_EXTENDED_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_dcm_rnn_extended.pkl')
 
 
-MAX_EPOCHS = 32 * 5
+MAX_EPOCHS = 32 * 3
 CHECK_STEPS = 1
 N_RECURRENT_STEP = 256
 DATA_SHIFT = 2
 MAX_BACK_TRACK = 8
 MAX_CHANGE = 0.001
-BATCH_RANDOM_DROP_RATE = 1.
+BATCH_RANDOM_DROP_RATE = 0.5
 TARGET_T_DELTA = 1. / 16
 N_CONFOUNDS = 19
 
@@ -106,16 +106,16 @@ x_parameter_initial_in_graph = du.calculate_dcm_rnn_x_matrices(x_parameter_initi
 h_parameter_initial = du.get('hemodynamic_parameter')
 
 loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'prior_x': 1.,
-                  'Wxx': 1./128, 'Wxxu': 1./128, 'Wxu': 1./128}
+                  'Wxx': 1./64, 'Wxxu': 1., 'Wxu': 1.}
 trainable_flags = trainable_flags = {'Wxx': True,
                        'Wxxu': True,
                        'Wxu': True,
-                       'alpha': True,
-                       'E0': True,
+                       'alpha': False,
+                       'E0': False,
                        'k': True,
-                       'gamma': True,
+                       'gamma': False,
                        'tao': True,
-                       'epsilon': False,
+                       'epsilon': True,
                        'V0': False,
                        'TE': False,
                        'r0': False,
@@ -167,8 +167,6 @@ dr.trainable_flags = trainable_flags
 dr.build_main_graph_parallel(neural_parameter_initial=x_parameter_initial,
                              hemodynamic_parameter_initial=h_parameter_initial)
 
-
-
 # process after building the main graph
 dr.support_masks = dr.setup_support_mask(mask)
 dr.x_parameter_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
@@ -176,7 +174,6 @@ dr.x_parameter_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARI
 dr.trainable_variables_nodes = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 dr.trainable_variables_names = [v.name for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 du_hat.variable_names_in_graph = du_hat.parse_variable_names(dr.trainable_variables_names)
-
 
 # prepare data for training
 y_target = get_target_curve(du_hat.get('y'), confounds, spm_data['y_upsampled'])
@@ -322,9 +319,9 @@ for epoch in range(MAX_EPOCHS):
     print('loss_prediction_original:    ' + str(loss_prediction_original))
     print('reduced prediction:    ' + str(loss_differences[-1]))
     print('reduced prediction persentage:    ' + str(loss_differences[-1] / loss_prediction_original))
-    print(du_hat.get('Wxx'))
-    print(du_hat.get('Wxxu'))
-    print(du_hat.get('Wxu'))
+    print((du_hat.get('Wxx') - np.eye(du_hat.get('n_node'))) / du_hat.get('t_delta'))
+    print([du_hat.get('Wxxu')[i] / du_hat.get('t_delta') for i in range(du_hat.get('n_node'))])
+    print(du_hat.get('Wxu') / du_hat.get('t_delta'))
     print(du_hat.get('hemodynamic_parameter'))
     pickle.dump(du_hat, open(SAVE_PATH, 'wb'))
 print('optimization finished.')

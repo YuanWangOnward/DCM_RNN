@@ -57,7 +57,7 @@ if __name__ == '__main__':
         data = plt.hist(temp, bins, normed=1, alpha=1.)
         # plt.figure(dpi=300)
         plt.bar(data[1][:128] * 100, data[0][:128]/sum(data[0][:128]) * 100, width=(bins[1]-bins[0]) * 100)
-        plt.xlabel('relative mean square error (%)')
+        plt.xlabel('relative root mean square error (%)')
         plt.ylabel('percentage (%)')
         # plt.legend()
 
