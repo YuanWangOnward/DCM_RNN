@@ -45,7 +45,15 @@ import time
 import scipy.io
 
 
-def calculate_loss(du):
+
+'''
+du_hat.update_trainable_variables(grads_and_vars, step_size=0)
+du_hat.regenerate_data()
+y_hat = du_hat.get('y')
+loss_prediction = tb.mse(y_hat, du.get('y'))
+'''
+
+def calculate_loss(du_hat, variable_names, grads_and_vars, step_size):
     pass
 
 MAX_EPOCHS = 32 * 3
@@ -224,7 +232,6 @@ for epoch in range(MAX_EPOCHS):
 
     du_hat.update_trainable_variables(grads_and_vars, step_size=0)
     du_hat.regenerate_data()
-
     y_hat_original = du_hat.get('y')
     loss_prediction_original = tb.mse(y_hat_original, du.get('y'))
 

@@ -2520,6 +2520,8 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                     elif n == 'x_entire':
                         self._secured_data['x'] = v[-self.get('n_time_point'):]
                     # self._secured_data[n] = v
+                    else:
+                        warnings.warn( 'Updating rule is not found for " ' + n + '"')
 
 
     def regenerate_data(self, u=None, initial_x_state=None, initial_h_state=None):
