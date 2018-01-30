@@ -143,6 +143,17 @@ norm(y_resampled(:, n)-y_spm_simulation(1:4:end, n))/norm(y_spm_simulation(1:4:e
 DCM_estimated = spm_dcm_estimate_modified(DCM_corrected);
 
 
+%temp  = DCM_corrected;
+%temp.options.P = DCM_estimated.Ep;
+% DCM_corrected.options.P.A = a;
+% DCM_corrected.options.P.B = b;
+% DCM_corrected.options.P.C = c;
+% DCM_corrected.options.P.D = zeros(n_node, n_node, 0);
+% DCM_corrected.Ep.transit = transit;
+% DCM_corrected.Ep.decay = decay;
+% DCM_corrected.Ep.epsilon = epsilon;
+% free_energy(DCM_corrected)
+
 %% check results
 y_true = DCM_corrected.Y.y;
 y_predicted = (DCM_estimated.Y.y - DCM_estimated.R) / DCM_estimated.Y.scale;
@@ -187,13 +198,15 @@ transit = DCM_estimated.Ep.transit;
 decay = DCM_estimated.Ep.decay;
 epsilon = DCM_estimated.Ep.epsilon;
 
-save(SAVE_PATH, 'a',...
-    'b',...
-    'c',...
-    'transit',...
-    'decay',...
-    'epsilon',...
-    'y_spm_simulation', 'y_true', 'y_predicted')
+save([SAVE_PATH(1:end-4), '_DCM', '.mat'], 'DCM_estimated')
+
+% save(SAVE_PATH, 'a',...
+%     'b',...
+%     'c',...
+%     'transit',...
+%     'decay',...
+%     'epsilon',...
+%     'y_spm_simulation', 'y_true', 'y_predicted')
     
 
 

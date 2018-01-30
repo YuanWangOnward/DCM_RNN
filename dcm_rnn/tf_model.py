@@ -1168,18 +1168,22 @@ class DcmRnn(Initialization):
         # observation noise variance, iid Gaussian noise assumed
         # 1 / 6 initial value follows the one in SPM12 ???
         with tf.variable_scope(self.variable_scope_name_hyper_para):
-            self.y_noise = tf.get_variable('y_noise', dtype=tf.float32, initializer=(1. / 6))
+            self.y_noise = tf.get_variable('y_noise', dtype=tf.float32,
+                                           initializer=np.ones(self.n_region, dtype=np.float32) * 6.0)
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[None, self.n_recurrent_step, self.n_region],
                                      name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
             # self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
             # self.loss_sparsity = self.add_loss_sparsity()
             # self.loss_prior = self.add_loss_prior(self.h_parameters)
-            self.loss_prediction = tf.reduce_sum([0.5 * self.se(self.y_true, self.y_predicted_stacked) / self.y_noise,
-                                                  0.5 * self.n_region * self.n_time_point * tf.log(self.y_noise)],
-                                                 name='loss_prediction')
-            self.loss_prior_x = self.add_loss_prior_x()
-            self.loss_prior_h = self.add_loss_prior_h(self.h_parameters, if_unified_variance=True)
+            self.loss_prediction = tf.reduce_sum(
+                [0.5 * self.se(self.y_true[:, :, r], self.y_predicted_stacked[:, :, r]) / self.y_noise[r]
+                 for r in range(self.n_region)]
+                + [0.5 * self.batch_size * self.n_recurrent_step * tf.log(self.y_noise[r])
+                   for r in range(self.n_region)],
+                name='loss_prediction')
+            self.loss_prior_x = self.add_loss_prior_x() * self.batch_size
+            self.loss_prior_h = self.add_loss_prior_h(self.h_parameters, if_unified_variance=True) * self.batch_size
             if self.if_resting_state:
 
                 '''
@@ -1237,8 +1241,8 @@ class DcmRnn(Initialization):
                 self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
                                                  self.loss_weighting['prior_x'] * self.loss_prior_x,
                                                  self.loss_weighting['prior'] * self.loss_prior_h,
-                                                 0.5 * tf.square(self.y_noise - 6) / 256],
-                                                    name='loss_total')
+                                                 0.5 * self.batch_size * tf.reduce_sum(tf.square(self.y_noise - 6.) / 128.)],
+                                                name='loss_total')
 
         if self.if_training:
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)

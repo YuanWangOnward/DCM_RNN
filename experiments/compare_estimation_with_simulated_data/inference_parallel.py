@@ -42,14 +42,18 @@ import pandas as pd
 import math as mth
 from scipy.interpolate import interp1d
 import time
+import scipy.io
 
+
+def calculate_loss(du):
+    pass
 
 MAX_EPOCHS = 32 * 3
 CHECK_STEPS = 1
 N_RECURRENT_STEP = 192
 DATA_SHIFT = 1
 MAX_BACK_TRACK = 16
-MAX_CHANGE = 0.0005
+MAX_CHANGE = 0.0015
 BATCH_RANDOM_DROP_RATE = 1.
 
 CONDITION = 'h1_s0_n0'
@@ -105,6 +109,8 @@ else:
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data', 'du_DCM_RNN.pkl')
 SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_' + CONDITION + '.pkl')
+SAVE_PATH_FREE_ENERGY = os.path.join(EXPERIMENT_PATH, 'results', 'free_energy_rnn_' + CONDITION + '.mat')
+
 timer = {}
 
 # load data
@@ -244,6 +250,7 @@ for epoch in range(MAX_EPOCHS):
     count = 0
     du_hat.update_trainable_variables(grads_and_vars, step_size)
 
+
     Wxx = du_hat.get('Wxx')
     stable_flag = du.check_transition_matrix(Wxx, 1.)
     while not stable_flag:
@@ -317,12 +324,39 @@ for epoch in range(MAX_EPOCHS):
     print(du_hat.get('Wxu'))
     print(du_hat.get('hemodynamic_parameter'))
     pickle.dump(du_hat, open(SAVE_PATH, 'wb'))
+    # save data for free energy calculation
+    y_noise = isess.run(dr.y_noise)
+    print(y_noise)
+    dcm_rnn_free_energy = {}
+    dcm_rnn_free_energy['A'] = du_hat.get('A')
+    dcm_rnn_free_energy['B'] = du_hat.get('B')
+    dcm_rnn_free_energy['C'] = du_hat.get('C')
+    dcm_rnn_free_energy['y'] = du_hat.get('y')
+    dcm_rnn_free_energy['transit'] = np.log(np.array(du_hat.get('hemodynamic_parameter')['tao']) / 2.)
+    dcm_rnn_free_energy['decay'] = np.log(np.array(du_hat.get('hemodynamic_parameter')['k']) / 0.64)
+    dcm_rnn_free_energy['epsilon'] = np.log(np.array(du_hat.get('hemodynamic_parameter')['epsilon']) / 1.)
+    dcm_rnn_free_energy['Ce'] = np.array(np.exp(-y_noise))
+    scipy.io.savemat(SAVE_PATH_FREE_ENERGY, mdict={'dcm_rnn_free_energy': dcm_rnn_free_energy})
 timer['end'] = time.time()
 print('optimization finished.')
 
 du_hat.y_true = du.get('y')
 du_hat.timer = timer
+du_hat.y_noise = isess.run(dr.y_noise)
 pickle.dump(du_hat, open(SAVE_PATH, 'wb'))
+
+# save data for free energy calculation
+dcm_rnn_free_energy = {}
+dcm_rnn_free_energy['A'] = du_hat.get('A')
+dcm_rnn_free_energy['B'] = du_hat.get('B')
+dcm_rnn_free_energy['C'] = du_hat.get('C')
+dcm_rnn_free_energy['y'] = du_hat.get('y')
+dcm_rnn_free_energy['transit'] = np.log(np.array(du_hat.get('hemodynamic_parameter')['tao']) / 2.)
+dcm_rnn_free_energy['decay'] = np.log(np.array(du_hat.get('hemodynamic_parameter')['k']) / 0.64)
+dcm_rnn_free_energy['epsilon'] = np.log(np.array(du_hat.get('hemodynamic_parameter')['epsilon']) / 1.)
+dcm_rnn_free_energy['Ce'] = np.array(np.exp(-du_hat.y_noise))
+scipy.io.savemat(SAVE_PATH_FREE_ENERGY, mdict={'dcm_rnn_free_energy': dcm_rnn_free_energy})
+
 
 for i in range(dr.n_region):
     plt.subplot(dr.n_region, 1, i + 1)
