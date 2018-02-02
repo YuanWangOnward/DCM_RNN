@@ -1,5 +1,5 @@
 %% read DCM basic configuration created from python size
-CONDITION = 'h1_s0_n0';
+CONDITION = 'h1_s0_n1';
 SETTINGS = struct;
 if strcmp(CONDITION, 'h1_s0_n0')
     SETTINGS.(CONDITION) = struct;
@@ -33,6 +33,7 @@ if SETTINGS.(CONDITION).if_extended_support
     DCM_corrected.a = ones(DCM_corrected.n);
 end
 if SETTINGS.(CONDITION).if_noised_y
+    noise = DCM_corrected.Y.y_noised - DCM_corrected.Y.y; 
     DCM_corrected.Y.y = DCM_corrected.Y.y_noised;
 end
 
@@ -138,7 +139,9 @@ shg
 norm(y_resampled(:, n)-y_spm_simulation(1:4:end, n))/norm(y_spm_simulation(1:4:end, n))
 
 
-
+if SETTINGS.(CONDITION).if_noised_y
+    DCM_corrected.Y.y = DCM_corrected.Y.y + noise;
+end
 %% estimation
 DCM_estimated = spm_dcm_estimate_modified(DCM_corrected);
 
@@ -200,13 +203,13 @@ epsilon = DCM_estimated.Ep.epsilon;
 
 save([SAVE_PATH(1:end-4), '_DCM', '.mat'], 'DCM_estimated')
 
-% save(SAVE_PATH, 'a',...
-%     'b',...
-%     'c',...
-%     'transit',...
-%     'decay',...
-%     'epsilon',...
-%     'y_spm_simulation', 'y_true', 'y_predicted')
+save(SAVE_PATH, 'a',...
+    'b',...
+    'c',...
+    'transit',...
+    'decay',...
+    'epsilon',...
+    'y_spm_simulation', 'y_true', 'y_predicted')
     
 
 
