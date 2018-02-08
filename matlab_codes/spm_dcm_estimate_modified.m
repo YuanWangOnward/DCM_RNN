@@ -270,6 +270,14 @@ M.l  = size(x,1);
 M.N  = 64;
 M.dt = 32/M.N;
 M.ns = v;
+%-------- MODIFIED ---------------
+if isfield(DCM,'save_path')
+    M.save_path = DCM.save_path;
+end
+
+if isfield(DCM, 'initial_updating_rate')
+   M.initial_updating_rate = DCM.initial_updating_rate; 
+end
  
  
 % nonlinear system identification (nlsi)

@@ -53,19 +53,20 @@ y_hat = du_hat.get('y')
 loss_prediction = tb.mse(y_hat, du.get('y'))
 '''
 
-def calculate_loss(du_hat, y_true, y_noise, hemodynamic_parameter_mean=None):
+
+def calculate_loss(du_hat, y_true, y_noise, loss_weights, hemodynamic_parameter_mean=None):
     # loss y
     y_e = du_hat.get('y') - y_true
-    loss_y = 0.5 * np.sum([np.sum(y_e[:, r] ** 2 / y_noise[r]) for r in range(du_hat.get('n_node'))])
+    loss_y = loss_weights['y'] * 0.5 * np.sum([np.sum(y_e[:, r] ** 2 * np.exp(y_noise[r])) for r in range(du_hat.get('n_node'))])
 
     # loss q
-    loss_q = 0.5 * du_hat.get('n_time_point') * np.sum([np.log(y_noise[r]) for r in range(du_hat.get('n_node'))])
+    loss_q = loss_weights['q'] * 0.5 * du_hat.get('n_time_point') * np.sum([-y_noise[r] for r in range(du_hat.get('n_node'))])
 
     # loss prior x
-    loss_a = 0.5 * np.sum(np.square(du_hat.get('A'))) / 64
+    loss_a = 0.5 * 64 * np.sum(np.square(du_hat.get('A')))
     loss_b = 0.5 * np.sum([np.square(du_hat.get('B')[r]) for r in range(du_hat.get('n_node'))])
     loss_c = 0.5 * np.sum(np.square(du_hat.get('C')))
-    loss_prior_x = loss_a + loss_b + loss_c
+    loss_prior_x = loss_weights['prior_x'] * (loss_a + loss_b + loss_c)
 
     # loss prior h
     para_h = np.array(du_hat.get('hemodynamic_parameter'))
@@ -75,10 +76,10 @@ def calculate_loss(du_hat, y_true, y_noise, hemodynamic_parameter_mean=None):
                 'mean'
             ])
     mean_h = hemodynamic_parameter_mean
-    loss_prior_h = 0.5 * np.sum(np.square(para_h - mean_h)) / 256
+    loss_prior_h = loss_weights['prior_h'] * 0.5 * np.sum(np.square(para_h - mean_h)) * 256
 
     # loss prior hyper
-    loss_prior_hyper = 0.5 * np.sum(np.square(y_noise - 6)) / 128
+    loss_prior_hyper = loss_weights['prior_hyper'] * 0.5 * np.sum(np.square(y_noise - 6)) * 128
 
     loss_total = loss_y + loss_q + loss_prior_x + loss_prior_h + loss_prior_hyper
 
@@ -92,30 +93,44 @@ def calculate_loss(du_hat, y_true, y_noise, hemodynamic_parameter_mean=None):
 
     return loss
 
-
-def solve_for_noise_variance(du_hat, y_true):
+def solve_for_noise_variance(du_hat, y_true, y_noise, loss_weights):
     y_e = du_hat.get('y') - y_true
     output = np.zeros(du_hat.get('n_node'))
     for r in range(du_hat.get('n_node')):
-        a = 0.5 * np.sum(y_e[:, r] ** 2)
-        b = 0.5 * du_hat.get('n_time_point')
-        p = [1, -6, 64 * b, -64 * a]
-        x = np.roots(p)
-        x = np.real(x[np.imag(x) == 0])
-        # x = x[x > 0 and x <= 6]
-        output[r] = x
+        a = loss_weights['y'] * 0.5 * np.sum(y_e[:, r] ** 2)
+        b = loss_weights['q'] * 0.5 * du_hat.get('n_time_point')
+        temp = y_noise[r]
+        for s in range(512 * 8):
+            l_original = a * np.exp(temp) - b * temp + loss_weights['prior_hyper'] * 0.5 * 128 * (temp - 6) ** 2
+            d_temp = a * np.exp(temp) - b + loss_weights['prior_hyper'] * 128 * (temp - 6)
+            temp = temp - 1 / 512. * np.sign(d_temp)
+            l_updated = a * np.exp(temp) - b * temp + loss_weights['prior_hyper'] * 0.5 * 128 * (temp - 6) ** 2
+            if l_updated >= l_original:
+                break
+        output[r] = temp
     return output
 
+'''
+ls = []
+x_axis = (np.array(range(1000)) - 500) / 1000
+for offset in x_axis:
+    temp = y_noise[0] + offset
+    ls.append(a * np.exp(temp) - b * y_noise[r] + 0.5 * 128 * (temp - 6) ** 2)
+plt.plot(x_axis + y_noise[r], ls)
 
-MAX_EPOCHS = 32 * 2
+'''
+
+
+
+MAX_EPOCHS = 32 * 3
 CHECK_STEPS = 1
 N_RECURRENT_STEP = 192
 DATA_SHIFT = 1
-MAX_BACK_TRACK = 16
-MAX_CHANGE = 0.0015
+MAX_BACK_TRACK = 4
+MAX_CHANGE = 0.002
 BATCH_RANDOM_DROP_RATE = 1.
 
-CONDITION = 'h1_s0_n0'
+CONDITION = 'h1_s0_n1'
 SETTINGS = {}
 SETTINGS['h0_s0_n0'] = {'if_update_h_parameter': False,
                         'if_extended_support': False,
@@ -188,7 +203,7 @@ x_parameter_initial['C'][1, 1] = 1.
 h_parameter_initial = du.get('hemodynamic_parameter')
 
 loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'prior_x': 1.,
-                  'Wxx': 1./64, 'Wxxu': 1./1, 'Wxu': 1./1}
+                  'Wxx': 64., 'Wxxu': 1., 'Wxu': 1.}
 mask = du.create_support_mask()
 if SETTINGS[CONDITION]['if_extended_support']:
     mask['Wxx'] = np.ones((du.get('n_node'), du.get('n_node')))
@@ -203,6 +218,9 @@ du_hat = du.initialize_a_training_unit(x_parameter_initial_in_graph['Wxx'],
                                        x_parameter_initial_in_graph['Wxu'],
                                        np.array(h_parameter_initial))
 
+loss_correction = N_RECURRENT_STEP / du_hat.get('y').shape[0]
+
+
 # build tensorflow model
 timer['build_model'] = time.time()
 print('building model')
@@ -214,6 +232,7 @@ dr.max_back_track_steps = MAX_BACK_TRACK
 dr.max_parameter_change_per_iteration = MAX_CHANGE
 dr.trainable_flags = trainable_flags
 dr.loss_weighting = loss_weighting
+dr.loss_correction = loss_correction
 dr.build_main_graph_parallel(neural_parameter_initial=x_parameter_initial,
                              hemodynamic_parameter_initial=h_parameter_initial)
 
@@ -248,6 +267,7 @@ batches = tb.make_batches(data['u'], data_hat['x_initial'], data_hat['h_initial'
 
 print('start session')
 timer['start_session'] = time.time()
+dr.max_parameter_change_per_iteration = MAX_CHANGE
 # start session
 isess = tf.InteractiveSession()
 isess.run(tf.global_variables_initializer())
@@ -256,6 +276,20 @@ dr.update_variables_in_graph(isess, dr.x_parameter_nodes,
                              + x_parameter_initial_in_graph['Wxxu']
                              + [x_parameter_initial_in_graph['Wxu']])
 
+loss_weights = {
+    'y': 1.,
+    'q': 1.,
+    'prior_x': 16. * 2.,
+    'prior_h': 16. * 2.,
+    'prior_hyper': 16. * 2.
+}
+
+isess.run(tf.assign(dr.loss_y_weight, loss_weights['y']))
+isess.run(tf.assign(dr.loss_q_weight, loss_weights['q']))
+isess.run(tf.assign(dr.loss_prior_x_weight, loss_weights['prior_x']))
+isess.run(tf.assign(dr.loss_prior_h_weight, loss_weights['prior_h']))
+isess.run(tf.assign(dr.loss_prior_hyper_weight, loss_weights['prior_hyper']))
+dr.max_parameter_change_per_iteration = MAX_CHANGE
 print('start inference')
 loss_differences = []
 step_sizes = []
@@ -283,7 +317,7 @@ for epoch in range(MAX_EPOCHS):
     step_size = 0
     y_noise_index = du_hat.variable_names_in_graph.index('y_noise')
     y_noise = grads_and_vars[y_noise_index][1] - grads_and_vars[y_noise_index][0] * step_size
-    loss_original = calculate_loss(du_hat, du.get('y'), y_noise, np.array(du.get('hemodynamic_parameter')))
+    loss_original = calculate_loss(du_hat, du.get('y'), y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
     # loss_original = loss['total']
 
     ## sum gradients
@@ -332,7 +366,7 @@ for epoch in range(MAX_EPOCHS):
         # y_hat = du_hat.get('y')
         # loss_updated = tb.mse(y_hat, du.get('y'))
 
-        loss_updated = calculate_loss(du_hat, du.get('y'), y_noise, np.array(du.get('hemodynamic_parameter')))
+        loss_updated = calculate_loss(du_hat, du.get('y'), y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
         # loss_updated = loss['total']
 
     except:
@@ -361,14 +395,14 @@ for epoch in range(MAX_EPOCHS):
 
             #y_hat = du_hat.get('y')
             #loss_updated = tb.mse(y_hat, du.get('y'))
-            loss_updated = calculate_loss(du_hat, du.get('y'), y_noise, np.array(du.get('hemodynamic_parameter')))
+            loss_updated = calculate_loss(du_hat, du.get('y'), y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
         except:
             pass
         if step_size == 0.0:
             break
 
     # calculate the optimal noise variance
-    y_noise = solve_for_noise_variance(du_hat, du.get('y'))
+    y_noise = solve_for_noise_variance(du_hat, du.get('y'), y_noise, loss_weights)
     parameters_updated = [-val[0] * step_size + val[1] for val in grads_and_vars]
     y_noise_index = du_hat.variable_names_in_graph.index('y_noise')
     parameters_updated[y_noise_index] = y_noise
@@ -447,3 +481,18 @@ for i in range(dr.n_region):
     x_axis = du.get('t_delta') * np.array(range(0, du.get('y').shape[0]))
     plt.plot(x_axis, du.get('y')[:, i])
     plt.plot(x_axis, du_hat.get('y')[:, i], '--')
+
+
+r=2
+y_e = du_hat.get('y') - y_true
+a = 0.5 * np.sum(y_e[:, r] ** 2)
+b = 0.5 * du_hat.get('n_time_point')
+ls = []
+for i in range(2000):
+    temp = (i - 1000) / 1000
+    r = 0
+    l = a * np.exp(temp) - b * y_noise[r] + 0.5 * 128 * (temp - 6) ** 2
+    ls.append(l)
+x_axis = (np.array(range(2000)) - 1000) / 1000
+plt.plot(x_axis, np.array(ls))
+

@@ -299,7 +299,9 @@ Ep    = spm_unvec(spm_vec(pE) + V*p(ip),pE);
 criterion = [0 0 0 0];
 
 C.F   = -Inf;                                   % free energy
-v     = -4;                                     % log ascent rate
+%----------- MODIFED -----------------
+% v     = -4;                                     % log ascent rate
+v = M.initial_updating_rate;
 dFdh  = zeros(nh,1);
 dFdhh = zeros(nh,nh);
 for k = 1:M.Nmax
@@ -436,7 +438,7 @@ for k = 1:M.Nmax
     % objective function: F(p) = log evidence - divergence
     %----------------------------------------------------------------------
     L(1) = spm_logdet(iS)*nq/2  - real(e'*iS*e)/2 - ny*log(8*atan(1))/2;            ...
-    L(2) = spm_logdet(ipC*Cp)/2 - p'*ipC*p/2;
+        L(2) = spm_logdet(ipC*Cp)/2 - p'*ipC*p/2;
     L(3) = spm_logdet(ihC*Ch)/2 - d'*ihC*d/2;
     F    = sum(L);
     
@@ -487,6 +489,7 @@ for k = 1:M.Nmax
         str   = 'EM:(-)';
         
     end
+    
     
     % E-Step: update
     %======================================================================
@@ -592,3 +595,5 @@ Cp     = V*C.Cp(ip,ip)*V';
 Eh     = C.h;
 F      = C.F;
 L      = C.L;
+
+

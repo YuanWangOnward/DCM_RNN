@@ -142,6 +142,17 @@ norm(y_resampled(:, n)-y_spm_simulation(1:4:end, n))/norm(y_spm_simulation(1:4:e
 if SETTINGS.(CONDITION).if_noised_y
     DCM_corrected.Y.y = DCM_corrected.Y.y + noise;
 end
+
+%% increase prior variance to compensate for increased data by upsampling
+DCM_corrected.d = zeros(n_node, n_node, 0);
+[pE,pC,x]  = spm_dcm_fmri_priors_modified(DCM_corrected.a,DCM_corrected.b,DCM_corrected.c,DCM_corrected.d,DCM_corrected.options);
+DCM_corrected.options.pC = pC / (2 * 16);
+DCM_corrected.options.hC = 1/128 / (2 * 16);
+
+%% set initial updating rate
+% SPM default value is -4
+DCM_corrected.initial_updating_rate = -4;
+
 %% estimation
 DCM_estimated = spm_dcm_estimate_modified(DCM_corrected);
 

@@ -76,6 +76,7 @@ class DcmRnn(Initialization):
         self.max_parameter_change_per_iteration = 0.001
         self.max_parameter_change_decreasing_rate = 0.9
         self.max_back_track_steps = 16
+        self.loss_correction = 1  # re-weighting loss terms according to segment length and total signal length
 
         # extension setting
         self.x_nonlinearity_type = 'None'
@@ -972,7 +973,7 @@ class DcmRnn(Initialization):
         if if_unified_variance is None:
             temp = tf.square(tf.reshape(tf.boolean_mask(h_parameters, mask), [-1]) - mean) / tf.square(std)
         else:
-            temp = tf.square(tf.reshape(tf.boolean_mask(h_parameters, mask), [-1]) - mean) / 256
+            temp = tf.square(tf.reshape(tf.boolean_mask(h_parameters, mask), [-1]) - mean) * 256
         self.loss_prior = 0.5 * tf.reduce_sum(temp, name="loss_prior_h")
         return self.loss_prior
 
@@ -1192,17 +1193,20 @@ class DcmRnn(Initialization):
 
             self.loss_y = tf.reduce_sum(
                 [self.loss_y_weight * 0.5 * self.se(self.y_true[:, :, r], self.y_predicted_stacked[:, :, r])
-                 / self.y_noise[r]
+                 * tf.exp(self.y_noise[r])
                  for r in range(self.n_region)], name='loss_y')
 
             # self.batch_size to correct bias caused by parallelism
+            # self.loss_q = tf.reduce_sum(
+            #     [self.loss_q_weight * 0.5 * self.batch_size * self.n_recurrent_step *
+            #      tf.log(self.y_noise[r]) for r in range(self.n_region)], name='loss_q')
             self.loss_q = tf.reduce_sum(
-                [self.loss_q_weight * 0.5 * self.batch_size * self.n_recurrent_step *
-                 tf.log(self.y_noise[r]) for r in range(self.n_region)], name='loss_q')
+                            [self.loss_q_weight * 0.5 * self.batch_size * self.n_recurrent_step *
+                             (- self.y_noise[r]) for r in range(self.n_region)], name='loss_q')
 
-            self.loss_prior_x = self.loss_prior_x_weight * self.batch_size / self.t_delta / self.t_delta * self.add_loss_prior_x()
-            self.loss_prior_h = self.loss_prior_h_weight * self.batch_size * self.add_loss_prior_h(self.h_parameters, if_unified_variance=True)
-            self.loss_prior_hyper = self.loss_prior_hyper_weight * 0.5 * self.batch_size * tf.reduce_sum(tf.square(self.y_noise - 6.) / 128.)
+            self.loss_prior_x = self.loss_prior_x_weight * self.batch_size * self.loss_correction / self.t_delta / self.t_delta * self.add_loss_prior_x()
+            self.loss_prior_h = self.loss_prior_h_weight * self.batch_size * self.loss_correction * self.add_loss_prior_h(self.h_parameters, if_unified_variance=True)
+            self.loss_prior_hyper = self.loss_prior_hyper_weight * 0.5 * self.batch_size * self.loss_correction * tf.reduce_sum(tf.square(self.y_noise - 6.) * 128)
 
 
             '''

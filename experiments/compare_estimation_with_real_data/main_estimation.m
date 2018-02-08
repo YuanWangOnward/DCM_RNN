@@ -15,7 +15,7 @@ DCM_corrected = DCM_initial;
 n_node = size(DCM_corrected.a, 1);
 n_stimuli = size(DCM_corrected.c, 2);
 initials = struct;
-initials.A = -eye(n_node) * 0.5;
+initials.A = -eye(n_node) * 1.;
 initials.B = zeros(n_node, n_node, n_stimuli);
 initials.C = zeros(n_node, n_stimuli);
 initials.transit = zeros(n_node, 1);
@@ -25,6 +25,23 @@ DCM_corrected.options.P = initials;
 
 %% confirm integration method
 DCM_corrected.IS = 'spm_int_J';
+
+%% further trim edge between v1 and v5
+DCM_corrected.a(1,2) = 0;
+DCM_corrected.a(2,1) = 0;
+DCM_corrected.a(2,3) = 0;
+
+%% increase prior variance to compensate for increased data by upsampling
+[pE,pC,x]  = spm_dcm_fmri_priors_modified(DCM_corrected.a,DCM_corrected.b,DCM_corrected.c,DCM_corrected.d,DCM_corrected.options);
+DCM_corrected.options.pC = pC / (3.22 * 16);
+DCM_corrected.options.hC = 1/128 / (3.22 * 16);
+
+%% set initial updating rate
+% SPM default value is -4
+DCM_corrected.initial_updating_rate = -14;
+
+%% add save path to save intermedia results
+% DCM_corrected.save_path = SAVE_PATH;
 
 %% estimation
 DCM_estimated = spm_dcm_estimate_modified(DCM_corrected);
@@ -63,7 +80,8 @@ save(SAVE_PATH, ...
     'epsilon',...
     'y_true', 'y_predicted')
     
-
+save([SAVE_PATH(1:end-4), '_DCM', '.mat'], 'DCM_estimated')
+% 
 
 % 
 % 
