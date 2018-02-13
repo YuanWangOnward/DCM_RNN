@@ -172,8 +172,16 @@ x_parameter_initial_in_graph = du.calculate_dcm_rnn_x_matrices(x_parameter_initi
                                                                TARGET_T_DELTA)
 h_parameter_initial = du.get('hemodynamic_parameter')
 
-loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'prior_x': 1.,
-                  'Wxx': 64., 'Wxxu': 1., 'Wxu': 1.}
+lloss_weighting = {
+        'y': 1.,
+        'q': 1.,
+        'prior_x': 1.,
+        'prior_h': 1.,
+        'prior_hyper': 1.,
+        'prior_Wxx': 64.,
+        'prior_Wxxu': 1.,
+        'prior_Wxu': 1.,
+    }
 trainable_flags = trainable_flags = {'Wxx': True,
                        'Wxxu': True,
                        'Wxu': True,

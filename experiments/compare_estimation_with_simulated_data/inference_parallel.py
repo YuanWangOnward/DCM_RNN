@@ -130,7 +130,7 @@ MAX_BACK_TRACK = 4
 MAX_CHANGE = 0.002
 BATCH_RANDOM_DROP_RATE = 1.
 
-CONDITION = 'h1_s0_n1'
+CONDITION = 'h1_s0_n0'
 SETTINGS = {}
 SETTINGS['h0_s0_n0'] = {'if_update_h_parameter': False,
                         'if_extended_support': False,
@@ -202,8 +202,16 @@ x_parameter_initial['C'][0, 0] = 1.
 x_parameter_initial['C'][1, 1] = 1.
 h_parameter_initial = du.get('hemodynamic_parameter')
 
-loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'prior_x': 1.,
-                  'Wxx': 64., 'Wxxu': 1., 'Wxu': 1.}
+loss_weighting = {
+        'y': 1.,
+        'q': 1.,
+        'prior_x': 1.,
+        'prior_h': 1.,
+        'prior_hyper': 1.,
+        'prior_Wxx': 64.,
+        'prior_Wxxu': 1.,
+        'prior_Wxu': 1.,
+    }
 mask = du.create_support_mask()
 if SETTINGS[CONDITION]['if_extended_support']:
     mask['Wxx'] = np.ones((du.get('n_node'), du.get('n_node')))

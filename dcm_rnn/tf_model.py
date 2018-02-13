@@ -81,6 +81,7 @@ class DcmRnn(Initialization):
         # extension setting
         self.x_nonlinearity_type = 'None'
         self.if_resting_state = False
+        self.loss_type_connectivity = 'l2'
 
         # scope name settings
         self.variable_scope_name_u_stacked = variable_scope_name_u_stacked or 'u_stacked'
@@ -136,9 +137,18 @@ class DcmRnn(Initialization):
         self.n_time_point = parameter_package['n_time_point']
 
     def set_up_loss_weighting(self):
-        self.loss_weighting = \
-            {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1., 'smooth': 4.,
-             'u_coefficient_sparsity': 5}
+        self.loss_weighting = {
+            'y': 1.,
+            'q': 1.,
+            'prior_x': 1.,
+            'prior_h': 1.,
+            'prior_hyper': 1.,
+            'prior_Wxx': 64.,
+            'prior_Wxxu': 1.,
+            'prior_Wxu': 1.,
+            'smooth': 4.,
+            'u_coefficient_sparsity': 5
+        }
 
     def create_shared_variables_x(self, neural_parameter_initial):
         """
@@ -953,14 +963,46 @@ class DcmRnn(Initialization):
         self.loss_sparsity = tf.reduce_mean(tf.concat([loss_Wxx, loss_Wxxu, loss_Wxu], axis=0), name="loss_sparsity")
         return self.loss_sparsity
 
-    def add_loss_prior_x(self, loss_weighting=None):
+    def add_loss_prior_x(self, loss_weighting=None, loss_type_connectivity=None):
+
         if loss_weighting == None:
             loss_weighting = self.loss_weighting
-        loss_Wxx = self.se(self.Wxx - np.identity(self.n_region, dtype=np.float32), weight=loss_weighting['Wxx'])
-        loss_Wxxu = self.se(tf.concat([tf.reshape(tf.abs(self.Wxxu[s]), [-1]) for s in range(self.n_stimuli)], axis=0),
-                            weight=loss_weighting['Wxxu'])
-        loss_Wxu = self.se(self.Wxu, weight=loss_weighting['Wxu'])
-        self.loss_prior_x = 0.5 * tf.reduce_sum([loss_Wxx, loss_Wxxu, loss_Wxu], name="loss_prior_x")
+        if loss_type_connectivity == None:
+            loss_type_connectivity = self.loss_type_connectivity
+
+        self.loss_Wxx_weight = tf.get_variable('loss_wxx_weight',
+                                               initializer=np.array(loss_weighting['prior_Wxx'], dtype=np.float32),
+                                               trainable=False)
+        self.loss_Wxxu_weight = tf.get_variable('loss_wxxu_weight',
+                                             initializer=np.array(loss_weighting['prior_Wxxu'], dtype=np.float32),
+                                             trainable=False)
+        self.loss_Wxu_weight = tf.get_variable('loss_wxu_weight',
+                                             initializer=np.array(loss_weighting['prior_Wxu'], dtype=np.float32),
+                                             trainable=False)
+
+        if loss_type_connectivity == 'l2':
+            loss_Wxx = self.se(self.Wxx - np.identity(self.n_region, dtype=np.float32), weight=self.loss_Wxx_weight)
+            loss_Wxxu = self.se(tf.concat([tf.reshape(tf.abs(self.Wxxu[s]), [-1]) for s in range(self.n_stimuli)], axis=0),
+                                weight=self.loss_Wxxu_weight)
+            loss_Wxu = self.se(self.Wxu, weight=self.loss_Wxu_weight)
+            self.loss_prior_x = 0.5 * tf.reduce_sum([loss_Wxx, loss_Wxxu, loss_Wxu], name="loss_prior_x")
+        elif loss_type_connectivity == 'l1':
+            # p(x) = 1 / 2b * exp( - |x - mu] / b)
+            # mean is mu
+            # variance is 2b ** 2
+            loss_Wxx = \
+                self.loss_Wxx_weight * tf.reshape(tf.abs(self.Wxx - np.identity(self.n_region, dtype=np.float32)),
+                                                   [-1])
+            loss_Wxxu = tf.concat([self.loss_Wxxu_weight * tf.reshape(tf.abs(self.Wxxu[s]), [-1])
+                                   for s in range(self.n_stimuli)], axis=0)
+            loss_Wxu = self.loss_Wxu_weight * tf.reshape(tf.abs(self.Wxu), [-1])
+            self.loss_sparsity_Wxx = tf.reduce_sum(loss_Wxx)
+            self.loss_sparsity_Wxxu = tf.reduce_sum(loss_Wxxu)
+            self.loss_sparsity_Wxu = tf.reduce_sum(loss_Wxu)
+            self.loss_prior_x = tf.reduce_sum([self.loss_sparsity_Wxx, self.loss_sparsity_Wxxu, self.loss_sparsity_Wxu], name="loss_prior_x")
+        else:
+            warnings.warn('loss_type_connectivity not valid.')
+            self.loss_prior_x = 0
         return self.loss_prior_x
 
     def add_loss_prior_h(self, h_parameters=None, if_unified_variance=None):

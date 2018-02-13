@@ -121,7 +121,7 @@ def plot_effective_connectivity(du, du_rnn, spm):
     plt.legend()
     plt.ylabel('values')
 
-CONDITION = 'h1_s0_n1'
+CONDITION = 'h1_s0_n0'
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data')
 RESULT_PATH = os.path.join(EXPERIMENT_PATH, 'results')
