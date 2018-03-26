@@ -175,9 +175,9 @@ h_parameter_initial = du.get('hemodynamic_parameter')
 lloss_weighting = {
         'y': 1.,
         'q': 1.,
-        'prior_x': 1.,
-        'prior_h': 1.,
-        'prior_hyper': 1.,
+        'prior_x': 16. * 3.22,
+        'prior_h': 16. * 3.22,
+        'prior_hyper': 16. * 3.22,
         'prior_Wxx': 64.,
         'prior_Wxxu': 1.,
         'prior_Wxu': 1.,

@@ -145,8 +145,11 @@ du_original.recover_data_unit()
 du = du_original.resample_data_unit()
 pickle.dump(du, open(SAVE_PATH_PKL, 'wb'))
 
+
 # create DCM structure for SPM DCM
 core = tb.load_template(CORE_PATH)
+core['if_resting_state'] = False
+core['u_type'] = 'box_train'
 du = tb.DataUnit()
 du.load_parameter_core(core)
 du.recover_data_unit()
@@ -171,6 +174,7 @@ U['dt'] = float(du.get('t_delta') * down_sample_rate_u)
 U['name'] = ['input_0', 'input_1']
 U['u'] = du.get('u')[::int(down_sample_rate_u), :]
 DCM['U'] = U
+DCM['u_original'] = du.get('u')
 
 Y = {}
 Y['dt'] = float(du.get('t_delta') * down_sample_rate_y)

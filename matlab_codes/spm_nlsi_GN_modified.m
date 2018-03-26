@@ -301,7 +301,12 @@ criterion = [0 0 0 0];
 C.F   = -Inf;                                   % free energy
 %----------- MODIFED -----------------
 % v     = -4;                                     % log ascent rate
-v = M.initial_updating_rate;
+if isfield(M, 'initial_updating_rate')
+   v = M.initial_updating_rate;
+else
+   v=-4; 
+end
+
 dFdh  = zeros(nh,1);
 dFdhh = zeros(nh,nh);
 for k = 1:M.Nmax
