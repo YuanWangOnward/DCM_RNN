@@ -156,7 +156,7 @@ for i in range(du.get('n_stimuli')):
     plt.ylabel('stimulus_ ' + str(i))
     if i < du.get('n_node') - 1:
         plt.gca().axes.get_xaxis().set_visible(False)
-plt.savefig(os.path.join(IMAGE_PATH, 'input_' + CONDITION + '.png'), bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'input_' + CONDITION + '.pdf'), format='pdf', bbox_inches='tight')
 
 
 # show simulated curves
@@ -175,7 +175,7 @@ for i in range(du.get('n_node')):
     if i < du.get('n_node') - 1:
         plt.gca().axes.get_xaxis().set_visible(False)
     plt.legend()
-plt.savefig(os.path.join(IMAGE_PATH, 'y_simulation_' + CONDITION + '.png'), bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'y_simulation_' + CONDITION + '.pdf'), format='pdf', bbox_inches='tight')
 print('y simulation rMSE = ' + str(tb.rmse(y_rnn_simulation, y_spm_simulation)))
 
 
@@ -195,7 +195,7 @@ for i in range(du.get('n_node')):
     if i < du.get('n_node') - 1:
         plt.gca().axes.get_xaxis().set_visible(False)
     plt.legend()
-# plt.savefig(os.path.join(IMAGE_PATH, 'y_interpolation_rnn_' + CONDITION + '.png'), bbox_inches='tight')
+# plt.savefig(os.path.join(IMAGE_PATH, 'y_interpolation_rnn_' + CONDITION + '.pdf'), format='pdf', bbox_inches='tight')
 print('DCM-RNN y interpolation rMSE = ' + str(tb.rmse(y_interpolated, y_true)))
 
 
@@ -215,7 +215,7 @@ for i in range(du.get('n_node')):
     if i < du.get('n_node') - 1:
         plt.gca().axes.get_xaxis().set_visible(False)
     plt.legend()
-plt.savefig(os.path.join(IMAGE_PATH, 'y_estimation_rnn_' + CONDITION + '.png'), bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'y_estimation_rnn_' + CONDITION + '.pdf'), format='pdf', bbox_inches='tight')
 print('DCM-RNN y estimation rMSE = ' + str(tb.rmse(y_rnn, y_true)))
 
 
@@ -236,7 +236,7 @@ for i in range(du.get('n_node')):
     if i < du.get('n_node') - 1:
         plt.gca().axes.get_xaxis().set_visible(False)
     plt.legend()
-# plt.savefig(os.path.join(IMAGE_PATH, 'y_interpolation_spm_' + CONDITION + '.png'), bbox_inches='tight')
+# plt.savefig(os.path.join(IMAGE_PATH, 'y_interpolation_spm_' + CONDITION + '.pdf'), format='pdf', bbox_inches='tight')
 print('DCM-SPM y interpolation rMSE = ' + str(tb.rmse(y_interpolated, y_true)))
 
 
@@ -257,14 +257,14 @@ for i in range(du.get('n_node')):
     if i < du.get('n_node') - 1:
         plt.gca().axes.get_xaxis().set_visible(False)
     plt.legend()
-plt.savefig(os.path.join(IMAGE_PATH, 'y_estimation_spm_' + CONDITION + '.png'), bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'y_estimation_spm_' + CONDITION + '.pdf'), format='pdf', bbox_inches='tight')
 print('DCM-SPM y estimation rMSE = ' + str(tb.rmse(y_spm, y_true)))
 
 
 ## plot the effective connectivity
 plt.figure()
 plot_effective_connectivity(du, du_rnn, spm)
-plt.savefig(os.path.join(IMAGE_PATH, 'ABC_' + CONDITION + '.png'), bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'ABC_' + CONDITION + '.pdf'), format='pdf', bbox_inches='tight')
 
 # calculate rmse
 connectivity_true = combine_abc(du.get('A'), du.get('B'), du.get('C'))

@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     plt.grid()
     plt.show()
-    plt.savefig(os.path.join(OUTPUT_DIR, 't_delta.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(OUTPUT_DIR, 't_delta.pdf'), format='pdf', bbox_inches='tight')
 
     rMSEs = pd.DataFrame(rMSEs)
     rMSEs.mean(numeric_only=True)

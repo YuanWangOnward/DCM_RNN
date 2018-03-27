@@ -15,7 +15,6 @@ import pickle
 import copy
 import re
 from collections import Iterable
-import tensorflow as tf
 from math import factorial
 
 def cdr(relative_path, if_print=False):
@@ -460,7 +459,6 @@ def neuron_fire_kernel(x):
 '''
 
 
-
 class OrderedDict(collections.OrderedDict):
     def __init__(self, dictionary=None, key_order=None):
         if dictionary == None and key_order == None:
@@ -586,7 +584,7 @@ class Initialization:
                  B_init_low=None, B_init_high=None,
                  B_non_zero_probability=None,
                  B_sign_probability=None,
-                 C_init_low=None, C_init_high=None,
+                 C_init_low=None, C_init_high=None, C_negative_rate=None,
                  u_type=None,
                  u_t_low=None, u_t_high=None,
                  u_amplitude=None,
@@ -604,7 +602,7 @@ class Initialization:
 
         self.n_node_low = n_node_low or 3
         self.n_node_high = n_node_high or 10
-        self.stimuli_node_ratio = stimuli_node_ratio or 1 / 3
+        self.stimuli_node_ratio = stimuli_node_ratio or 0.5
         self.t_delta_low = t_delta_low or 0.05
         self.t_delta_high = t_delta_high or 0.5
         self.scan_time_low = scan_time_low or 5 * 60  # in second
@@ -624,7 +622,7 @@ class Initialization:
         self.A_off_diagonal_low = A_off_diagonal_low or -0.8
         self.A_off_diagonal_high = A_off_diagonal_high or 0.8
         self.A_diagonal_low = A_diagonal_low or -1.0
-        self.A_diagonal_high = A_diagonal_high or 0
+        self.A_diagonal_high = A_diagonal_high or -0.4
         self.A_generation_max_trial_number = A_generation_max_trial_number or 5000
         self.sparse_level = sparse_level or 0.5
         self.B_init_low = B_init_low or -0.5
@@ -633,10 +631,11 @@ class Initialization:
         self.B_sign_probability = B_sign_probability or 0.5
         self.C_init_low = C_init_low or 0.5
         self.C_init_high = C_init_high or 1.
+        self.C_negative_rate = 0.2
 
         self.u_type_supported = ['box_train', 'sine', 'power_law']
         self.u_type = u_type or 'box_train'
-        self.u_amplitude = u_amplitude or 0.1
+        self.u_amplitude = u_amplitude or 1
         self.u_t_low = u_t_low or 5  # in second
         self.u_t_high = u_t_high or 10  # in second
         self.u_interval_t_low = u_interval_t_low or 5  # in second
@@ -648,14 +647,17 @@ class Initialization:
         self.u_power_law_beta_high = u_power_law_beta_high or np.exp(1 + 3 / 8)
 
         self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
-        self.deviation_constraint = deviation_constraint or 1
+        self.deviation_constraint = deviation_constraint or 3
         self.hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0',
                                     'x_h_coupling']
-        self.hemo_parameter_mean = pd.Series([0.32, 0.34, 0.65, 0.41, 0.98, 0.4, 4., 0.03, 25, 40.3, 1.],
+        # the means are matched to the SPM12
+        self.hemo_parameter_mean = pd.Series([0.32, 0.4, 0.64, 0.32, 2., 1., 4., 0.04, 25, 40.3, 1.],
                                              self.hemo_parameter_keys)
-        self.hemo_parameter_variance = pd.Series([0.0015, 0.0024, 0.015, 0.002, 0.0568, 0., 0., 0., 0., 0., 0.],
+        # in the latest DCM paper, the variance of the hemodynamic is unified into 1/256
+        self.hemo_parameter_variance = pd.Series([1/256., 1/256., 1/256., 1/256., 1/256., 0., 0., 0., 0., 0., 0.],
                                                  self.hemo_parameter_keys)
 
+        # fMRI time series is truncated to integer multiple of n_time_point_unit_length
         self.n_time_point_unit_length = n_time_point_unit_length or 32
 
 
@@ -834,7 +836,10 @@ class Initialization:
             node_indexes = random.sample(range(0, n_node), n_stimuli)
             C = np.zeros((n_node, n_stimuli))
             for culumn_index, row_index in enumerate(node_indexes):
-                C[row_index, culumn_index] = np.random.uniform(self.C_init_low, self.C_init_high)
+                if self.C_negative_rate > random.random():
+                    C[row_index, culumn_index] = -np.random.uniform(self.C_init_low, self.C_init_high)
+                else:
+                    C[row_index, culumn_index] = np.random.uniform(self.C_init_low, self.C_init_high)
             return C
 
     def randomly_generate_u(self, n_stimuli, n_time_point, t_delta, u_type=None):
@@ -1610,13 +1615,12 @@ class Scanner:
         self.h_value_low = h_value_low or 0.125
         self.h_value_high = h_value_high or 8
         '''
-        self.x_max_bound = x_max_bound or 2.
-        self.x_mean_bound = x_mean_bound or 0.2
-        self.x_var_low = x_var_low or 0.001
-        self.x_var_high = x_var_high or 0.05
+        self.x_max_bound = x_max_bound or 5.
+        self.x_mean_bound = x_mean_bound or 2
+        self.x_var_low = x_var_low or 0.005
+        self.x_var_high = x_var_high or 0.5
         self.h_value_low = h_value_low or 0.125
         self.h_value_high = h_value_high or 8
-
 
     def scan_x(self, parameter_package):
         """
@@ -1661,7 +1665,7 @@ class Scanner:
 
     def if_proper_x(self, x):
         """
-        Check if r x seems r good one in terms of some statistics which in includes:
+        Check if a x seems a good one in terms of some statistics which in includes:
         max absolute value and energy distribution on frequency
         :param x: neural activities, np.narray of (n_time_point, n_node)
         :return: True if x means proper; False otherwise
@@ -1682,15 +1686,15 @@ class Scanner:
 
         if max_absolute_value > self.x_max_bound:
             # print('x max_abslute_value = ' + str(max_abslute_value))
-            print("Not proper x: max value")
+            print("Not proper x: max value = " + str(max_absolute_value))
             return False
         if max_mean_value > self.x_mean_bound:
-            print("Not proper x: mean value")
+            print("Not proper x: mean value = " + str(max_mean_value))
             return False
         if min_var < self.x_var_low or max_var > self.x_var_high:
             # print('x min_var = ' + str(min_var))
             # print('x max_var = ' + str(max_var))
-            print("Not proper x: variance")
+            print("Not proper x: variance. min_var = " + str(min_var) + ' max_var = ' + str(max_var))
             return False
         return True
 
@@ -1707,7 +1711,23 @@ class Scanner:
         if min_value >= self.h_value_low and max_value <= self.h_value_high:
             return True
         else:
-            print("Not proper h")
+            print("Not proper h: min_value = " + str(min_value) + ' max_value = ' + str(max_value))
+            return False
+
+    def if_proper_data(self, x=None, h=None):
+        """
+        Check if x and h seem good/reasonable
+        :param x: neural activity
+        :param h: hemodynamic states
+        :return: True or False
+        """
+        if x == None:
+            x = self.get('x')
+        if h == None:
+            h = self.get('h')
+        if self.if_proper_x(x) and self.if_proper_h(h):
+            return True
+        else:
             return False
 
     def phi_h(self, h_state_current, alpha, E0):
@@ -2067,13 +2087,15 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
             print("Trail NO." + str(trail_count))
             self.lock_current_data()
             self._simple_complete(assign_order, if_show_message)
-            while not self.if_proper_x(self._secured_data['x']) or not self.if_proper_h(self._secured_data['h']):
+            # while not self.if_proper_x(self._secured_data['x']) or not self.if_proper_h(self._secured_data['h']):
+            while not self.if_proper_data():
                 self.refresh_data()
                 trail_count += 1
                 print("Trail NO." + str(trail_count))
                 self._simple_complete(assign_order, if_show_message)
         else:
             self._simple_complete(assign_order, if_show_message)
+
 
     def _simple_complete(self, assign_order, if_show_message=False):
         """

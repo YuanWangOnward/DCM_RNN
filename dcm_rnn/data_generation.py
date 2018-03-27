@@ -30,7 +30,7 @@ def build_a_base(current_base_number):
         du._secured_data['if_random_x_state_initial'] = False
         du._secured_data['if_random_h_state_initial'] = False
         du._secured_data['t_delta'] = 0.25
-        du._secured_data['t_scan'] = 5 * 60
+        du._secured_data['t_scan'] = 3 * 60
         du.complete_data_unit(if_show_message=False)
 
         # add cores
@@ -63,7 +63,7 @@ if __name__ == '__main__':
         if not os.path.exists(OUTPUT_DIR):
             os.makedirs(OUTPUT_DIR)
 
-    TOTAL_BASE_NUMBER = 10
+    TOTAL_BASE_NUMBER = 20
     SAMPLE_PER_BASE = 500
     pool = Pool(os.cpu_count())
     pool.map(build_a_base, range(TOTAL_BASE_NUMBER))

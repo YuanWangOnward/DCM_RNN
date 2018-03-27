@@ -18,7 +18,7 @@ export PYTHONPATH=$PYTHONPATH:$SOURCEDIR
 mkdir -p $RUNDIR
 cd $RUNDIR
 
-python3 ~/projects/DCM_RNN/dcm_rnn/data_generation.py
+python3 ~/projects/DCM_RNN/dcm_rnn/data_generation.py -o ./simulated_data
 
 
 # leave a blank line at the end

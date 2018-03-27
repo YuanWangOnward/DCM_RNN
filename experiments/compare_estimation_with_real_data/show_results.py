@@ -90,7 +90,7 @@ def prepare_bar_plot(du_rnn, spm, variable):
     else:
         raise ValueError
 
-    return [ticket, {'rnn': height_rnn, 'spm':height_spm}]
+    return [ticket, {'rnn': height_rnn, 'spm': height_spm}]
 
 
 def translate_tickets(tickets, node_names, stimulus_names):
@@ -167,7 +167,7 @@ for i in range(du_rnn.get('n_stimuli')):
         plt.gca().axes.get_xaxis().set_visible(False)
         # plt.legend(prop={'size': 10})
 plt.tight_layout()
-plt.savefig(os.path.join(IMAGE_PATH, 'input.png'), bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'input.pdf'), format='pdf', bbox_inches='tight')
 
 
 # plot y
@@ -180,9 +180,9 @@ x_axis = np.array(range(y_rnn.shape[0])) * du_rnn.get('t_delta')
 plt.figure()
 for i in range(n_node):
     plt.subplot(n_node, 1, i + 1)
-    plt.plot(x_axis, y_true[:, i], linewidth=1.0, label='True')
-    plt.plot(x_axis, y_rnn[:, i], '--', linewidth=1.2, label='DCM-RNN')
-    plt.plot(x_axis, y_spm[:, i], '-.', linewidth=1.2, label='DCM-SPM')
+    plt.plot(x_axis, y_true[:, i], linewidth=1.0, label='Observed')
+    plt.plot(x_axis, y_rnn[:, i], '--', linewidth=1.2, label='RNN rep.')
+    plt.plot(x_axis, y_spm[:, i], '-.', linewidth=1.2, label='SPM rep.')
     plt.xlim([0, 1510])
     plt.xlabel('time (second)')
     plt.ylabel(original_data['node_names'][i])
@@ -192,7 +192,7 @@ for i in range(n_node):
         plt.gca().axes.get_xaxis().set_visible(False)
     # plt.legend(prop={'size': 10})
 plt.tight_layout()
-plt.savefig(os.path.join(IMAGE_PATH, 'fMRIs.png'), bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'fMRIs.pdf'), format='pdf', bbox_inches='tight')
 
 print('DCM-RNN y rMSE = ' + str(tb.rmse(y_rnn, y_true)))
 print('SPM DCM y rMSE = ' + str(tb.rmse(y_spm, y_true)))
@@ -200,7 +200,7 @@ print('SPM DCM y rMSE = ' + str(tb.rmse(y_spm, y_true)))
 ## plot the effective connectivity
 plt.figure()
 plot_effective_connectivity(original_data, du_rnn, spm)
-plt.savefig(os.path.join(IMAGE_PATH, 'ABC.png'), bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'ABC.pdf'), format='pdf', bbox_inches='tight')
 
 # calculate rmse
 connectivity_rnn = combine_abc(du_rnn.get('A'), du_rnn.get('B'), du_rnn.get('C'))
