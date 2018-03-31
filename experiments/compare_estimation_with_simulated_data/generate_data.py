@@ -44,14 +44,13 @@ from scipy.interpolate import interp1d
 import scipy as sp
 import scipy.io
 
-
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data')
 CORE_PATH = os.path.join(DATA_PATH, 'core.pkl')
 SAVE_PATH_PKL = os.path.join(DATA_PATH, 'du_DCM_RNN.pkl')
 SAVE_PATH_MAT = os.path.join(DATA_PATH, 'DCM_initial.mat')
-SNR = 3
-
+SNR = [1, 3, 5]
+IF_RANDOM_HEMODYNAMIC_PARAMETER = False
 
 du = tb.DataUnit()
 du.u_amplitude = 1.
@@ -64,6 +63,7 @@ du._secured_data['if_random_node_number'] = False
 du._secured_data['if_random_stimuli_number'] = False
 du._secured_data['if_random_delta_t'] = False
 du._secured_data['if_random_scan_time'] = False
+
 du._secured_data['t_delta'] = 1. / 64.
 du._secured_data['t_scan'] = 5 * 60
 du._secured_data['n_node'] = 3
@@ -81,7 +81,7 @@ du._secured_data['B'] = [np.array([[0, 0, 0],
                          np.array([[0., 0, 0],
                                    [0, 0, 0],
                                    [-0.2, 0, 0]])]
-du._secured_data['C'] = np.array([[1.2, 0., 0.], [0., 1.2, 0.], [0., 0., 0.]]).reshape(3, 3)
+du._secured_data['C'] = np.array([[0.8, 0., 0.], [0., 0.8, 0.], [0., 0., 0.]]).reshape(3, 3)
 
 
 # adjust hemodynamic parameter according to the ones used in SPM DCM
@@ -93,19 +93,16 @@ du._secured_data['C'] = np.array([[1.2, 0., 0.], [0., 1.2, 0.], [0., 0., 0.]]).r
 # E0 = H(5) = 0.4
 # nu0 = theta0 = 40.3
 # epsilon as in put P.epsilon, epsilon = exp(P.epsilon), initial of P.epsilon is 0
-hemodynamic_parameter = du.get_standard_hemodynamic_parameters(du.get('n_node'))
-hemodynamic_parameter['alpha'] = 0.32
-hemodynamic_parameter['E0'] = 0.4
-hemodynamic_parameter['k'] = 0.64
-hemodynamic_parameter['gamma'] = 0.32
-hemodynamic_parameter['tao'] = 2.
-
-hemodynamic_parameter['epsilon'] = 1.
-hemodynamic_parameter['V0'] = 4.
-hemodynamic_parameter['TE'] = 0.04
-hemodynamic_parameter['r0'] = 25.
-hemodynamic_parameter['theta0'] = 40.3
-hemodynamic_parameter['x_h_coupling'] = 1.
+# in the latest development, the prior of hemodynamic parameters in toolboxes.Initialization been matched to the above settings
+if IF_RANDOM_HEMODYNAMIC_PARAMETER:
+    # in SPM12, only k, tao, and epsilon are configurable/trainable. As a result, only them are randomly sampled.
+    hemodynamic_parameter = du.get_standard_hemodynamic_parameters(du.get('n_node'))
+    temp = du.randomly_generate_hemodynamic_parameters(du.get('n_node'), 3)
+    hemodynamic_parameter['k'] = temp['k']
+    hemodynamic_parameter['tao'] = temp['tao']
+    hemodynamic_parameter['epsilon'] = temp['epsilon']
+else:
+    hemodynamic_parameter = du.get_standard_hemodynamic_parameters(du.get('n_node'))
 du._secured_data['hemodynamic_parameter'] = hemodynamic_parameter
 
 # scan
@@ -119,19 +116,21 @@ for i in range(du.get('n_node') + 1):
         plt.plot(du.get('y')[:, i - 1])
 
 # add noise
-noise_std = np.sqrt(np.var(du.get('y').flatten())) / SNR
-noise = np.random.randn(du.get('y').shape[0], du.get('y').shape[1]) * noise_std
-du._secured_data['y_noised'] = du._secured_data['y'] + noise
+for snr in SNR:
+    noise_std = np.sqrt(np.var(du.get('y').flatten())) / snr
+    noise = np.random.randn(du.get('y').shape[0], du.get('y').shape[1]) * noise_std
+    du._secured_data['y_noised_snr_' + str(snr)] = du._secured_data['y'] + noise
 for i in range(du.get('n_node') + 1):
     plt.subplot(4, 1, i + 1)
     if i == 0:
         plt.plot(du.get('u'))
     else:
-        plt.plot(du.get('y_noised')[:, i - 1])
+        plt.plot(du.get('y_noised_snr_' + str(snr))[:, i - 1])
 
 
-# save data after finding a good u
-core = du.collect_parameter_core('y_noised')
+# save data
+extra_data = ['y_noised_snr_' + str(snr) for snr in SNR]
+core = du.collect_parameter_core(extra_data)
 pickle.dump(core, open(CORE_PATH, 'wb'))
 
 
@@ -141,9 +140,9 @@ core = tb.load_template(CORE_PATH)
 du_original = tb.DataUnit()
 du_original.load_parameter_core(core)
 du_original.recover_data_unit()
-du = du_original.resample_data_unit()
+extra_y = ['y_noised_snr_' + str(snr) for snr in SNR]
+du = du_original.resample_data_unit(extra_y_keys=extra_y)
 pickle.dump(du, open(SAVE_PATH_PKL, 'wb'))
-
 
 
 # create DCM structure for SPM DCM
@@ -154,7 +153,8 @@ du.recover_data_unit()
 DCM = {}
 DCM['u_original'] = du.get('u')
 DCM['y_rnn_simulation'] = du.get('y')
-du = du.resample_data_unit()
+extra_y = ['y_noised_snr_' + str(snr) for snr in SNR]
+du = du_original.resample_data_unit(extra_y_keys=extra_y)
 DCM['u_down_sampled'] = du.get('u')
 
 mask = du.create_support_mask()
@@ -182,7 +182,8 @@ DCM['U'] = U
 Y = {}
 Y['dt'] = float(du.get('t_delta') * down_sample_rate_y)
 Y['y'] = du.get('y')[::int(down_sample_rate_y), :]
-Y['y_noised'] = du.get('y_noised')[::int(down_sample_rate_y), :]
+for snr in SNR:
+    Y['y_noised_snr_' + str(snr)] = du.get('y_noised_snr_' + str(snr))[::int(down_sample_rate_y), :]
 Y['name'] = ['node_0', 'node_1', 'node_2']
 Y['Q'] = []
 DCM['Y'] = Y

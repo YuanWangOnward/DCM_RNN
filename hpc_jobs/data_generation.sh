@@ -13,12 +13,14 @@ module load python3/intel/3.5.3
 
 RUNDIR=$SCRATCH/data_generation/run-${SLURM_JOB_ID/.*}
 SOURCEDIR=~/projects/DCM_RNN/dcm_rnn
+OURPUTDIR=$RUNDIR/simulated_data
 
 export PYTHONPATH=$PYTHONPATH:$SOURCEDIR
 mkdir -p $RUNDIR
+mkdir -p $OURPUTDIR
 cd $RUNDIR
 
-python3 ~/projects/DCM_RNN/dcm_rnn/data_generation.py -o ./simulated_data
+python3 ~/projects/DCM_RNN/dcm_rnn/data_generation.py -o $OURPUTDIR
 
 
 # leave a blank line at the end

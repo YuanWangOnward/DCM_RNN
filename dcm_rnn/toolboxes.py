@@ -1663,11 +1663,12 @@ class Scanner:
                     pass
         return x
 
-    def if_proper_x(self, x):
+    def if_proper_x(self, x, if_show_message=True):
         """
         Check if a x seems a good one in terms of some statistics which in includes:
         max absolute value and energy distribution on frequency
         :param x: neural activities, np.narray of (n_time_point, n_node)
+        :param if_show_message: if show messages about violation
         :return: True if x means proper; False otherwise
         """
         max_absolute_value = max(abs(x.flatten()))
@@ -1686,23 +1687,27 @@ class Scanner:
 
         if max_absolute_value > self.x_max_bound:
             # print('x max_abslute_value = ' + str(max_abslute_value))
-            print("Not proper x: max value = " + str(max_absolute_value))
+            if if_show_message:
+                print("Not proper x: max value = " + str(max_absolute_value))
             return False
         if max_mean_value > self.x_mean_bound:
-            print("Not proper x: mean value = " + str(max_mean_value))
+            if if_show_message:
+                print("Not proper x: mean value = " + str(max_mean_value))
             return False
         if min_var < self.x_var_low or max_var > self.x_var_high:
             # print('x min_var = ' + str(min_var))
             # print('x max_var = ' + str(max_var))
-            print("Not proper x: variance. min_var = " + str(min_var) + ' max_var = ' + str(max_var))
+            if if_show_message:
+                print("Not proper x: variance. min_var = " + str(min_var) + ' max_var = ' + str(max_var))
             return False
         return True
 
-    def if_proper_h(self, h):
+    def if_proper_h(self, h, if_show_message=True):
         """
         Check if r set of generated h seems r reasonable one.
         Namely, f, v, q should be within [self.h_value_low, self.h_value_high] all the time
         :param h: test hemodynamic state, np.array of (n_time_point, n_node, 4)
+        :param if_show_message: if show messages about violation
         :return: True if h means proper; False otherwise
         """
         h_temp = h[:, :, 1:].flatten()
@@ -1711,21 +1716,23 @@ class Scanner:
         if min_value >= self.h_value_low and max_value <= self.h_value_high:
             return True
         else:
-            print("Not proper h: min_value = " + str(min_value) + ' max_value = ' + str(max_value))
+            if if_show_message:
+                print("Not proper h: min_value = " + str(min_value) + ' max_value = ' + str(max_value))
             return False
 
-    def if_proper_data(self, x=None, h=None):
+    def if_proper_data(self, x=None, h=None, if_show_message=True):
         """
         Check if x and h seem good/reasonable
         :param x: neural activity
         :param h: hemodynamic states
+        :param if_show_message: if show messages about violation
         :return: True or False
         """
         if x == None:
             x = self.get('x')
         if h == None:
             h = self.get('h')
-        if self.if_proper_x(x) and self.if_proper_h(h):
+        if self.if_proper_x(x, if_show_message) and self.if_proper_h(h, if_show_message):
             return True
         else:
             return False
@@ -2088,14 +2095,13 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
             self.lock_current_data()
             self._simple_complete(assign_order, if_show_message)
             # while not self.if_proper_x(self._secured_data['x']) or not self.if_proper_h(self._secured_data['h']):
-            while not self.if_proper_data():
+            while not self.if_proper_data(if_show_message=if_show_message):
                 self.refresh_data()
                 trail_count += 1
                 print("Trail NO." + str(trail_count))
                 self._simple_complete(assign_order, if_show_message)
         else:
             self._simple_complete(assign_order, if_show_message)
-
 
     def _simple_complete(self, assign_order, if_show_message=False):
         """
@@ -2628,22 +2634,22 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
                 grads_and_vars.append((sum([gv[idx][0] for gv in gradients]), gradients[-1][idx][1]))
         return grads_and_vars
 
-
-
-
-
-
-
-
-    def resample_data_unit(self, target_resolution_u=16, down_resolution_y=0.5, up_resolution_y=16):
+    def resample_data_unit(self, target_resolution_u=16, down_resolution_y=0.5, up_resolution_y=16,
+                           extra_y_keys=None):
         """
         Given a du with small t_delta, resample it as a preprocessing step for DCM-RNN estimation.
         :param du_input: input instant of DataUnit
         :param target_resolution_u:
         :param down_resolution_y:
         :param up_resolution_y:
+        :param extra_y_keys: a list of keys, each key is for a noisy y with different SNR
         :return:
         """
+        if extra_y_keys is None:
+            extra_y_keys = ['y_noised']
+        else:
+            extra_y_keys = extra_y_keys + ['y_noised']
+
         du = copy.deepcopy(self)
         factor = np.ones(du._secured_data['u'].ndim)
         original_resolution = int(1 / du.get('t_delta'))
@@ -2656,16 +2662,24 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         target_resolution = down_resolution_y
         factor[0] = target_resolution / original_resolution
         du._secured_data['y'] = sp.ndimage.zoom(du._secured_data['y'], factor, order=0)
-        if 'y_noised' in du._secured_data.keys():
-            du._secured_data['y_noised'] = sp.ndimage.zoom(du._secured_data['y_noised'], factor, order=0)
+        for key in extra_y_keys:
+            if key in du._secured_data.keys():
+                du._secured_data[key] = sp.ndimage.zoom(du._secured_data[key], factor, order=0)
+            else:
+                if key != 'y_noised':
+                    warnings.warn('key ' + key + ' is not found.')
 
         factor = np.ones(du._secured_data['y'].ndim)
         original_resolution = down_resolution_y
         target_resolution = up_resolution_y
         factor[0] = target_resolution / original_resolution
         du._secured_data['y'] = sp.ndimage.zoom(du._secured_data['y'], factor, order=3)
-        if 'y_noised' in du._secured_data.keys():
-            du._secured_data['y_noised'] = sp.ndimage.zoom(du._secured_data['y_noised'], factor, order=3)
+        for key in extra_y_keys:
+            if key in du._secured_data.keys():
+                du._secured_data[key] = sp.ndimage.zoom(du._secured_data[key], factor, order=3)
+            else:
+                if key != 'y_noised':
+                    warnings.warn('key ' + key + ' is not found.')
 
         du._secured_data['t_delta'] = 1 / target_resolution_u
         du._secured_data['n_time_point'] = du._secured_data['u'].shape[0]
@@ -2716,3 +2730,127 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         du._secured_data['y'] = du.scan_y_parallel(parameter_package)
 
         return t_axis, du._secured_data['y']
+
+    def calculate_loss(self, y_true, noise_lambda, loss_weights=None, prior_mean=None, prior_variance=None):
+
+        if loss_weights is None:
+            loss_weights = {
+                'y': 1.,
+                'q': 1.,
+                'prior_x': 1.,
+                'prior_h': 1.,
+                'prior_hyper': 1.
+            }
+
+        if prior_mean is None:
+            prior_mean = {
+                'A': np.zeros(self.get('A').shape),
+                'B': [np.zeros(self.get('A').shape) for _ in range(self.get('n_node'))],
+                'C': np.zeros((self.get('n_node'), self.get('n_stimuli'))),
+                'hemodynamic_parameter': self.get_standard_hemodynamic_parameters(self.get('n_node')),
+                'noise_lambda': np.ones(self.get('n_node')) * 6  # variance = (exp(lambda))^(-1)
+            }
+
+        if prior_variance is None:
+            prior_variance = {
+                'A': np.ones(self.get('A').shape) / 64.,
+                'B': [np.ones(self.get('A').shape) for _ in range(self.get('n_node'))],
+                'C': np.ones((self.get('n_node'), self.get('n_stimuli'))),
+                'hemodynamic_parameter':
+                    np.square(
+                        self.get_expanded_hemodynamic_parameter_prior_distributions(self.get('n_node'))['std']),
+                'noise_lambda': np.ones(self.get('n_node')) / 128.  # variance = (exp(lambda))^(-1)
+            }
+            prior_variance['hemodynamic_parameter'][prior_variance['hemodynamic_parameter'] == 0.] = 1 / 256
+
+        # loss y (reproduction error)
+        y_e = self.get('y') - y_true
+        loss_y = loss_weights['y'] * 0.5 * np.sum(
+            [np.sum(y_e[:, r] ** 2 * np.exp(noise_lambda[r])) for r in range(self.get('n_node'))])
+
+        # loss q (log|\Sigma|)
+        loss_q = loss_weights['q'] * 0.5 * self.get('n_time_point') \
+                 * np.sum([-noise_lambda[r] for r in range(self.get('n_node'))])
+
+        # loss prior x
+        e_a = self.get('A') - prior_mean['A']
+        e_b = [self.get('B')[r] - prior_mean['B'][r] for r in range(self.get('n_node'))]
+        e_c = self.get('C') - prior_mean['C']
+        loss_a = 0.5 * np.sum(np.square(e_a) / prior_variance['A'])
+        loss_b = 0.5 * np.sum([np.square(e_b[r]) / prior_variance['B'][r] for r in range(self.get('n_node'))])
+        loss_c = 0.5 * np.sum(np.square(e_c) / prior_variance['C'])
+        loss_prior_x = loss_weights['prior_x'] * (loss_a + loss_b + loss_c)
+
+        # loss prior h
+        e_h = np.array(self.get('hemodynamic_parameter')) - prior_mean['hemodynamic_parameter']
+        loss_prior_h = loss_weights['prior_h'] * 0.5 * np.sum(
+            np.sum(np.square(e_h) / prior_variance['hemodynamic_parameter']))
+
+        # loss prior hyper
+        e_hyper = noise_lambda - prior_mean['noise_lambda']
+        loss_prior_hyper = loss_weights['prior_hyper'] * 0.5 * np.sum(
+            np.square(e_hyper) / prior_variance['noise_lambda'])
+
+        # total loss
+        loss_total = loss_y + loss_q + loss_prior_x + loss_prior_h + loss_prior_hyper
+
+        loss = {'total': loss_total,
+                'y': loss_y,
+                'q': loss_q,
+                'prior_x': loss_prior_x,
+                'prior_h': loss_prior_h,
+                'prior_hyper': loss_prior_hyper,
+                }
+
+        return loss
+
+    def solve_for_noise_lambda(self, y_true, noise_lambda_initial,
+                               noise_lambda_mean=None, noise_lambda_variance=None, loss_weights=None):
+        '''
+        Search for the best noise lambda with gradient descent.
+        :param y_true:
+        :param noise_lambda_initial:
+        :param noise_lambda_mean:
+        :param noise_lambda_variance:
+        :param loss_weights:
+        :return:
+        '''
+        if loss_weights is None:
+            loss_weights = {
+                'y': 1.,
+                'q': 1.,
+                'prior_x': 1.,
+                'prior_h': 1.,
+                'prior_hyper': 1.
+            }
+
+        if noise_lambda_mean is None:
+            noise_lambda_mean = np.ones(self.get('n_node')) * 6
+
+        if noise_lambda_variance is None:
+            noise_lambda_variance = np.ones(self.get('n_node')) / 128.
+
+        y_e = self.get('y') - y_true
+        output = np.zeros(self.get('n_node'))
+        for r in range(self.get('n_node')):
+            a = loss_weights['y'] * 0.5 * np.sum(y_e[:, r] ** 2)
+            b = loss_weights['q'] * 0.5 * self.get('n_time_point')
+            temp = noise_lambda_initial[r]
+            for s in range(512 * 8):
+                l_original = a * np.exp(temp) - b * temp \
+                             + loss_weights['prior_hyper'] * 0.5 \
+                               * (temp - noise_lambda_mean[r]) ** 2 / noise_lambda_variance[r]
+                # gradient
+                d_temp = a * np.exp(temp) - b + loss_weights['prior_hyper'] \
+                                                * (temp - noise_lambda_mean[r]) / noise_lambda_variance[r]
+                # descent
+                temp = temp - 1 / 512. * np.sign(d_temp)
+                # check
+                l_updated = a * np.exp(temp) - b * temp \
+                            + loss_weights['prior_hyper'] * 0.5 \
+                              * (temp - noise_lambda_mean[r]) ** 2 / noise_lambda_variance[r]
+                if l_updated >= l_original:
+                    break
+            output[r] = temp
+        return output
+
