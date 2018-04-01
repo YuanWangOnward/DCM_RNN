@@ -76,7 +76,7 @@ neural_parameter_initial['C'] = Wxu / dr.t_delta
 
 dr.n_recurrent_step = N_RECURRENT_STEP
 dr.learning_rate = LEARNING_RATE
-dr.loss_weighting = {'prediction': 50., 'sparsity': 1, 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+dr.loss_weights = {'prediction': 50., 'sparsity': 1, 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
 dr.trainable_flags = {'Wxx': True,
                       'Wxxu': True,
                       'Wxu': True,

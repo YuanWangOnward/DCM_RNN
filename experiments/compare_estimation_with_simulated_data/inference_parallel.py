@@ -42,23 +42,29 @@ from scipy.interpolate import interp1d
 import time
 import scipy.io
 
+MAX_EPOCHS = 32 * 3     # the maximum iteration
+CHECK_STEPS = 1         # check and save results every CHECK_STEPS epochs
+N_RECURRENT_STEP = 192  # the length of DCM-RNN
+DATA_SHIFT = 1          # stride used to segment fMRI signal
+MAX_BACK_TRACK = 4      # the maximum back tracking number in gradient descent
+MAX_CHANGE = 0.002      # the maximum change of any parameter in one parameter updating
+BATCH_RANDOM_KEEP_RATE = 1.     # 1 - drop_out_rate. Drop-out randomly drop segments to accelerate computation
+BATCH_SIZE = 128
 
-MAX_EPOCHS = 32 * 3
-CHECK_STEPS = 1
-N_RECURRENT_STEP = 192
-DATA_SHIFT = 1
-MAX_BACK_TRACK = 4
-MAX_CHANGE = 0.002
-BATCH_RANDOM_DROP_RATE = 1.
-SNR = []
-
+# experiment settings
 SETTINGS = {
 'if_update_h_parameter': {'value': 1, 'short_name': 'h'},
 'if_extended_support': {'value': 0, 'short_name': 's'},
 'if_noised_y': {'value': 1, 'short_name': 'n'},
 'snr': {'value': 3, 'short_name': 'snr'},
 }
+# confirm consistency in the settings
+if not SETTINGS['if_noised_y']['value']:
+    if SETTINGS['snr']['value'] != float("inf"):
+        warnings.warn('if_noise_y flag is off, snr setting will be ignored!')
+        SETTINGS['snr']['value'] = float("inf")
 
+# set flags which indicate which parameters are tunable
 if SETTINGS['if_update_h_parameter']['value']:
     trainable_flags = {'Wxx': True,
                        'Wxxu': True,
@@ -92,9 +98,7 @@ else:
                        'x_h_coupling': False
                        }
 
-if not SETTINGS['if_noised_y']['value']:
-    SETTINGS['snr']['value'] = float("inf")
-
+# save paths
 keys = sorted(SETTINGS.keys())
 SAVE_NAME_EXTENTION = '_'.join([SETTINGS[k]['short_name'] + '_' + str(SETTINGS[k]['value']) for k in keys])
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data')
@@ -102,51 +106,73 @@ DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data', 'du_DCM_RNN.pkl')
 SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_' + SAVE_NAME_EXTENTION + '.pkl')
 SAVE_PATH_FREE_ENERGY = os.path.join(EXPERIMENT_PATH, 'results', 'free_energy_rnn_' + SAVE_NAME_EXTENTION + '.mat')
 
-timer = {}
 
-# load data
+# load data. The data-generating data unit is loaded as a basket of experimental settings.
 du = tb.load_template(DATA_PATH)
+# input u
+u = du.get('u')
+# observed y
 if SETTINGS['if_noised_y']['value']:
-    du._secured_data['y'] = du.get('y_noised_snr_' + str(SETTINGS['snr']['value']))
-n_segments = mth.ceil(len(du.get('y')) - N_RECURRENT_STEP / DATA_SHIFT)
+    y_observation = du.get('y_noised_snr_' + str(SETTINGS['snr']['value']))
+else:
+    y_observation = du.get('y')
+# set total number of fMRI segmentations
+n_segments = mth.ceil((len(y_observation) - N_RECURRENT_STEP) / DATA_SHIFT)
 
-# specify initialization values, loss weighting factors, and mask (support of effective connectivity)
+# connectivity parameters ABC initials
 x_parameter_initial = {}
 x_parameter_initial['A'] = - np.eye(du.get('n_node'))
 x_parameter_initial['B'] = [np.zeros((du.get('n_node'), du.get('n_node'))) for _ in range(du.get('n_stimuli'))]
 x_parameter_initial['C'] = np.zeros((du.get('n_node'), du.get('n_stimuli')))
-# x_parameter_initial['C'][0, 0] = 1.
-# x_parameter_initial['C'][1, 1] = 1.
-h_parameter_initial = du.get('hemodynamic_parameter')
 
-loss_weighting = {
-        'y': 1.,
-        'q': 1.,
-        'prior_x': 1.,
-        'prior_h': 1.,
-        'prior_hyper': 1.,
-        'prior_Wxx': 64.,
-        'prior_Wxxu': 1.,
-        'prior_Wxu': 1.,
-    }
-mask = du.create_support_mask()
-if SETTINGS['if_extended_support']['value']:
-    mask['Wxx'] = np.ones((du.get('n_node'), du.get('n_node')))
-
+# in DCM-RNN, the corresponding connectivity parameters are Wxx, Wxxu, Wxu
 x_parameter_initial_in_graph = du.calculate_dcm_rnn_x_matrices(x_parameter_initial['A'],
                                                                x_parameter_initial['B'],
                                                                x_parameter_initial['C'],
                                                                du.get('t_delta'))
 
+# hemodynamic parameter initials
+h_parameter_initial = du.get_standard_hemodynamic_parameters(du.get('n_node'))
+
+# mask for the supported parameter (1 indicates the parameter is tunable)
+mask = du.create_support_mask()
+if SETTINGS['if_extended_support']['value']:
+    mask['Wxx'] = np.ones((du.get('n_node'), du.get('n_node')))
+
+# set up weights for each loss terms
+# prior terms do not scale with data, as a result, they need to be re-weight to keep the problem well regulated.
+# re-sampling factor: temporal_resolution_new / temporal_resolution_old
+# pick out one segment: n_recurrent / n_time_point
+# parallel: batch_size
+prior_weight = (16 / 0.5) * (N_RECURRENT_STEP / y_observation.shape[0]) * (BATCH_SIZE)
+loss_weights_tensorflow = {
+    'y': 1.,
+    'q': 1.,
+    'prior_x': prior_weight,
+    'prior_h': prior_weight,
+    'prior_hyper': prior_weight
+}
+loss_weights_du = {
+    'y': 1.,
+    'q': 1.,
+    'prior_x': 16 * 2,
+    'prior_h': 16 * 2,
+    'prior_hyper': 16 * 2
+}
+
+
+# Set up a data unit for estimation. It works interactively with Tensorflow.
 du_hat = du.initialize_a_training_unit(x_parameter_initial_in_graph['Wxx'],
                                        x_parameter_initial_in_graph['Wxxu'],
                                        x_parameter_initial_in_graph['Wxu'],
                                        np.array(h_parameter_initial))
+du_hat.loss_weights = loss_weights_du
 
-loss_correction = N_RECURRENT_STEP / du_hat.get('y').shape[0]
+#tf.reset_default_graph()
+#importlib.reload(tfm)
 
-
-# build tensorflow model
+# build Tensorflow model
+timer = {}
 timer['build_model'] = time.time()
 print('building model')
 dr = tfm.DcmRnn()
@@ -156,8 +182,8 @@ dr.n_recurrent_step = N_RECURRENT_STEP
 dr.max_back_track_steps = MAX_BACK_TRACK
 dr.max_parameter_change_per_iteration = MAX_CHANGE
 dr.trainable_flags = trainable_flags
-dr.loss_weighting = loss_weighting
-dr.loss_correction = loss_correction
+dr.loss_weights = loss_weights_tensorflow
+dr.batch_size = BATCH_SIZE
 dr.build_main_graph_parallel(neural_parameter_initial=x_parameter_initial,
                              hemodynamic_parameter_initial=h_parameter_initial)
 
@@ -171,13 +197,13 @@ du_hat.variable_names_in_graph = du_hat.parse_variable_names(dr.trainable_variab
 
 # prepare data for training
 data = {
-    'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
+    'u': tb.split(u, n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
     'x_initial': tb.split(du.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
     'h_initial': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
     'x_whole': tb.split(du.get('x'), n_segment=dr.n_recurrent_step + dr.shift_u_x, n_step=dr.shift_data, shift=0),
     'h_whole': tb.split(du.get('h'), n_segment=dr.n_recurrent_step + dr.shift_x_y, n_step=dr.shift_data, shift=1),
     'h_predicted': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y),
-    'y': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)}
+    'y': tb.split(y_observation, n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)}
 data_hat = {
     'x_initial': tb.split(du_hat.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
     'h_initial': tb.split(du_hat.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
@@ -191,28 +217,23 @@ batches = tb.make_batches(data['u'], data_hat['x_initial'], data_hat['h_initial'
 
 print('start session')
 timer['start_session'] = time.time()
-dr.max_parameter_change_per_iteration = MAX_CHANGE
 # start session
 isess = tf.InteractiveSession()
 isess.run(tf.global_variables_initializer())
+dr.max_parameter_change_per_iteration = MAX_CHANGE
 dr.update_variables_in_graph(isess, dr.x_parameter_nodes,
                              [x_parameter_initial_in_graph['Wxx']]
                              + x_parameter_initial_in_graph['Wxxu']
                              + [x_parameter_initial_in_graph['Wxu']])
 
-loss_weights = {
-    'y': 1.,
-    'q': 1.,
-    'prior_x': 16. * 2.,
-    'prior_h': 16. * 2.,
-    'prior_hyper': 16. * 2.
-}
+'''
 isess.run(tf.assign(dr.loss_y_weight, loss_weights['y']))
 isess.run(tf.assign(dr.loss_q_weight, loss_weights['q']))
 isess.run(tf.assign(dr.loss_prior_x_weight, loss_weights['prior_x']))
 isess.run(tf.assign(dr.loss_prior_h_weight, loss_weights['prior_h']))
 isess.run(tf.assign(dr.loss_prior_hyper_weight, loss_weights['prior_hyper']))
-dr.max_parameter_change_per_iteration = MAX_CHANGE
+'''
+
 print('start inference')
 loss_differences = []
 step_sizes = []
@@ -240,8 +261,8 @@ for epoch in range(MAX_EPOCHS):
     step_size = 0
     y_noise_index = du_hat.variable_names_in_graph.index('y_noise')
     y_noise = grads_and_vars[y_noise_index][1] - grads_and_vars[y_noise_index][0] * step_size
-    loss_original = du_hat.calculate_loss(du.get('y'), y_noise, loss_weights)
-    # loss_original = calculate_loss(du_hat, du.get('y'), y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
+    loss_original = du_hat.calculate_loss(y_observation, y_noise)
+    # loss_original = calculate_loss(du_hat, y_observation, y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
     # loss_original = loss['total']
 
     ## sum gradients
@@ -288,10 +309,10 @@ for epoch in range(MAX_EPOCHS):
         y_noise = grads_and_vars[y_noise_index][1] - grads_and_vars[y_noise_index][0] * step_size
 
         # y_hat = du_hat.get('y')
-        # loss_updated = tb.mse(y_hat, du.get('y'))
+        # loss_updated = tb.mse(y_hat, y_observation)
 
-        loss_updated = du_hat.calculate_loss(du.get('y'), y_noise, loss_weights)
-        # loss_updated = calculate_loss(du_hat, du.get('y'), y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
+        loss_updated = du_hat.calculate_loss(y_observation, y_noise)
+        # loss_updated = calculate_loss(du_hat, y_observation, y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
         # loss_updated = loss['total']
 
     except:
@@ -319,17 +340,17 @@ for epoch in range(MAX_EPOCHS):
             y_noise = grads_and_vars[y_noise_index][1] - grads_and_vars[y_noise_index][0] * step_size
 
             #y_hat = du_hat.get('y')
-            #loss_updated = tb.mse(y_hat, du.get('y'))
-            loss_uodated = du_hat.calculate_loss(du.get('y'), y_noise, loss_weights)
-            # loss_updated = calculate_loss(du_hat, du.get('y'), y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
+            #loss_updated = tb.mse(y_hat, y_observation)
+            loss_uodated = du_hat.calculate_loss(y_observation, y_noise)
+            # loss_updated = calculate_loss(du_hat, y_observation, y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
         except:
             pass
         if step_size == 0.0:
             break
 
     # calculate the optimal noise lambda
-    # y_noise = solve_for_noise_variance(du_hat, du.get('y'), y_noise, loss_weights)
-    y_noise = du_hat.solve_for_noise_lambda(du.get('y'), y_noise, loss_weights=loss_weights)
+    # y_noise = solve_for_noise_variance(du_hat, y_observation, y_noise, loss_weights)
+    y_noise = du_hat.solve_for_noise_lambda(y_observation, y_noise)
     parameters_updated = [-val[0] * step_size + val[1] for val in grads_and_vars]
     y_noise_index = du_hat.variable_names_in_graph.index('y_noise')
     parameters_updated[y_noise_index] = y_noise
@@ -348,7 +369,7 @@ for epoch in range(MAX_EPOCHS):
                               data_hat['h_initial'], data['y'],
                               batch_size=dr.batch_size,
                               if_shuffle=True)
-    batches = tb.random_drop(batches, ration=BATCH_RANDOM_DROP_RATE)
+    batches = tb.random_drop(batches, ration=BATCH_RANDOM_KEEP_RATE)
 
     report = pd.DataFrame(index=['original', 'updated', 'reduced', 'reduced %'],
                           columns=['loss_total', 'loss_y', 'loss_q', 'loss_prior_x', 'loss_prior_h', 'loss_prior_hyper'])
@@ -366,7 +387,7 @@ for epoch in range(MAX_EPOCHS):
     print(du_hat.get('Wxu'))
     print(du_hat.get('hemodynamic_parameter')[['k', 'tao', 'epsilon']])
     print('y_noise: ' + str(y_noise))
-    du_hat.y_true = du.get('y')
+    du_hat.y_true = y_observation
     du_hat.timer = timer
     du_hat.y_noise = y_noise
     pickle.dump(du_hat, open(SAVE_PATH, 'wb'))
@@ -385,7 +406,7 @@ timer['end'] = time.time()
 print('optimization finished.')
 
 
-du_hat.y_true = du.get('y')
+du_hat.y_true = y_observation
 du_hat.timer = timer
 du_hat.y_noise = y_noise
 pickle.dump(du_hat, open(SAVE_PATH, 'wb'))
@@ -405,21 +426,53 @@ scipy.io.savemat(SAVE_PATH_FREE_ENERGY, mdict={'dcm_rnn_free_energy': dcm_rnn_fr
 
 for i in range(dr.n_region):
     plt.subplot(dr.n_region, 1, i + 1)
-    x_axis = du.get('t_delta') * np.array(range(0, du.get('y').shape[0]))
-    plt.plot(x_axis, du.get('y')[:, i])
+    x_axis = du.get('t_delta') * np.array(range(0, y_observation.shape[0]))
+    plt.plot(x_axis, y_observation[:, i])
     plt.plot(x_axis, du_hat.get('y')[:, i], '--')
 
 
+for n_setting in [1, 2, 3, 4]:
 
-for snr_temp in [1, 3, 5]:
+    if n_setting == 1:
+        SETTINGS = {
+            'if_update_h_parameter': {'value': 1, 'short_name': 'h'},
+            'if_extended_support': {'value': 0, 'short_name': 's'},
+            'if_noised_y': {'value': 0, 'short_name': 'n'},
+            'snr': {'value': 3, 'short_name': 'snr'},
+        }
+    elif n_setting == 2:
+        SETTINGS = {
+            'if_update_h_parameter': {'value': 1, 'short_name': 'h'},
+            'if_extended_support': {'value': 0, 'short_name': 's'},
+            'if_noised_y': {'value': 1, 'short_name': 'n'},
+            'snr': {'value': 1, 'short_name': 'snr'},
+        }
+    elif n_setting == 3:
+        SETTINGS = {
+            'if_update_h_parameter': {'value': 1, 'short_name': 'h'},
+            'if_extended_support': {'value': 0, 'short_name': 's'},
+            'if_noised_y': {'value': 1, 'short_name': 'n'},
+            'snr': {'value': 3, 'short_name': 'snr'},
+        }
+    elif n_setting == 4:
+        SETTINGS = {
+            'if_update_h_parameter': {'value': 1, 'short_name': 'h'},
+            'if_extended_support': {'value': 0, 'short_name': 's'},
+            'if_noised_y': {'value': 1, 'short_name': 'n'},
+            'snr': {'value': 5, 'short_name': 'snr'},
+        }
 
-    SETTINGS = {
-    'if_update_h_parameter': {'value': 1, 'short_name': 'h'},
-    'if_extended_support': {'value': 0, 'short_name': 's'},
-    'if_noised_y': {'value': 1, 'short_name': 'n'},
-    'snr': {'value': snr_temp, 'short_name': 'snr'},
-    }
 
+
+
+
+    # confirm consistency in the settings
+    if not SETTINGS['if_noised_y']['value']:
+        if SETTINGS['snr']['value'] != float("inf"):
+            warnings.warn('if_noise_y flag is off, snr setting will be ignored!')
+            SETTINGS['snr']['value'] = float("inf")
+
+    # set flags which indicate which parameters are tunable
     if SETTINGS['if_update_h_parameter']['value']:
         trainable_flags = {'Wxx': True,
                            'Wxxu': True,
@@ -453,9 +506,7 @@ for snr_temp in [1, 3, 5]:
                            'x_h_coupling': False
                            }
 
-    if not SETTINGS['if_noised_y']['value']:
-        SETTINGS['snr']['value'] = float("inf")
-
+    # save paths
     keys = sorted(SETTINGS.keys())
     SAVE_NAME_EXTENTION = '_'.join([SETTINGS[k]['short_name'] + '_' + str(SETTINGS[k]['value']) for k in keys])
     EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data')
@@ -463,48 +514,65 @@ for snr_temp in [1, 3, 5]:
     SAVE_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_' + SAVE_NAME_EXTENTION + '.pkl')
     SAVE_PATH_FREE_ENERGY = os.path.join(EXPERIMENT_PATH, 'results', 'free_energy_rnn_' + SAVE_NAME_EXTENTION + '.mat')
 
-    timer = {}
-
-    # load data
+    # load data. The data-generating data unit is loaded as a basket of experimental settings.
     du = tb.load_template(DATA_PATH)
+    # input u
+    u = du.get('u')
+    # observed y
     if SETTINGS['if_noised_y']['value']:
-        du._secured_data['y'] = du.get('y_noised_snr_' + str(SETTINGS['snr']['value']))
-    n_segments = mth.ceil(len(du.get('y')) - N_RECURRENT_STEP / DATA_SHIFT)
+        y_observation = du.get('y_noised_snr_' + str(SETTINGS['snr']['value']))
+    else:
+        y_observation = du.get('y')
+    # set total number of fMRI segmentations
+    n_segments = mth.ceil((len(y_observation) - N_RECURRENT_STEP) / DATA_SHIFT)
 
-    # specify initialization values, loss weighting factors, and mask (support of effective connectivity)
+    # connectivity parameters ABC initials
     x_parameter_initial = {}
     x_parameter_initial['A'] = - np.eye(du.get('n_node'))
     x_parameter_initial['B'] = [np.zeros((du.get('n_node'), du.get('n_node'))) for _ in range(du.get('n_stimuli'))]
     x_parameter_initial['C'] = np.zeros((du.get('n_node'), du.get('n_stimuli')))
-    # x_parameter_initial['C'][0, 0] = 1.
-    # x_parameter_initial['C'][1, 1] = 1.
-    h_parameter_initial = du.get('hemodynamic_parameter')
 
-    loss_weighting = {
-            'y': 1.,
-            'q': 1.,
-            'prior_x': 1.,
-            'prior_h': 1.,
-            'prior_hyper': 1.,
-            'prior_Wxx': 64.,
-            'prior_Wxxu': 1.,
-            'prior_Wxu': 1.,
-        }
-    mask = du.create_support_mask()
-    if SETTINGS['if_extended_support']['value']:
-        mask['Wxx'] = np.ones((du.get('n_node'), du.get('n_node')))
-
+    # in DCM-RNN, the corresponding connectivity parameters are Wxx, Wxxu, Wxu
     x_parameter_initial_in_graph = du.calculate_dcm_rnn_x_matrices(x_parameter_initial['A'],
                                                                    x_parameter_initial['B'],
                                                                    x_parameter_initial['C'],
                                                                    du.get('t_delta'))
 
+    # hemodynamic parameter initials
+    h_parameter_initial = du.get_standard_hemodynamic_parameters(du.get('n_node'))
+
+    # mask for the supported parameter (1 indicates the parameter is tunable)
+    mask = du.create_support_mask()
+    if SETTINGS['if_extended_support']['value']:
+        mask['Wxx'] = np.ones((du.get('n_node'), du.get('n_node')))
+
+    # set up weights for each loss terms
+    # prior terms do not scale with data, as a result, they need to be re-weight to keep the problem well regulated.
+    # re-sampling factor: temporal_resolution_new / temporal_resolution_old
+    # pick out one segment: n_recurrent / n_time_point
+    # parallel: batch_size
+    prior_weight = (16 / 0.5) * (N_RECURRENT_STEP / y_observation.shape[0]) * (BATCH_SIZE)
+    loss_weights_tensorflow = {
+        'y': 1.,
+        'q': 1.,
+        'prior_x': prior_weight,
+        'prior_h': prior_weight,
+        'prior_hyper': prior_weight
+    }
+    loss_weights_du = {
+        'y': 1.,
+        'q': 1.,
+        'prior_x': 16 * 2,
+        'prior_h': 16 * 2,
+        'prior_hyper': 16 * 2
+    }
+
+    # Set up a data unit for estimation. It works interactively with Tensorflow.
     du_hat = du.initialize_a_training_unit(x_parameter_initial_in_graph['Wxx'],
                                            x_parameter_initial_in_graph['Wxxu'],
                                            x_parameter_initial_in_graph['Wxu'],
                                            np.array(h_parameter_initial))
-
-    loss_correction = N_RECURRENT_STEP / du_hat.get('y').shape[0]
+    du_hat.loss_weights = loss_weights_du
 
     # process after building the main graph
     dr.support_masks = dr.setup_support_mask(mask)
@@ -516,13 +584,13 @@ for snr_temp in [1, 3, 5]:
 
     # prepare data for training
     data = {
-        'u': tb.split(du.get('u'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
+        'u': tb.split(u, n_segment=dr.n_recurrent_step, n_step=dr.shift_data),
         'x_initial': tb.split(du.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
         'h_initial': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
         'x_whole': tb.split(du.get('x'), n_segment=dr.n_recurrent_step + dr.shift_u_x, n_step=dr.shift_data, shift=0),
         'h_whole': tb.split(du.get('h'), n_segment=dr.n_recurrent_step + dr.shift_x_y, n_step=dr.shift_data, shift=1),
         'h_predicted': tb.split(du.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y),
-        'y': tb.split(du.get('y'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)}
+        'y': tb.split(y_observation, n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=dr.shift_u_y)}
     data_hat = {
         'x_initial': tb.split(du_hat.get('x'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=0),
         'h_initial': tb.split(du_hat.get('h'), n_segment=dr.n_recurrent_step, n_step=dr.shift_data, shift=1),
@@ -536,28 +604,23 @@ for snr_temp in [1, 3, 5]:
 
     print('start session')
     timer['start_session'] = time.time()
-    dr.max_parameter_change_per_iteration = MAX_CHANGE
     # start session
     isess = tf.InteractiveSession()
     isess.run(tf.global_variables_initializer())
+    dr.max_parameter_change_per_iteration = MAX_CHANGE
     dr.update_variables_in_graph(isess, dr.x_parameter_nodes,
                                  [x_parameter_initial_in_graph['Wxx']]
                                  + x_parameter_initial_in_graph['Wxxu']
                                  + [x_parameter_initial_in_graph['Wxu']])
 
-    loss_weights = {
-        'y': 1.,
-        'q': 1.,
-        'prior_x': 16. * 2.,
-        'prior_h': 16. * 2.,
-        'prior_hyper': 16. * 2.
-    }
+    '''
     isess.run(tf.assign(dr.loss_y_weight, loss_weights['y']))
     isess.run(tf.assign(dr.loss_q_weight, loss_weights['q']))
     isess.run(tf.assign(dr.loss_prior_x_weight, loss_weights['prior_x']))
     isess.run(tf.assign(dr.loss_prior_h_weight, loss_weights['prior_h']))
     isess.run(tf.assign(dr.loss_prior_hyper_weight, loss_weights['prior_hyper']))
-    dr.max_parameter_change_per_iteration = MAX_CHANGE
+    '''
+
     print('start inference')
     loss_differences = []
     step_sizes = []
@@ -585,8 +648,8 @@ for snr_temp in [1, 3, 5]:
         step_size = 0
         y_noise_index = du_hat.variable_names_in_graph.index('y_noise')
         y_noise = grads_and_vars[y_noise_index][1] - grads_and_vars[y_noise_index][0] * step_size
-        loss_original = du_hat.calculate_loss(du.get('y'), y_noise, loss_weights)
-        # loss_original = calculate_loss(du_hat, du.get('y'), y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
+        loss_original = du_hat.calculate_loss(y_observation, y_noise)
+        # loss_original = calculate_loss(du_hat, y_observation, y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
         # loss_original = loss['total']
 
         ## sum gradients
@@ -633,10 +696,10 @@ for snr_temp in [1, 3, 5]:
             y_noise = grads_and_vars[y_noise_index][1] - grads_and_vars[y_noise_index][0] * step_size
 
             # y_hat = du_hat.get('y')
-            # loss_updated = tb.mse(y_hat, du.get('y'))
+            # loss_updated = tb.mse(y_hat, y_observation)
 
-            loss_updated = du_hat.calculate_loss(du.get('y'), y_noise, loss_weights)
-            # loss_updated = calculate_loss(du_hat, du.get('y'), y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
+            loss_updated = du_hat.calculate_loss(y_observation, y_noise)
+            # loss_updated = calculate_loss(du_hat, y_observation, y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
             # loss_updated = loss['total']
 
         except:
@@ -664,17 +727,17 @@ for snr_temp in [1, 3, 5]:
                 y_noise = grads_and_vars[y_noise_index][1] - grads_and_vars[y_noise_index][0] * step_size
 
                 # y_hat = du_hat.get('y')
-                # loss_updated = tb.mse(y_hat, du.get('y'))
-                loss_uodated = du_hat.calculate_loss(du.get('y'), y_noise, loss_weights)
-                # loss_updated = calculate_loss(du_hat, du.get('y'), y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
+                # loss_updated = tb.mse(y_hat, y_observation)
+                loss_uodated = du_hat.calculate_loss(y_observation, y_noise)
+                # loss_updated = calculate_loss(du_hat, y_observation, y_noise, loss_weights, np.array(du.get('hemodynamic_parameter')))
             except:
                 pass
             if step_size == 0.0:
                 break
 
         # calculate the optimal noise lambda
-        # y_noise = solve_for_noise_variance(du_hat, du.get('y'), y_noise, loss_weights)
-        y_noise = du_hat.solve_for_noise_lambda(du.get('y'), y_noise, loss_weights=loss_weights)
+        # y_noise = solve_for_noise_variance(du_hat, y_observation, y_noise, loss_weights)
+        y_noise = du_hat.solve_for_noise_lambda(y_observation, y_noise)
         parameters_updated = [-val[0] * step_size + val[1] for val in grads_and_vars]
         y_noise_index = du_hat.variable_names_in_graph.index('y_noise')
         parameters_updated[y_noise_index] = y_noise
@@ -693,7 +756,7 @@ for snr_temp in [1, 3, 5]:
                                   data_hat['h_initial'], data['y'],
                                   batch_size=dr.batch_size,
                                   if_shuffle=True)
-        batches = tb.random_drop(batches, ration=BATCH_RANDOM_DROP_RATE)
+        batches = tb.random_drop(batches, ration=BATCH_RANDOM_KEEP_RATE)
 
         report = pd.DataFrame(index=['original', 'updated', 'reduced', 'reduced %'],
                               columns=['loss_total', 'loss_y', 'loss_q', 'loss_prior_x', 'loss_prior_h',
@@ -712,7 +775,7 @@ for snr_temp in [1, 3, 5]:
         print(du_hat.get('Wxu'))
         print(du_hat.get('hemodynamic_parameter')[['k', 'tao', 'epsilon']])
         print('y_noise: ' + str(y_noise))
-        du_hat.y_true = du.get('y')
+        du_hat.y_true = y_observation
         du_hat.timer = timer
         du_hat.y_noise = y_noise
         pickle.dump(du_hat, open(SAVE_PATH, 'wb'))
@@ -730,7 +793,7 @@ for snr_temp in [1, 3, 5]:
     timer['end'] = time.time()
     print('optimization finished.')
 
-    du_hat.y_true = du.get('y')
+    du_hat.y_true = y_observation
     du_hat.timer = timer
     du_hat.y_noise = y_noise
     pickle.dump(du_hat, open(SAVE_PATH, 'wb'))
@@ -749,6 +812,7 @@ for snr_temp in [1, 3, 5]:
 
     for i in range(dr.n_region):
         plt.subplot(dr.n_region, 1, i + 1)
-        x_axis = du.get('t_delta') * np.array(range(0, du.get('y').shape[0]))
-        plt.plot(x_axis, du.get('y')[:, i])
+        x_axis = du.get('t_delta') * np.array(range(0, y_observation.shape[0]))
+        plt.plot(x_axis, y_observation[:, i])
         plt.plot(x_axis, du_hat.get('y')[:, i], '--')
+

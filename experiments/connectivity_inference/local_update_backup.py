@@ -104,7 +104,7 @@ dr.trainable_flags = {'Wxx': True,
                       'theta0': False,
                       'x_h_coupling': False
                       }
-dr.loss_weighting = loss_weighting
+dr.loss_weights = loss_weighting
 dr.build_main_graph(neural_parameter_initial=x_parameter_initial)
 
 # process after building the main graph

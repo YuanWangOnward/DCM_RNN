@@ -647,9 +647,10 @@ class Initialization:
         self.u_power_law_beta_high = u_power_law_beta_high or np.exp(1 + 3 / 8)
 
         self.h_parameter_check_statistics = h_parameter_check_statistics or 'deviation'
-        self.deviation_constraint = deviation_constraint or 3
+        self.deviation_constraint = deviation_constraint or 3    # avoid extreme samples when sampling
         self.hemo_parameter_keys = ['alpha', 'E0', 'k', 'gamma', 'tao', 'epsilon', 'V0', 'TE', 'r0', 'theta0',
                                     'x_h_coupling']
+
         # the means are matched to the SPM12
         self.hemo_parameter_mean = pd.Series([0.32, 0.4, 0.64, 0.32, 2., 1., 4., 0.04, 25, 40.3, 1.],
                                              self.hemo_parameter_keys)
@@ -659,6 +660,32 @@ class Initialization:
 
         # fMRI time series is truncated to integer multiple of n_time_point_unit_length
         self.n_time_point_unit_length = n_time_point_unit_length or 32
+
+        # the default loss weighting in estimation
+        self.loss_weights = {
+            'y': 1.,
+            'q': 1.,
+            'prior_x': 1.,
+            'prior_h': 1.,
+            'prior_hyper': 1.
+        }
+
+        # prior distributions of parameters
+        self.prior_mean = {
+            'A': 0,
+            'B': 0,
+            'C': 0,
+            'hemodynamic_parameter': self.hemo_parameter_mean,
+            'noise_lambda': 6  # noise variance = (exp(lambda))^(-1)
+        }
+
+        self.prior_variance = {
+            'A': 1 / 64.,
+            'B': 1,
+            'C': 1,
+            'hemodynamic_parameter':1 / 256,
+            'noise_lambda': 1 / 128.  # noise variance = (exp(lambda))^(-1)
+        }
 
 
         self.x_nonlinearity_type = x_nonlinearity_type or 'None'
@@ -678,6 +705,43 @@ class Initialization:
                                                          'vertical_shift': vertical_shift
                                                          }}
 
+    def build_expanded_prior_distributions(self, n_node, n_stimuli, prior_mean=None, prior_variance=None):
+        '''
+        Build prior distributions for all parameters, including connection parameters,
+        hemodynamic parameters, and hyper parameters.
+        The data format is the same as the target parameter.
+        :param n_node:
+        :param n_stimuli:
+        :param prior_mean:
+        :param prior_variance:
+        :return:
+        '''
+
+        if prior_mean is None:
+            prior_mean = self.prior_mean
+
+        if prior_variance is None:
+            prior_variance = self.prior_variance
+
+        prior_mean_extended = {
+            'A': np.ones((n_node, n_node)) * prior_mean['A'],
+            'B': [np.ones((n_node, n_node)) * prior_mean['B'] for _ in range(n_node)],
+            'C': np.ones((n_node, n_stimuli)) * prior_mean['C'],
+            'hemodynamic_parameter': self.get_standard_hemodynamic_parameters(n_node),
+            'noise_lambda': np.ones(n_node) * prior_mean['noise_lambda']  # variance = (exp(lambda))^(-1)
+        }
+
+        prior_variance_extended = {
+            'A': np.ones((n_node, n_node)) * prior_variance['A'],
+            'B': [np.ones((n_node, n_node)) * prior_variance['B'] for _ in range(n_node)],
+            'C': np.ones((n_node, n_stimuli)) * prior_variance['C'],
+            'hemodynamic_parameter':
+                np.square(
+                    self.get_expanded_hemodynamic_parameter_prior_distributions(n_node)['std']),
+            'noise_lambda': np.ones(n_node) * prior_variance['noise_lambda'] # variance = (exp(lambda))^(-1)
+        }
+
+        return {'prior_mean': prior_mean_extended, 'prior_variance': prior_variance_extended}
 
     def sample_node_number(self):
         """
@@ -2572,7 +2636,9 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         self.complete_data_unit(start_category=1, if_check_property=False, if_show_message=False)
 
     def initialize_a_training_unit(self, Wxx, Wxxu, Wxu, h_parameters):
-        du_hat = copy.deepcopy(self)
+        du_hat = DataUnit()
+        core = self.collect_parameter_core()
+        du_hat.load_parameter_core(core)
 
         du_hat._secured_data['A'] = (Wxx - np.eye(du_hat.get('n_node'))) / du_hat.get('t_delta')
         du_hat._secured_data['B'] = [m / du_hat.get('t_delta') for m in Wxxu]
@@ -2734,33 +2800,13 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
     def calculate_loss(self, y_true, noise_lambda, loss_weights=None, prior_mean=None, prior_variance=None):
 
         if loss_weights is None:
-            loss_weights = {
-                'y': 1.,
-                'q': 1.,
-                'prior_x': 1.,
-                'prior_h': 1.,
-                'prior_hyper': 1.
-            }
+            loss_weights = self.loss_weights
 
         if prior_mean is None:
-            prior_mean = {
-                'A': np.zeros(self.get('A').shape),
-                'B': [np.zeros(self.get('A').shape) for _ in range(self.get('n_node'))],
-                'C': np.zeros((self.get('n_node'), self.get('n_stimuli'))),
-                'hemodynamic_parameter': self.get_standard_hemodynamic_parameters(self.get('n_node')),
-                'noise_lambda': np.ones(self.get('n_node')) * 6  # variance = (exp(lambda))^(-1)
-            }
+            prior_mean = self.build_expanded_prior_distributions(self.get('n_node'), self.get('n_stimuli'))['prior_mean']
 
         if prior_variance is None:
-            prior_variance = {
-                'A': np.ones(self.get('A').shape) / 64.,
-                'B': [np.ones(self.get('A').shape) for _ in range(self.get('n_node'))],
-                'C': np.ones((self.get('n_node'), self.get('n_stimuli'))),
-                'hemodynamic_parameter':
-                    np.square(
-                        self.get_expanded_hemodynamic_parameter_prior_distributions(self.get('n_node'))['std']),
-                'noise_lambda': np.ones(self.get('n_node')) / 128.  # variance = (exp(lambda))^(-1)
-            }
+            prior_variance = self.build_expanded_prior_distributions(self.get('n_node'), self.get('n_stimuli'))['prior_variance']
             prior_variance['hemodynamic_parameter'][prior_variance['hemodynamic_parameter'] == 0.] = 1 / 256
 
         # loss y (reproduction error)
@@ -2816,13 +2862,7 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
         :return:
         '''
         if loss_weights is None:
-            loss_weights = {
-                'y': 1.,
-                'q': 1.,
-                'prior_x': 1.,
-                'prior_h': 1.,
-                'prior_hyper': 1.
-            }
+            loss_weights = self.loss_weights
 
         if noise_lambda_mean is None:
             noise_lambda_mean = np.ones(self.get('n_node')) * 6

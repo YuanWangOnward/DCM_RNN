@@ -174,8 +174,8 @@ def calculate_log_data():
     data['loss_x'].append(loss_x / loss_x_normalizer)
     data['loss_y'].append(loss_y / loss_y_normalizer)
     data['loss_smooth'].append(loss_smooth / loss_smooth_normalizer)
-    data['loss_total'].append((loss_y + dr.loss_weighting['smooth'] * loss_smooth) / (
-        loss_y_normalizer + dr.loss_weighting['smooth'] * loss_smooth_normalizer))
+    data['loss_total'].append((loss_y + dr.loss_weights['smooth'] * loss_smooth) / (
+        loss_y_normalizer + dr.loss_weights['smooth'] * loss_smooth_normalizer))
 
 
 def add_image_log(image_log_dir='./image_logs/', extra_prefix=''):
@@ -318,7 +318,7 @@ dr.collect_parameters(du)
 dr.learning_rate = LEARNING_RATE
 dr.shift_data = DATA_SHIFT
 dr.n_recurrent_step = N_RECURRENT_STEP
-dr.loss_weighting['smooth'] = SMOOTH_WEIGHT
+dr.loss_weights['smooth'] = SMOOTH_WEIGHT
 if IF_NODE_MODE:
     dr.n_region = 1
 for key in dr.trainable_flags.keys():

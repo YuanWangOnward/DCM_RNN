@@ -131,7 +131,7 @@ dr.n_recurrent_step = N_RECURRENT_STEP
 dr.max_back_track_steps = MAX_BACK_TRACK
 dr.max_parameter_change_per_iteration = MAX_CHANGE
 neural_parameter_initial = {'A': du_hat.get('A'), 'B': du_hat.get('B'), 'C': du_hat.get('C')}
-dr.loss_weighting = {'prediction': 1., 'sparsity': 1, 'prior': 1, 'Wxx': 1., 'Wxxu': 0., 'Wxu': 0.}
+dr.loss_weights = {'prediction': 1., 'sparsity': 1, 'prior': 1, 'Wxx': 1., 'Wxxu': 0., 'Wxu': 0.}
 dr.trainable_flags = {'Wxx': True,
                       'Wxxu': True,
                       'Wxu': True,

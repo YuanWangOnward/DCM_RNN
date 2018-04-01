@@ -163,7 +163,7 @@ dr.n_recurrent_step = N_RECURRENT_STEP
 dr.max_back_track_steps = MAX_BACK_TRACK
 dr.max_parameter_change_per_iteration = MAX_CHANGE
 dr.trainable_flags = trainable_flags
-dr.loss_weighting = loss_weighting
+dr.loss_weights = loss_weighting
 dr.build_main_graph_parallel(neural_parameter_initial=x_parameter_initial,
                              hemodynamic_parameter_initial=h_parameter_initial)
 

@@ -1,5 +1,6 @@
 # replot results
 import sys
+
 # global setting, you need to modify it accordingly
 if '/Users/yuanwang' in sys.executable:
     PROJECT_DIR = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN'
@@ -41,6 +42,7 @@ import math as mth
 from scipy.interpolate import interp1d
 import scipy.io as sio
 import matplotlib.ticker as mtick
+
 
 def combine_abc(a, b, c):
     output = []
@@ -96,9 +98,49 @@ def prepare_bar_plot(du, du_rnn, spm, variable):
     else:
         raise ValueError
 
-    return [ticket, {'true': height_true, 'rnn': height_rnn, 'spm':height_spm}]
+    return [ticket, {'true': height_true, 'rnn': height_rnn, 'spm': height_spm}]
 
-def plot_effective_connectivity(du, du_rnn, spm):
+
+def prepare_bar_plot_confidence(du, confidence_range_rnn, confidence_range_spm, variable):
+    if variable in ['A', 'C']:
+        filter = (np.abs(du.get(variable).flatten()) +
+                  np.abs(confidence_range_rnn[variable.lower()].flatten()) +
+                  np.abs(confidence_range_spm[variable.lower()].flatten())) > 0
+        # ticket
+        label_indexes = itertools.product(np.linspace(1, du.get('n_node'), du.get('n_node'), dtype=int),
+                                          np.linspace(1, du.get('n_node'), du.get('n_node'), dtype=int))
+        ticket = [variable + str(v) for v in label_indexes]
+        ticket = [v for i, v in enumerate(ticket) if filter[i]]
+
+        # height
+        height_true = du.get(variable).flatten()[filter]
+        height_rnn = confidence_range_rnn[variable.lower()].flatten()[filter]
+        height_spm = confidence_range_spm[variable.lower()].flatten()[filter]
+    elif variable == 'B':
+        b_true = np.array(du.get(variable))
+        b_rnn = confidence_range_rnn[variable.lower()]
+        b_spm = confidence_range_spm[variable.lower()]
+        filter = (np.abs(b_true.flatten()) +
+                  np.abs(b_rnn.flatten()) +
+                  np.abs(b_spm.flatten())) > 0
+        # tickets
+        label_indexes = itertools.product(np.linspace(1, du.get('n_node'), du.get('n_node'), dtype=int),
+                                          np.linspace(1, du.get('n_node'), du.get('n_node'), dtype=int),
+                                          np.linspace(1, du.get('n_stimuli'), du.get('n_stimuli'), dtype=int))
+        ticket = [variable + str(v[0]) + str(v[1:]) for v in label_indexes]
+        ticket = [v for i, v in enumerate(ticket) if filter[i]]
+
+        # height
+        height_true = b_true.flatten()[filter]
+        height_rnn = b_rnn.flatten()[filter]
+        height_spm = b_spm.flatten()[filter]
+    else:
+        raise ValueError
+
+    return [ticket, {'true': height_true, 'rnn': height_rnn, 'spm': height_spm}]
+
+
+def plot_effective_connectivity(du, du_rnn, spm, confidence_range_rnn=None, confidence_range_spm=None):
     heights = {'true': [],
                'rnn': [],
                'spm': []}
@@ -110,24 +152,44 @@ def plot_effective_connectivity(du, du_rnn, spm):
         for k in ['true', 'rnn', 'spm']:
             heights[k] = np.concatenate((heights[k], height[k]))
 
+    if confidence_range_rnn is not None and confidence_range_spm is not None:
+        confidences = {'true': [],
+                       'rnn': [],
+                       'spm': []}
+        for variable in ['A', 'B', 'C']:
+            _, confidence = prepare_bar_plot_confidence(du, confidence_range_rnn, confidence_range_spm, variable)
+            for k in ['true', 'rnn', 'spm']:
+                confidences[k] = np.concatenate((confidences[k], confidence[k]))
+
     width = 0.9
     n_bar = len(tickets)
     left = np.array(range(n_bar)) * 3
 
-    plt.bar(left, heights['true'], width, label='True')
-    plt.bar(left + width, heights['rnn'], width, label='DCM-RNN estimation')
-    plt.bar(left + width * 2, heights['spm'], width, label='DCM-SPM estimation')
-    plt.xticks(left + width, tickets, rotation='vertical')
-    plt.grid()
-    plt.legend()
-    plt.ylabel('values')
+    if confidence_range_rnn is not None and confidence_range_spm is not None:
+        plt.bar(left, heights['true'], width, label='True')
+        plt.bar(left + width, heights['rnn'], width, label='DCM-RNN estimation',
+                yerr=confidences['rnn'], error_kw=dict(ecolor='black', lw=1, capsize=3, capthick=1))
+        plt.bar(left + width * 2, heights['spm'], width, label='DCM-SPM estimation',
+                yerr=confidences['spm'], error_kw=dict(ecolor='black', lw=1, capsize=3, capthick=1))
+        plt.xticks(left + width, tickets, rotation='vertical')
+        plt.grid()
+        plt.legend()
+        plt.ylabel('connectivity values')
+    else:
+        plt.bar(left, heights['true'], width, label='True')
+        plt.bar(left + width, heights['rnn'], width, label='DCM-RNN estimation')
+        plt.bar(left + width * 2, heights['spm'], width, label='DCM-SPM estimation')
+        plt.xticks(left + width, tickets, rotation='vertical')
+        plt.grid()
+        plt.legend()
+        plt.ylabel('connectivity values')
 
 
 SETTINGS = {
-'if_update_h_parameter': {'value': 1, 'short_name': 'h'},
-'if_extended_support': {'value': 0, 'short_name': 's'},
-'if_noised_y': {'value': 1, 'short_name': 'n'},
-'snr': {'value': 3, 'short_name': 'snr'},
+    'if_update_h_parameter': {'value': 1, 'short_name': 'h'},
+    'if_extended_support': {'value': 0, 'short_name': 's'},
+    'if_noised_y': {'value': 1, 'short_name': 'n'},
+    'snr': {'value': 5, 'short_name': 'snr'},
 }
 
 if SETTINGS['if_update_h_parameter']['value']:
@@ -169,7 +231,6 @@ if not SETTINGS['if_noised_y']['value']:
 keys = sorted(SETTINGS.keys())
 SAVE_NAME_EXTENTION = '_'.join([SETTINGS[k]['short_name'] + '_' + str(SETTINGS[k]['value']) for k in keys])
 
-
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data')
 RESULT_PATH = os.path.join(EXPERIMENT_PATH, 'results')
@@ -178,9 +239,11 @@ IMAGE_PATH = os.path.join(EXPERIMENT_PATH, 'images')
 CORE_PATH = os.path.join(DATA_PATH, 'core.pkl')
 DCM_RNN_RESULT_PATH = os.path.join(RESULT_PATH, 'estimation_' + SAVE_NAME_EXTENTION + '.pkl')
 SPM_RESULT_PATH = os.path.join(RESULT_PATH, 'saved_data_' + SAVE_NAME_EXTENTION + '.mat')
+DCM_RNN_CONFIDENCE_PATH = os.path.join(RESULT_PATH, 'confidence_range_' + SAVE_NAME_EXTENTION + '_rnn.mat')
+SPM_CONFIDENCE_PATH = os.path.join(RESULT_PATH, 'confidence_range_' + SAVE_NAME_EXTENTION + '_spm.mat')
 
 IF_SHOW_HEMODYNAMICS = False
-IF_SHOW_CROSS_SNR_RESULTS =False
+IF_SHOW_CROSS_SNR_RESULTS = False
 
 # recover data
 core = tb.load_template(CORE_PATH)
@@ -191,8 +254,12 @@ du.recover_data_unit()
 du_rnn = pickle.load(open(DCM_RNN_RESULT_PATH, 'rb'))
 
 spm = sio.loadmat(SPM_RESULT_PATH)
-spm['b'] = np.rollaxis(spm['b'], 2)    # correct matlab-python transfer error
+spm['b'] = np.rollaxis(spm['b'], 2)  # correct matlab-python transfer error
 
+confidence_range_spm = sio.loadmat(SPM_CONFIDENCE_PATH)
+confidence_range_spm['b'] = np.rollaxis(confidence_range_spm['b'], 2)
+confidence_range_rnn = sio.loadmat(DCM_RNN_CONFIDENCE_PATH)
+confidence_range_rnn['b'] = np.rollaxis(confidence_range_rnn['b'], 2)
 
 # show input
 u = du_rnn.get('u')
@@ -208,7 +275,6 @@ for i in range(du.get('n_stimuli')):
         plt.gca().axes.get_xaxis().set_visible(False)
 plt.savefig(os.path.join(IMAGE_PATH, 'input_' + SAVE_NAME_EXTENTION + '.pdf'), format='pdf', bbox_inches='tight')
 
-
 # show simulated curves
 y_rnn_simulation = du.get('y')
 y_spm_simulation = spm['y_spm_simulation']
@@ -216,7 +282,7 @@ x_axis = np.array(range(0, len(y_rnn_simulation))) / 64
 plt.figure()
 for i in range(du.get('n_node')):
     plt.subplot(du.get('n_node'), 1, i + 1)
-    plt.plot(x_axis, y_rnn_simulation[:, i], label='DCM-RNN',  alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_rnn_simulation[:, i], label='DCM-RNN', alpha=1, linewidth=1.0)
     plt.plot(x_axis, y_spm_simulation[:, i], '--', label='DCM-SPM', alpha=1, linewidth=1.0)
     plt.plot(x_axis, y_rnn_simulation[:, i] - y_spm_simulation[:, i], '-.', label='Error', alpha=1, linewidth=1.0)
     plt.xlim([0, 410])
@@ -228,7 +294,6 @@ for i in range(du.get('n_node')):
 plt.savefig(os.path.join(IMAGE_PATH, 'y_simulation_' + SAVE_NAME_EXTENTION + '.pdf'), format='pdf', bbox_inches='tight')
 print('y simulation rMSE = ' + str(tb.rmse(y_rnn_simulation, y_spm_simulation)))
 
-
 # check interpolation of RNN
 y_true = du.get('y')[::4]
 y_interpolated = du_rnn.y_true
@@ -236,7 +301,7 @@ x_axis = np.array(range(0, len(y_true))) / 16
 plt.figure()
 for i in range(du.get('n_node')):
     plt.subplot(du.get('n_node'), 1, i + 1)
-    plt.plot(x_axis, y_true[:, i], label='True',  alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_true[:, i], label='True', alpha=1, linewidth=1.0)
     plt.plot(x_axis, y_interpolated[:, i], '--', label='DCM-RNN', alpha=1, linewidth=1.0)
     plt.plot(x_axis, y_interpolated[:, i] - y_true[:, i], '-.', label='Error', alpha=1, linewidth=1.0)
     plt.xlim([0, 410])
@@ -248,7 +313,6 @@ for i in range(du.get('n_node')):
 # plt.savefig(os.path.join(IMAGE_PATH, 'y_interpolation_rnn_' + SAVE_NAME_EXTENTION + '.pdf'), format='pdf', bbox_inches='tight')
 print('DCM-RNN y interpolation rMSE = ' + str(tb.rmse(y_interpolated, y_true)))
 
-
 # show estimation curves (RNN)
 y_true = du_rnn.y_true
 y_rnn = du_rnn.get('y')
@@ -256,8 +320,8 @@ x_axis = np.array(range(0, len(y_true))) / 16
 plt.figure()
 for i in range(du.get('n_node')):
     plt.subplot(du.get('n_node'), 1, i + 1)
-    plt.plot(x_axis, y_true[:, i], label='True',  alpha=1, linewidth=1.0)
-    plt.plot(x_axis, y_rnn[:, i], '--', label='DCM-RNN', alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_true[:, i], label='Observed', alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_rnn[:, i], '--', label='RNN pred.', alpha=1, linewidth=1.0)
     plt.plot(x_axis, y_rnn[:, i] - y_true[:, i], '-.', label='Error', alpha=1, linewidth=1.0)
     plt.xlim([0, 410])
     plt.xlabel('time (second)')
@@ -265,10 +329,9 @@ for i in range(du.get('n_node')):
     if i < du.get('n_node') - 1:
         plt.gca().axes.get_xaxis().set_visible(False)
     plt.legend()
-plt.savefig(os.path.join(IMAGE_PATH, 'y_estimation_rnn_' + SAVE_NAME_EXTENTION + '.pdf'), format='pdf', bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'y_estimation_rnn_' + SAVE_NAME_EXTENTION + '.pdf'), format='pdf',
+            bbox_inches='tight')
 print('DCM-RNN y estimation rMSE = ' + str(tb.rmse(y_rnn, y_true)))
-
-
 
 # check interpolation of SPM
 y_true = spm['y_spm_simulation'][::4]
@@ -277,7 +340,7 @@ x_axis = np.array(range(0, len(y_true))) / 16
 plt.figure()
 for i in range(du.get('n_node')):
     plt.subplot(du.get('n_node'), 1, i + 1)
-    plt.plot(x_axis, y_true[:, i], label='True',  alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_true[:, i], label='True', alpha=1, linewidth=1.0)
     plt.plot(x_axis, y_interpolated[:, i], '--', label='DCM-SPM', alpha=1, linewidth=1.0)
     plt.plot(x_axis, y_interpolated[:, i] - y_true[:, i], '-.', label='Error', alpha=1, linewidth=1.0)
     plt.xlim([0, 410])
@@ -289,8 +352,6 @@ for i in range(du.get('n_node')):
 # plt.savefig(os.path.join(IMAGE_PATH, 'y_interpolation_spm_' + SAVE_NAME_EXTENTION + '.pdf'), format='pdf', bbox_inches='tight')
 print('DCM-SPM y interpolation rMSE = ' + str(tb.rmse(y_interpolated, y_true)))
 
-
-
 # show estimation curves (SPM)
 y_true = spm['y_true']
 y_spm = spm['y_predicted']
@@ -298,8 +359,8 @@ x_axis = np.array(range(0, len(y_true))) / 16
 plt.figure()
 for i in range(du.get('n_node')):
     plt.subplot(du.get('n_node'), 1, i + 1)
-    plt.plot(x_axis, y_true[:, i], label='True',  alpha=1, linewidth=1.0)
-    plt.plot(x_axis, y_spm[:, i], '--', label='DCM-SPM', alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_true[:, i], label='Observed', alpha=1, linewidth=1.0)
+    plt.plot(x_axis, y_spm[:, i], '--', label='SPM pred.', alpha=1, linewidth=1.0)
     plt.plot(x_axis, y_spm[:, i] - y_true[:, i], '-.', label='Error', alpha=1, linewidth=1.0)
     plt.xlim([0, 410])
     plt.xlabel('time (second)')
@@ -307,136 +368,16 @@ for i in range(du.get('n_node')):
     if i < du.get('n_node') - 1:
         plt.gca().axes.get_xaxis().set_visible(False)
     plt.legend()
-plt.savefig(os.path.join(IMAGE_PATH, 'y_estimation_spm_' + SAVE_NAME_EXTENTION + '.pdf'), format='pdf', bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'y_estimation_spm_' + SAVE_NAME_EXTENTION + '.pdf'), format='pdf',
+            bbox_inches='tight')
 print('DCM-SPM y estimation rMSE = ' + str(tb.rmse(y_spm, y_true)))
 
-
 ## plot the effective connectivity
+# load confidence range
+
 plt.figure()
-plot_effective_connectivity(du, du_rnn, spm)
+plot_effective_connectivity(du, du_rnn, spm, confidence_range_rnn, confidence_range_spm)
 plt.savefig(os.path.join(IMAGE_PATH, 'ABC_' + SAVE_NAME_EXTENTION + '.pdf'), format='pdf', bbox_inches='tight')
-
-du_temp = copy.deepcopy(du_rnn)
-
-def calculate_loss(du_hat, y_true, y_noise, loss_weights, hemodynamic_parameter_mean=None):
-    # loss y
-    y_e = du_hat.get('y') - y_true
-    loss_y = loss_weights['y'] * 0.5 * np.sum([np.sum(y_e[:, r] ** 2 * np.exp(y_noise[r])) for r in range(du_hat.get('n_node'))])
-
-    # loss q
-    loss_q = loss_weights['q'] * 0.5 * du_hat.get('n_time_point') * np.sum([y_noise[r] for r in range(du_hat.get('n_node'))])
-
-    # loss prior x
-    loss_a = 0.5 * 64 * np.sum(np.square(du_hat.get('A')))
-    loss_b = 0.5 * np.sum([np.square(du_hat.get('B')[r]) for r in range(du_hat.get('n_node'))])
-    loss_c = 0.5 * np.sum(np.square(du_hat.get('C')))
-    loss_prior_x = loss_weights['prior_x'] * (loss_a + loss_b + loss_c)
-
-    # loss prior h
-    para_h = np.array(du_hat.get('hemodynamic_parameter'))
-    if hemodynamic_parameter_mean is None:
-        hemodynamic_parameter_mean = np.array(
-            du_hat.get_expanded_hemodynamic_parameter_prior_distributions(du_hat.get('n_node'))[
-                'mean'
-            ])
-    mean_h = hemodynamic_parameter_mean
-    loss_prior_h = loss_weights['prior_h'] * 0.5 * np.sum(np.square(para_h - mean_h)) * 256
-
-    # loss prior hyper
-    loss_prior_hyper = loss_weights['prior_hyper'] * 0.5 * np.sum(np.square(y_noise - 6)) * 128
-
-    loss_total = loss_y + loss_q + loss_prior_x + loss_prior_h + loss_prior_hyper
-
-    loss = {'total': loss_total,
-            'y': loss_y,
-            'q': loss_q,
-            'prior_x': loss_prior_x,
-            'prior_h': loss_prior_h,
-            'prior_hyper': loss_prior_hyper,
-            }
-
-    return loss
-loss_weights = {
-    'y': 1.,
-    'q': 1.,
-    'prior_x': 16. * 2.,
-    'prior_h': 16. * 2.,
-    'prior_hyper': 16. * 2.
-}
-
-
-
-def calculate_loss(du_hat, y_true, noise_lambda, loss_weights=None, prior_mean=None, prior_variance=None):
-
-    if loss_weights is None:
-        loss_weights = {
-            'y': 1.,
-            'q': 1.,
-            'prior_x': 1.,
-            'prior_h': 1.,
-            'prior_hyper': 1.
-        }
-
-    if prior_mean is None:
-        prior_mean = {
-            'A': np.zeros(du_hat.get('A').shape),
-            'B': [np.zeros(du_hat.get('A').shape) for _ in range(du_hat.get('n_node'))],
-            'C': np.zeros((du_hat.get('n_node'), du_hat.get('n_stimuli'))),
-            'hemodynamic_parameter': du_hat.get_standard_hemodynamic_parameters(du_hat.get('n_node')),
-            'noise_lambda': np.ones(du_hat.get('n_node')) * 6    # variance = (exp(lambda))^(-1)
-        }
-
-    if prior_variance is None:
-        prior_variance = {
-            'A': np.ones(du_hat.get('A').shape) / 64.,
-            'B': [np.ones(du_hat.get('A').shape) for _ in range(du_hat.get('n_node'))],
-            'C': np.ones((du_hat.get('n_node'), du_hat.get('n_stimuli'))),
-            'hemodynamic_parameter':
-                np.square(du_hat.get_expanded_hemodynamic_parameter_prior_distributions(du_hat.get('n_node'))['std']),
-            'noise_lambda': np.ones(du_hat.get('n_node')) / 128.  # variance = (exp(lambda))^(-1)
-        }
-        prior_variance['hemodynamic_parameter'][prior_variance['hemodynamic_parameter'] == 0.] = 1/256
-
-    # loss y (reproduction error)
-    y_e = du_hat.get('y') - y_true
-    loss_y = loss_weights['y'] * 0.5 * np.sum(
-        [np.sum(y_e[:, r] ** 2 * np.exp(noise_lambda[r])) for r in range(du_hat.get('n_node'))])
-
-    # loss q (log|\Sigma|)
-    loss_q = loss_weights['q'] * 0.5 * du_hat.get('n_time_point') \
-                * np.sum([np.exp(noise_lambda[r]) for r in range(du_hat.get('n_node'))])
-
-    # loss prior x
-    e_a = du_hat.get('A') - prior_mean['A']
-    e_b = [du_hat.get('B')[r] - prior_mean['B'][r] for r in range(du_hat.get('n_node'))]
-    e_c = du_hat.get('C') - prior_mean['C']
-    loss_a = 0.5 * np.sum(np.square(e_a) / prior_variance['A'])
-    loss_b = 0.5 * np.sum([np.square(e_b[r]) / prior_variance['B'][r] for r in range(du_hat.get('n_node'))])
-    loss_c = 0.5 * np.sum(np.square(e_c) / prior_variance['C'])
-    loss_prior_x = loss_weights['prior_x'] * (loss_a + loss_b + loss_c)
-
-    # loss prior h
-    e_h = np.array(du_hat.get('hemodynamic_parameter')) - prior_mean['hemodynamic_parameter']
-    loss_prior_h = loss_weights['prior_h'] * 0.5 * np.sum(np.sum(np.square(e_h) / prior_variance['hemodynamic_parameter']))
-
-
-    # loss prior hyper
-    e_hyper = noise_lambda - prior_mean['noise_lambda']
-    loss_prior_hyper = loss_weights['prior_hyper'] * 0.5 * np.sum(np.square(e_hyper) / prior_variance['noise_lambda'])
-
-    # total loss
-    loss_total = loss_y + loss_q + loss_prior_x + loss_prior_h + loss_prior_hyper
-
-    loss = {'total': loss_total,
-            'y': loss_y,
-            'q': loss_q,
-            'prior_x': loss_prior_x,
-            'prior_h': loss_prior_h,
-            'prior_hyper': loss_prior_hyper,
-            }
-
-    return loss
-
 
 # calculate rmse
 connectivity_true = combine_abc(du.get('A'), du.get('B'), du.get('C'))
@@ -447,7 +388,6 @@ print('SPM DCM connectivity rMSE = ' + str(tb.rmse(connectivity_spm, connectivit
 
 sum(abs(connectivity_rnn - connectivity_true))
 sum(abs(connectivity_spm - connectivity_true))
-
 
 # plt hemodynamic kernels
 if IF_SHOW_HEMODYNAMICS:
@@ -471,7 +411,6 @@ if IF_SHOW_HEMODYNAMICS:
     plt.plot(t_axis, du._secured_data['h'][:, 0, :])
     plt.plot(t_axis, du._secured_data['y'][:, 0])
 
-
     du.get('hemodynamic_parameter')
 
     du_rnn._secured_data['hemodynamic_parameter'] = du.get('hemodynamic_parameter')
@@ -479,7 +418,8 @@ if IF_SHOW_HEMODYNAMICS:
     du_rnn.get('hemodynamic_parameter')
     plt.plot(t_rnn, k_rnn)
 
-    TEMPLATE_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data', 'data', 'du_DCM_RNN.pkl')
+    TEMPLATE_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data', 'data',
+                                 'du_DCM_RNN.pkl')
     du = tb.load_template(TEMPLATE_PATH)
     du_spm = copy.deepcopy(du)
     h_parameter = du_spm.get('hemodynamic_parameter')
@@ -490,11 +430,9 @@ if IF_SHOW_HEMODYNAMICS:
     du_spm.regenerate_data()
     t_spm, k_spm = du_spm.get_hemodynamic_kernel()
 
-
     plt.plot(t_true, k_true)
     plt.plot(t_rnn, k_rnn)
     plt.plot(t_spm, k_spm)
-
 
 if IF_SHOW_CROSS_SNR_RESULTS:
     # show how results change with SNR
@@ -503,17 +441,17 @@ if IF_SHOW_CROSS_SNR_RESULTS:
     # The raw free energy values can be found running compare_free_energy.m.
     width = 0.8
     snrs = [5, 3, 1]
-    e_reproduction_rnn = [0.0981675973274, 0.154117626012, 0.437791342386]
+    e_reproduction_rnn = [0.0982785623273, 0.153844540607, 0.437795959522]
     e_reproduction_spm = [0.0977933660211, 0.151533392635, 0.435351827891]
-    e_connectivity_rnn = [0.0306194736943, 0.0770575092325, 0.187405521345]
+    e_connectivity_rnn = [0.0394532698174, 0.0718888114636, 0.193798324935]
     e_connectivity_spm = [0.13801080453, 0.170086871558, 0.297217301838]
-    f_rnn = [-8.3593e+04, -1.2615e+05, -2.7813e+05]
-    f_spm = [-8.0643e+04, -1.2282e+05, -2.6437e+05]
+    f_rnn = [-8.0638e+04, -1.2276e+05, -2.6435e+05]
+    f_spm = [-8.3593e+04, -1.2615e+05, -2.7813e+05]
 
     plt.figure()
     plt.bar(snrs, e_reproduction_rnn, label='DCM-RNN')
     plt.bar([snr + width for snr in snrs], e_reproduction_spm, label='DCM-SPM')
-    plt.xticks([snr + width/2 for snr in snrs], snrs)
+    plt.xticks([snr + width / 2 for snr in snrs], snrs)
     plt.xlabel('SNR')
     plt.ylabel('Reproduction rRMSE')
     plt.grid()
@@ -524,7 +462,7 @@ if IF_SHOW_CROSS_SNR_RESULTS:
     plt.figure()
     plt.bar(snrs, e_connectivity_rnn, label='DCM-RNN')
     plt.bar([snr + width for snr in snrs], e_connectivity_spm, label='DCM-SPM')
-    plt.xticks([snr + width/2 for snr in snrs], snrs)
+    plt.xticks([snr + width / 2 for snr in snrs], snrs)
     plt.xlabel('SNR')
     plt.ylabel('Connectivity rRMSE')
     plt.grid()
@@ -534,7 +472,7 @@ if IF_SHOW_CROSS_SNR_RESULTS:
 
     fig = plt.figure()
     plt.bar(snrs, [v / 100000 for v in f_rnn], label='DCM-RNN')
-    plt.bar([snr + width for snr in snrs], [v/100000 for v in f_spm], label='DCM-SPM')
+    plt.bar([snr + width for snr in snrs], [v / 100000 for v in f_spm], label='DCM-SPM')
     plt.xticks([snr + width / 2 for snr in snrs], snrs)
     plt.xlabel('SNR')
     plt.ylabel("Free energy value ($x10^5$)")

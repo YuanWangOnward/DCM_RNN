@@ -23,7 +23,7 @@ class TestDcmRnn(TestCase):
         self.dr.load_parameters(parameter_package)
 
     def test_set_up_hyperparameter_values(self):
-        self.dr.set_up_loss_weighting()
+        self.dr.set_up_loss_weights()
 
     def test_create_shared_variables_h(self):
         initial_values = self.du.get('hemodynamic_parameter').astype(np.float32)

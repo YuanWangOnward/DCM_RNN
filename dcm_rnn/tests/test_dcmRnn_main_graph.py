@@ -61,7 +61,7 @@ class TestDcmRnnMainGraph(TestCase):
 
         # build model
         neural_parameter_initial = {'A': self.du.get('A') * 1.2, 'B': self.du.get('B'), 'C': self.du.get('C') * 1.2}
-        dr.loss_weighting = {'prediction': 50., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 20.}
+        dr.loss_weights = {'prediction': 50., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 20.}
         self.neural_parameter_initial = {'A': self.du.get('A'), 'B': self.du.get('B'), 'C': self.du.get('C')}
         dr.build_main_graph(neural_parameter_initial=neural_parameter_initial)
 
@@ -157,7 +157,7 @@ class TestDcmRnnMainGraph(TestCase):
         mean = h_prior['mean'].astype(np.float32)
         std = h_prior['std'].astype(np.float32)
         h_parameters_initial = mean + std
-        dr.loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+        dr.loss_weights = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
         # dr.if_training = False
         # dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial,
         #                     hemodynamic_parameter=h_parameters_initial)
@@ -196,7 +196,7 @@ class TestDcmRnnMainGraph(TestCase):
         h_prior = self.dr.get_expanded_hemodynamic_parameter_prior_distributions(self.dr.n_region)
         mean = h_prior['mean'].astype(np.float32)
         h_parameters_initial = mean
-        dr.loss_weighting = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+        dr.loss_weights = {'prediction': 1., 'sparsity': 1., 'prior': 1., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
         dr.if_training = False
         dr.build_main_graph(neural_parameter_initial=self.neural_parameter_initial,
                             hemodynamic_parameter_initial=h_parameters_initial)

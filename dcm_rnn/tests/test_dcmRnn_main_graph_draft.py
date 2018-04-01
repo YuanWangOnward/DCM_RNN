@@ -30,7 +30,7 @@ class TestDcmRnnMainGraph(TestCase):
     dr.shift_data = DATA_SHIFT
     dr.n_recurrent_step = N_RECURRENT_STEP
     neural_parameter_initial = {'A': du.get('A'), 'B': du.get('B'), 'C': du.get('C')}
-    dr.loss_weighting = {'prediction': 1., 'sparsity': 0., 'prior': 0., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+    dr.loss_weights = {'prediction': 1., 'sparsity': 0., 'prior': 0., 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
     dr.trainable_flags = {'Wxx': True,
                           'Wxxu': True,
                           'Wxu': True,
@@ -154,9 +154,9 @@ class TestDcmRnnMainGraph(TestCase):
                 np.testing.assert_almost_equal(loss_prediction, tb.mse(np.array(y_hat, dtype=np.float32)), decimal=5)
                 np.testing.assert_almost_equal(loss_sparsity, 0.019642857302512442)
                 np.testing.assert_almost_equal(loss_prior, 0., decimal=5)
-                loss_true = dr.loss_weighting['prediction'] * loss_prediction \
-                            + dr.loss_weighting['sparsity'] * loss_sparsity \
-                            + dr.loss_weighting['prior'] * loss_prior
+                loss_true = dr.loss_weights['prediction'] * loss_prediction \
+                            + dr.loss_weights['sparsity'] * loss_sparsity \
+                            + dr.loss_weights['prior'] * loss_prior
                 np.testing.assert_almost_equal(loss_total, loss_true, decimal=5)
             except Exception:
                 print('i= ' + str(i))

@@ -67,7 +67,7 @@ def calculate_loss(du_hat, y_true, y_noise, loss_weighting, hemodynamic_paramete
     loss_a = 0.5 * 64 * np.sum(np.square(du_hat.get('A')))
     loss_b = 0.5 * np.sum([np.square(du_hat.get('B')[r]) for r in range(du_hat.get('n_node'))])
     loss_c = 0.5 * np.sum(np.square(du_hat.get('C')))
-    loss_prior_x = loss_weighting['prior_x'] * (loss_a + loss_b + loss_c)
+    loss_prior_x = loss_weights['prior_x'] * (loss_a + loss_b + loss_c)
     '''
     loss_a = loss_weighting['prior_Wxx'] * np.sum(np.abs(du_hat.get('A')))
     loss_b = loss_weighting['prior_Wxxu'] * np.sum([np.abs(du_hat.get('B')[r]) for r in range(du_hat.get('n_node'))])
@@ -254,7 +254,7 @@ dr.n_recurrent_step = N_RECURRENT_STEP
 dr.max_back_track_steps = MAX_BACK_TRACK
 dr.max_parameter_change_per_iteration = MAX_CHANGE
 dr.trainable_flags = trainable_flags
-dr.loss_weighting = loss_weighting
+dr.loss_weights = loss_weighting
 dr.loss_correction = loss_correction
 dr.loss_type_connectivity = 'l1'
 dr.build_main_graph_parallel(neural_parameter_initial=x_parameter_initial,

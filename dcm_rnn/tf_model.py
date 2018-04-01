@@ -51,7 +51,7 @@ class DcmRnn(Initialization):
         self.shift_data = int(self.n_recurrent_step / 2)
         self.if_training = True  # turn off when do testing to save time
         self.log_directory = log_directory or './logs'
-        self.set_up_loss_weighting()
+        self.set_up_loss_weights()
         self.trainable_flags = {'Wxx': True,
                                 'Wxxu': True,
                                 'Wxu': True,
@@ -76,7 +76,6 @@ class DcmRnn(Initialization):
         self.max_parameter_change_per_iteration = 0.001
         self.max_parameter_change_decreasing_rate = 0.9
         self.max_back_track_steps = 16
-        self.loss_correction = 1  # re-weighting loss terms according to segment length and total signal length
 
         # extension setting
         self.x_nonlinearity_type = 'None'
@@ -107,6 +106,7 @@ class DcmRnn(Initialization):
 
         self.variable_scope_name_loss = variable_scope_name_loss or 'loss'
 
+
     def decrease_max_parameter_change_per_iteration(self, rate=None):
         """
 
@@ -136,14 +136,14 @@ class DcmRnn(Initialization):
         self.n_stimuli = parameter_package['n_stimuli']
         self.n_time_point = parameter_package['n_time_point']
 
-    def set_up_loss_weighting(self):
-        self.loss_weighting = {
+    def set_up_loss_weights(self):
+        self.loss_weights = {
             'y': 1.,
             'q': 1.,
             'prior_x': 1.,
             'prior_h': 1.,
             'prior_hyper': 1.,
-            'prior_Wxx': 64.,
+            'prior_Wxx': 1.,
             'prior_Wxxu': 1.,
             'prior_Wxu': 1.,
             'smooth': 4.,
@@ -724,7 +724,7 @@ class DcmRnn(Initialization):
 
             # self.loss_smooth = self.mse(self.x_state_stacked[0:-1, :], self.x_state_stacked[1:, :])
             # self.loss_smooth = tf.reduce_mean(tf.abs(self.x_state_stacked[0:-1, :] - self.x_state_stacked[1:, :]))
-            self.loss_combined = self.loss_prediction + self.loss_weighting['smooth'] * self.loss_smooth
+            self.loss_combined = self.loss_prediction + self.loss_weights['smooth'] * self.loss_smooth
         with tf.variable_scope('accumulate_' + self.variable_scope_name_loss):
             self.loss_total = tf.get_variable('loss_total', initializer=0., trainable=False)
             self.sum_loss = tf.assign_add(self.loss_total, self.loss_combined, name='accumulate_loss')
@@ -860,9 +860,9 @@ class DcmRnn(Initialization):
             self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
             self.loss_sparsity = self.add_loss_sparsity()
             self.loss_prior = self.add_loss_prior(self.h_parameters)
-            self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
-                                             self.loss_weighting['sparsity'] * self.loss_sparsity,
-                                             self.loss_weighting['prior'] * self.loss_prior],
+            self.loss_total = tf.reduce_sum([self.loss_weights['prediction'] * self.loss_prediction,
+                                             self.loss_weights['sparsity'] * self.loss_sparsity,
+                                             self.loss_weights['prior'] * self.loss_prior],
                                             name='loss_total')
         if self.if_training:
             # self.train = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss_total)
@@ -943,14 +943,14 @@ class DcmRnn(Initialization):
 
     def add_loss_sparsity(self, loss_weighting=None):
         if loss_weighting == None:
-            loss_weighting = self.loss_weighting
+            loss_weighting = self.loss_weights
         '''
         loss_Wxx = tf.reduce_sum(tf.reshape(tf.abs(self.Wxx - np.identity(self.n_region, dtype=np.float32)), [-1]))
         loss_Wxxu = tf.reduce_sum(
             [tf.reduce_sum(tf.reshape(tf.abs(self.Wxxu[s]), [-1])) for s in range(self.n_stimuli)])
         loss_Wxu = tf.reduce_sum(tf.reshape(tf.abs(self.Wxu), [-1]))
-        self.loss_sparsity = tf.reduce_sum([loss_weighting['Wxx'] * loss_Wxx, loss_weighting['Wxxu'] * loss_Wxxu,
-                                            loss_weighting['Wxu'] * loss_Wxu], name="loss_sparsity")
+        self.loss_sparsity = tf.reduce_sum([loss_weights['Wxx'] * loss_Wxx, loss_weights['Wxxu'] * loss_Wxxu,
+                                            loss_weights['Wxu'] * loss_Wxu], name="loss_sparsity")
         '''
         loss_Wxx = \
             loss_weighting['Wxx'] * tf.reshape(tf.abs(self.Wxx - np.identity(self.n_region, dtype=np.float32)), [-1])
@@ -963,33 +963,35 @@ class DcmRnn(Initialization):
         self.loss_sparsity = tf.reduce_mean(tf.concat([loss_Wxx, loss_Wxxu, loss_Wxu], axis=0), name="loss_sparsity")
         return self.loss_sparsity
 
-    def add_loss_prior_x(self, loss_weighting=None, loss_type_connectivity=None):
+    def add_loss_prior_x(self):
 
-        if loss_weighting == None:
-            loss_weighting = self.loss_weighting
-        if loss_type_connectivity == None:
-            loss_type_connectivity = self.loss_type_connectivity
+        prior_mean = self.build_expanded_prior_distributions(self.n_region, self.n_stimuli)['prior_mean']
+        prior_variance = self.build_expanded_prior_distributions(self.n_region, self.n_stimuli)['prior_variance']
+        loss_type_connectivity = self.loss_type_connectivity
 
-        self.loss_Wxx_weight = tf.get_variable('loss_wxx_weight',
-                                               initializer=np.array(loss_weighting['prior_Wxx'], dtype=np.float32),
-                                               trainable=False)
-        self.loss_Wxxu_weight = tf.get_variable('loss_wxxu_weight',
-                                             initializer=np.array(loss_weighting['prior_Wxxu'], dtype=np.float32),
-                                             trainable=False)
-        self.loss_Wxu_weight = tf.get_variable('loss_wxu_weight',
-                                             initializer=np.array(loss_weighting['prior_Wxu'], dtype=np.float32),
-                                             trainable=False)
+        e_a = (self.Wxx - np.identity(self.n_region, dtype=np.float32)) / self.t_delta - prior_mean['A']
+        e_b = [self.Wxxu[s] / self.t_delta - prior_mean['B'][s] for s in range(self.n_stimuli)]
+        e_c = self.Wxu / self.t_delta - prior_mean['C']
 
         if loss_type_connectivity == 'l2':
+
+            loss_a = tf.reduce_sum(tf.square(e_a) / prior_variance['A'])
+            loss_b = tf.reduce_sum(tf.concat([tf.square(e_b[s]) / prior_variance['B'][s]
+                                              for s in range(self.n_stimuli)], 0))
+            loss_c = tf.reduce_sum(tf.square(e_c) / prior_variance['C'])
+
+            '''
             loss_Wxx = self.se(self.Wxx - np.identity(self.n_region, dtype=np.float32), weight=self.loss_Wxx_weight)
             loss_Wxxu = self.se(tf.concat([tf.reshape(tf.abs(self.Wxxu[s]), [-1]) for s in range(self.n_stimuli)], axis=0),
                                 weight=self.loss_Wxxu_weight)
             loss_Wxu = self.se(self.Wxu, weight=self.loss_Wxu_weight)
-            self.loss_prior_x = 0.5 * tf.reduce_sum([loss_Wxx, loss_Wxxu, loss_Wxu], name="loss_prior_x")
+            '''
+            self.loss_prior_x = 0.5 * tf.reduce_sum([loss_a, loss_b, loss_c])
         elif loss_type_connectivity == 'l1':
             # p(x) = 1 / 2b * exp( - |x - mu] / b)
             # mean is mu
             # variance is 2b ** 2
+            '''
             loss_Wxx = \
                 self.loss_Wxx_weight * tf.reshape(tf.abs(self.Wxx - np.identity(self.n_region, dtype=np.float32)),
                                                    [-1])
@@ -1000,30 +1002,37 @@ class DcmRnn(Initialization):
             self.loss_sparsity_Wxxu = tf.reduce_sum(loss_Wxxu)
             self.loss_sparsity_Wxu = tf.reduce_sum(loss_Wxu)
             self.loss_prior_x = tf.reduce_sum([self.loss_sparsity_Wxx, self.loss_sparsity_Wxxu, self.loss_sparsity_Wxu], name="loss_prior_x")
+            '''
+            loss_a = tf.reduce_sum(tf.abs(e_a) / tf.sqrt(prior_variance['A'] / 2))
+            loss_b = tf.reduce_sum(tf.concat([tf.abs(e_b[s]) / tf.sqrt(prior_variance['B'][s] / 2)
+                                              for s in range(self.n_stimuli)]))
+            loss_c = tf.reduce_sum(tf.abs(e_c) / tf.sqrt(prior_variance['C'] / 2))
+            self.loss_prior_x = tf.reduce_sum([loss_a, loss_b, loss_c])
         else:
             warnings.warn('loss_type_connectivity not valid.')
             self.loss_prior_x = 0
         return self.loss_prior_x
 
-    def add_loss_prior_h(self, h_parameters=None, if_unified_variance=None):
-        if h_parameters == None:
-            h_parameters = self.h_parameters
+    def add_loss_prior_h(self):
         prior_distribution = self.get_expanded_hemodynamic_parameter_prior_distributions(self.n_region)
         mask = np.array(prior_distribution['std'] > 0)
         mean = np.array(prior_distribution['mean'], dtype=np.float32)[mask]
         std = np.array(prior_distribution['std'], dtype=np.float32)[mask]
-        if if_unified_variance is None:
-            temp = tf.square(tf.reshape(tf.boolean_mask(h_parameters, mask), [-1]) - mean) / tf.square(std)
-        else:
-            temp = tf.square(tf.reshape(tf.boolean_mask(h_parameters, mask), [-1]) - mean) * 256
-        self.loss_prior = 0.5 * tf.reduce_sum(temp, name="loss_prior_h")
-        return self.loss_prior
+        '''
+            if if_unified_variance is None:
+                temp = tf.square(tf.reshape(tf.boolean_mask(h_parameters, mask), [-1]) - mean) / tf.square(std)
+            else:
+                temp = tf.square(tf.reshape(tf.boolean_mask(h_parameters, mask), [-1]) - mean) * 256
+        '''
+        e_h = tf.boolean_mask(self.h_parameters, mask) - mean
+        loss_h = 0.5 * tf.reduce_sum(tf.square(e_h / std))
+        return loss_h
 
     def add_loss_prior(self, h_parameters=None, loss_weighting=None):
         if h_parameters == None:
             h_parameters = self.h_parameters
         if loss_weighting == None:
-            loss_weighting = self.loss_weighting
+            loss_weighting = self.loss_weights
         prior_distribution = self.get_expanded_hemodynamic_parameter_prior_distributions(self.n_region)
         mask = np.array(prior_distribution['std'] > 0)
         mean = np.array(prior_distribution['mean'], dtype=np.float32)[mask]
@@ -1207,61 +1216,60 @@ class DcmRnn(Initialization):
         self.add_output_layer_parallel(self.h_predicted)
 
         # define loss and optimizer
-
         # observation noise variance, iid Gaussian noise assumed
-        # 1 / 6 initial value follows the one in SPM12 ???
         with tf.variable_scope(self.variable_scope_name_hyper_para):
+            # it may cause confusion but current y_noise here mean noise lambda
             self.y_noise = tf.get_variable('y_noise', dtype=tf.float32,
-                                           initializer=np.ones(self.n_region, dtype=np.float32) * 6.0)
+                                           initializer=np.ones(self.n_region, dtype=np.float32)
+                                                       * self.prior_mean['noise_lambda'])
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[None, self.n_recurrent_step, self.n_region],
                                      name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
-            # self.loss_prediction = self.mse(self.y_true, self.y_predicted_stacked, "loss_prediction")
-            # self.loss_sparsity = self.add_loss_sparsity()
-            # self.loss_prior = self.add_loss_prior(self.h_parameters)
+            prior_distributions = self.build_expanded_prior_distributions(self.n_region, self.n_stimuli)
+            prior_mean = prior_distributions['prior_mean']
+            prior_variance = prior_distributions['prior_variance']
+            loss_weights = self.loss_weights
 
-            self.loss_y_weight = tf.get_variable('loss_y_weight', initializer=np.array(1., dtype=np.float32),
+            self.loss_y_weight = tf.get_variable('loss_y_weight',
+                                                 initializer=np.array(loss_weights['y'], dtype=np.float32),
                                                  trainable=False)
-            self.loss_q_weight = tf.get_variable('loss_q_weight', initializer=np.array(1., dtype=np.float32),
+            self.loss_q_weight = tf.get_variable('loss_q_weight',
+                                                 initializer=np.array(loss_weights['q'], dtype=np.float32),
                                                  trainable=False)
-            self.loss_prior_x_weight = tf.get_variable('loss_prior_x_weight', initializer=np.array(1., dtype=np.float32),
-                                                 trainable=False)
+            self.loss_prior_x_weight = tf.get_variable('loss_prior_x_weight',
+                                                       initializer=np.array(loss_weights['prior_x'], dtype=np.float32),
+                                                       trainable=False)
             self.loss_prior_h_weight = tf.get_variable('loss_prior_h_weight',
-                                                       initializer=np.array(1., dtype=np.float32),
+                                                       initializer=np.array(loss_weights['prior_h'], dtype=np.float32),
                                                        trainable=False)
             self.loss_prior_hyper_weight = tf.get_variable('loss_prior_hyper_weight',
-                                                       initializer=np.array(1., dtype=np.float32),
+                                                       initializer=np.array(loss_weights['prior_hyper'],
+                                                                            dtype=np.float32),
                                                        trainable=False)
 
-            self.loss_y = tf.reduce_sum(
-                [self.loss_y_weight * 0.5 * self.se(self.y_true[:, :, r], self.y_predicted_stacked[:, :, r])
-                 * tf.exp(self.y_noise[r])
-                 for r in range(self.n_region)], name='loss_y')
+            # prior distributions need to be corrected because they do not scale with data
+            # leave all corrections to loss weights
 
             # self.batch_size to correct bias caused by parallelism
             # self.loss_q = tf.reduce_sum(
             #     [self.loss_q_weight * 0.5 * self.batch_size * self.n_recurrent_step *
             #      tf.log(self.y_noise[r]) for r in range(self.n_region)], name='loss_q')
-            self.loss_q = tf.reduce_sum(
-                            [self.loss_q_weight * 0.5 * self.batch_size * self.n_recurrent_step *
-                             (- self.y_noise[r]) for r in range(self.n_region)], name='loss_q')
+            # self.loss_q = tf.reduce_sum(
+            #                 [self.loss_q_weight * 0.5 * self.batch_size * self.n_recurrent_step *
+            #                  (- self.y_noise[r]) for r in range(self.n_region)], name='loss_q')
+            # self.loss_prior_x = self.loss_prior_x_weight * self.batch_size * self.loss_correction \
+            #                     / self.t_delta / self.t_delta * self.add_loss_prior_x()
+            # self.loss_prior_h = self.loss_prior_h_weight * self.batch_size * self.loss_correction * self.add_loss_prior_h(
+            #    self.h_parameters, if_unified_variance=True)
+            # self.loss_prior_hyper = self.loss_prior_hyper_weight * 0.5 * self.batch_size * self.loss_correction * tf.reduce_sum(
+            #    tf.square(self.y_noise - 6.) * 128)
 
-            self.loss_prior_x = self.loss_prior_x_weight * self.batch_size * self.loss_correction / self.t_delta / self.t_delta * self.add_loss_prior_x()
-            self.loss_prior_h = self.loss_prior_h_weight * self.batch_size * self.loss_correction * self.add_loss_prior_h(self.h_parameters, if_unified_variance=True)
-            self.loss_prior_hyper = self.loss_prior_hyper_weight * 0.5 * self.batch_size * self.loss_correction * tf.reduce_sum(tf.square(self.y_noise - 6.) * 128)
+            self.loss_y = self.loss_y_weight * self.add_loss_y()
+            self.loss_q = self.loss_q_weight * self.add_loss_q()
+            self.loss_prior_x = self.loss_prior_x_weight * self.add_loss_prior_x()
+            self.loss_prior_h = self.loss_prior_h_weight * self.add_loss_prior_h()
+            self.loss_prior_hyper = self.loss_prior_hyper_weight * self.add_loss_prior_hyper()
 
-
-            '''
-            self.loss_prediction = tf.reduce_sum(
-                [0.5 * self.se(self.y_true[:, :, r], self.y_predicted_stacked[:, :, r]) / self.y_noise[r]
-                 for r in range(self.n_region)]
-                + [0.5 * self.batch_size * self.n_recurrent_step * tf.log(self.y_noise[r])
-                   for r in range(self.n_region)],
-                name='loss_prediction')
-            self.loss_prior_x = self.add_loss_prior_x() * self.batch_size
-            self.loss_prior_h = self.add_loss_prior_h(self.h_parameters, if_unified_variance=True) * self.batch_size
-           
-            '''
             if self.if_resting_state:
 
                 '''
@@ -1282,24 +1290,24 @@ class DcmRnn(Initialization):
                 self.loss_weighting_in_graph = {}
                 self.loss_weighting_in_graph['prediction'] = \
                     tf.get_variable('loss_weight_prediction',
-                                    initializer=self.loss_weighting['prediction'],
+                                    initializer=self.loss_weights['prediction'],
                                     trainable=False)
                 self.loss_weighting_in_graph['sparsity'] = \
                     tf.get_variable('loss_weight_sparsity',
-                                    initializer=self.loss_weighting['sparsity'],
+                                    initializer=self.loss_weights['sparsity'],
                                     trainable=False)
                 self.loss_weighting_in_graph['prior'] = \
                     tf.get_variable('loss_weight_prior',
-                                    initializer=self.loss_weighting['prior'],
+                                    initializer=self.loss_weights['prior'],
                                     trainable=False)
                 '''
                 self.loss_weighting_in_graph['u_smooth'] = \
                     tf.get_variable('loss_weight_u_smooth',
-                                    initializer=self.loss_weighting['u_smooth'],
+                                    initializer=self.loss_weights['u_smooth'],
                                     trainable=False)
                 self.loss_weighting_in_graph['u_energy'] = \
                     tf.get_variable('loss_weight_u_energy',
-                                    initializer=self.loss_weighting['u_energy'],
+                                    initializer=self.loss_weights['u_energy'],
                                     trainable=False)
                 '''
 
@@ -1309,23 +1317,10 @@ class DcmRnn(Initialization):
                     self.loss_weighting_in_graph['prior'] * self.loss_prior],
                     # self.loss_weighting_in_graph['u_smooth'] * self.loss_u_smooth,
                     # self.loss_weighting_in_graph['u_energy'] * self.loss_u_energy],
-                    # tf.constant(self.loss_weighting['u_coefficient_sparsity'],
+                    # tf.constant(self.loss_weights['u_coefficient_sparsity'],
                     #            name='loss_weight_u_coefficient_sparsity') * self.loss_u_coefficient_sparsity],
                     name='loss_total')
             else:
-                # self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
-                #                                  self.loss_weighting['sparsity'] * self.loss_sparsity,
-                #                                  self.loss_weighting['prior'] * self.loss_prior], name='loss_total')
-
-                '''
-                self.loss_total = tf.reduce_sum([self.loss_weighting['prediction'] * self.loss_prediction,
-                                                 self.loss_weighting['prior_x'] * self.loss_prior_x,
-                                                 self.loss_weighting['prior'] * self.loss_prior_h,
-                                                 0.5 * self.batch_size * tf.reduce_sum(
-                                                     tf.square(self.y_noise - 6.) / 128.)],
-                                                name='loss_total')
-                '''
-
                 self.loss_total = tf.reduce_sum([self.loss_y,
                                                  self.loss_q,
                                                  self.loss_prior_x,
@@ -1338,12 +1333,8 @@ class DcmRnn(Initialization):
             # self.train = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss_total)
             self.opt = tf.train.GradientDescentOptimizer(self.learning_rate)
             self.grads_and_vars = self.opt.compute_gradients(self.loss_total, tf.trainable_variables())
-            # self.processed_grads_and_vars = self.grads_and_vars
-            # self.opt.apply_gradients(self.processed_grads_and_vars)
 
             # define summarizer
-            # self.variable_summaries(self.loss_prediction)
-            # self.variable_summaries(self.loss_sparsity)
             self.variable_summaries(self.loss_y)
             self.variable_summaries(self.loss_q)
             self.variable_summaries(self.loss_prior_x)
@@ -1416,15 +1407,15 @@ class DcmRnn(Initialization):
             self.loss_weighting_in_graph = {}
             self.loss_weighting_in_graph['prediction'] = \
                 tf.get_variable('loss_weight_prediction',
-                                initializer=self.loss_weighting['prediction'],
+                                initializer=self.loss_weights['prediction'],
                                 trainable=False)
             self.loss_weighting_in_graph['prior'] = \
                 tf.get_variable('loss_weight_prior',
-                                initializer=self.loss_weighting['prior'],
+                                initializer=self.loss_weights['prior'],
                                 trainable=False)
             self.loss_weighting_in_graph['x_smooth'] = \
                 tf.get_variable('loss_weight_x_smooth',
-                                initializer=self.loss_weighting['x_smooth'],
+                                initializer=self.loss_weights['x_smooth'],
                                 trainable=False)
 
             self.loss_total = tf.reduce_sum([
@@ -1443,6 +1434,22 @@ class DcmRnn(Initialization):
             self.variable_summaries(self.loss_total)
             self.merged_summary = tf.summary.merge_all()
             self.summary_writer = tf.summary.FileWriter(self.log_directory, tf.get_default_graph())
+
+    def add_loss_prior_hyper(self):
+        prior_mean = self.build_expanded_prior_distributions(self.n_region, self.n_stimuli)['prior_mean']
+        prior_variance = self.build_expanded_prior_distributions(self.n_region, self.n_stimuli)['prior_variance']
+        loss_hyper = 0.5 * tf.reduce_sum(tf.square(self.y_noise - prior_mean['noise_lambda']) / prior_variance['noise_lambda'])
+        return loss_hyper
+
+    def add_loss_y(self):
+        e_y = [self.y_true[:, :, r] - self.y_predicted_stacked[:, :, r] for r in range(self.n_region)]
+        loss_y = 0.5 * tf.reduce_sum([self.se(e_y[r]) * tf.exp(self.y_noise[r]) for r in range(self.n_region)])
+        return loss_y
+
+    def add_loss_q(self):
+        n_data_point_per_region = self.batch_size * self.n_recurrent_step
+        loss_q = tf.reduce_sum([- 0.5 * n_data_point_per_region * self.y_noise[r] for r in range(self.n_region)])
+        return loss_q
 
     # unitilies
     def mse(self, tensor1, tensor2=0., name=None):

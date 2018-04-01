@@ -98,7 +98,7 @@ dr.t_delta = TARGET_T_DELTA
 dr.n_stimuli = 3
 dr.shift_data = DATA_SHIFT
 dr.n_recurrent_step = N_RECURRENT_STEP
-dr.loss_weighting = {'prediction': 1., 'sparsity': 0.1, 'prior': 0.1, 'Wxx': 1., 'Wxxu': 0., 'Wxu': 0.}
+dr.loss_weights = {'prediction': 1., 'sparsity': 0.1, 'prior': 0.1, 'Wxx': 1., 'Wxxu': 0., 'Wxu': 0.}
 dr.trainable_flags = {'Wxx': True,
                       'Wxxu': True,
                       'Wxu': True,

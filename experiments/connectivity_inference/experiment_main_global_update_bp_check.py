@@ -123,7 +123,7 @@ dr.learning_rate = LEARNING_RATE
 dr.shift_data = DATA_SHIFT
 dr.n_recurrent_step = N_RECURRENT_STEP
 neural_parameter_initial = {'A': du.get('A'), 'B': du.get('B'), 'C': du.get('C')}
-dr.loss_weighting = {'prediction': 1., 'sparsity': 0.1, 'prior': 10, 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
+dr.loss_weights = {'prediction': 1., 'sparsity': 0.1, 'prior': 10, 'Wxx': 1., 'Wxxu': 1., 'Wxu': 1.}
 dr.trainable_flags = {'Wxx': True,
                       'Wxxu': True,
                       'Wxu': True,

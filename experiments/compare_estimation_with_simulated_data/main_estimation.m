@@ -217,15 +217,13 @@ display(DCM_estimated.Ep.C)
 % end
 
 %% save result
+% for use in python
 a = DCM_estimated.Ep.A;
 b = DCM_estimated.Ep.B;
 c = DCM_estimated.Ep.C;
 transit = DCM_estimated.Ep.transit;
 decay = DCM_estimated.Ep.decay;
 epsilon = DCM_estimated.Ep.epsilon;
-
-save([SAVE_PATH(1:end-4), '_DCM', '.mat'], 'DCM_estimated')
-
 save(SAVE_PATH, 'a',...
     'b',...
     'c',...
@@ -233,6 +231,10 @@ save(SAVE_PATH, 'a',...
     'decay',...
     'epsilon',...
     'y_spm_simulation', 'y_true', 'y_predicted')
+
+% for use in matlab
+save([SAVE_PATH(1:end-4), '_DCM', '.mat'], 'DCM_estimated')
+
     
 
 
