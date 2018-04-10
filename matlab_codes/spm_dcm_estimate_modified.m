@@ -296,6 +296,7 @@ if ~DCM.options.stochastic
     % R      = R - Y.X0*spm_inv(Y.X0'*Y.X0)*(Y.X0'*R);
     Y.X0_weights = spm_inv(Y.X0'*Y.X0)*(Y.X0'*R);
     R      = R - Y.X0*Y.X0_weights;
+    % it seems a bug, it should be 1/(exp(Eh))
     Ce     = exp(-Eh);   
     
 else

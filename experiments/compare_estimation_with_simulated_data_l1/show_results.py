@@ -121,7 +121,7 @@ def plot_effective_connectivity(du, du_rnn, spm):
     plt.legend()
     plt.ylabel('values')
 
-CONDITION = 'h1_s2_n1'
+CONDITION = 'h1_s1_n0'
 EXPERIMENT_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data_l1')
 DATA_PATH = os.path.join(EXPERIMENT_PATH, 'data')
 RESULT_PATH = os.path.join(EXPERIMENT_PATH, 'results')
@@ -264,7 +264,7 @@ print('DCM-SPM y estimation rMSE = ' + str(tb.rmse(y_spm, y_true)))
 ## plot the effective connectivity
 plt.figure()
 plot_effective_connectivity(du, du_rnn, spm)
-plt.savefig(os.path.join(IMAGE_PATH, 'ABC_' + CONDITION + '.png'), bbox_inches='tight')
+plt.savefig(os.path.join(IMAGE_PATH, 'ABC_' + CONDITION + '.pdf'), format='pdf', bbox_inches='tight')
 
 # calculate rmse
 connectivity_true = combine_abc(du.get('A'), du.get('B'), du.get('C'))

@@ -1225,9 +1225,9 @@ class DcmRnn(Initialization):
         self.y_true = tf.placeholder(dtype=tf.float32, shape=[None, self.n_recurrent_step, self.n_region],
                                      name="y_true")
         with tf.variable_scope(self.variable_scope_name_loss):
-            prior_distributions = self.build_expanded_prior_distributions(self.n_region, self.n_stimuli)
-            prior_mean = prior_distributions['prior_mean']
-            prior_variance = prior_distributions['prior_variance']
+            # prior_distributions = self.build_expanded_prior_distributions(self.n_region, self.n_stimuli)
+            # prior_mean = prior_distributions['prior_mean']
+            # prior_variance = prior_distributions['prior_variance']
             loss_weights = self.loss_weights
 
             self.loss_y_weight = tf.get_variable('loss_y_weight',

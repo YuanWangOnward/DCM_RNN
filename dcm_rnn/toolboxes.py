@@ -655,7 +655,7 @@ class Initialization:
         self.hemo_parameter_mean = pd.Series([0.32, 0.4, 0.64, 0.32, 2., 1., 4., 0.04, 25, 40.3, 1.],
                                              self.hemo_parameter_keys)
         # in the latest DCM paper, the variance of the hemodynamic is unified into 1/256
-        self.hemo_parameter_variance = pd.Series([1/256., 1/256., 1/256., 1/256., 1/256., 0., 0., 0., 0., 0., 0.],
+        self.hemo_parameter_variance = pd.Series([1/256., 1/256., 1/256., 1/256., 1/256., 1/256., 0., 0., 0., 0., 0.],
                                                  self.hemo_parameter_keys)
 
         # fMRI time series is truncated to integer multiple of n_time_point_unit_length

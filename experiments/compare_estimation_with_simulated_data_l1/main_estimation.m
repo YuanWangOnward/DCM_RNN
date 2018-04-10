@@ -1,5 +1,5 @@
 %% read DCM basic configuration created from python size
-CONDITION = 'h1_s2_n1';
+CONDITION = 'h1_s1_n0';
 SETTINGS = struct;
 if strcmp(CONDITION, 'h1_s0_n0')
     SETTINGS.(CONDITION) = struct;
