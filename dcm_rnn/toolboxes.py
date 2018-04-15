@@ -2820,10 +2820,10 @@ class DataUnit(Initialization, ParameterGraph, Scanner):
 
         # loss prior x
         e_a = self.get('A') - prior_mean['A']
-        e_b = [self.get('B')[r] - prior_mean['B'][r] for r in range(self.get('n_node'))]
+        e_b = [self.get('B')[r] - prior_mean['B'][r] for r in range(self.get('n_stimuli'))]
         e_c = self.get('C') - prior_mean['C']
         loss_a = 0.5 * np.sum(np.square(e_a) / prior_variance['A'])
-        loss_b = 0.5 * np.sum([np.square(e_b[r]) / prior_variance['B'][r] for r in range(self.get('n_node'))])
+        loss_b = 0.5 * np.sum([np.square(e_b[r]) / prior_variance['B'][r] for r in range(self.get('n_stimuli'))])
         loss_c = 0.5 * np.sum(np.square(e_c) / prior_variance['C'])
         loss_prior_x = loss_weights['prior_x'] * (loss_a + loss_b + loss_c)
 

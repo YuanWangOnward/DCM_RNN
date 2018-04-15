@@ -443,9 +443,13 @@ for k = 1:M.Nmax
     % objective function: F(p) = log evidence - divergence
     %----------------------------------------------------------------------
     L(1) = spm_logdet(iS)*nq/2  - real(e'*iS*e)/2 - ny*log(8*atan(1))/2;            ...
-        L(2) = spm_logdet(ipC*Cp)/2 - p'*ipC*p/2;
+    L(2) = spm_logdet(ipC*Cp)/2 - p'*ipC*p/2;
     L(3) = spm_logdet(ihC*Ch)/2 - d'*ihC*d/2;
     F    = sum(L);
+    % MODIFIED
+    % add display
+    display(['F:', num2str(F)])
+    
     
     % record increases and reference log-evidence for reporting
     %----------------------------------------------------------------------
@@ -543,6 +547,8 @@ for k = 1:M.Nmax
             title(tstr,'FontSize',16)
             grid on
             
+   
+            
         else
             subplot(2,2,1)
             plot(x,real(f)), hold on
@@ -570,6 +576,9 @@ for k = 1:M.Nmax
         title(tstr,'FontSize',16)
         grid on
         drawnow
+        % MODIFIED 
+        % save result for each iteration
+        print(['iteration_', num2str(k),'.eps'],'-depsc')
         
     end
     
@@ -577,9 +586,19 @@ for k = 1:M.Nmax
     %----------------------------------------------------------------------
     dF  = dFdp'*dp;
     if ~M.noprint
+        % MODIFIED
+        % fprintf('%-6s: %i %6s %-6.3e %6s %.3e ',str,k,'F:',full(C.F - F0),'dF predicted:',full(dF))
         fprintf('%-6s: %i %6s %-6.3e %6s %.3e ',str,k,'F:',full(C.F - F0),'dF predicted:',full(dF))
     end
+    %-------- MODIFIED ----------
     criterion = [(dF < 1e-1) criterion(1:end - 1)];
+    % criterion = [abs(dF/(abs(F) + eps) < 1e-3) criterion(1:end - 1)];
+    display('');
+    display('Stop criterion in nlsi_GN');
+    display(['dF:', num2str(dF)])
+    display(['F:', num2str(F)])
+    display(['abs(dF/(abs(F) + eps)):', num2str(abs(dF/(abs(F) + eps)))])
+    display(criterion)
     if all(criterion)
         if ~M.noprint
             fprintf(' convergence\n')

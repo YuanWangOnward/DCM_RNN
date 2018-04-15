@@ -119,7 +119,7 @@ else:
 # set total number of fMRI segmentations
 n_segments = mth.ceil((len(y_observation) - N_RECURRENT_STEP) / DATA_SHIFT)
 
-# connectivity parameters ABC initials
+
 x_parameter_initial = {}
 x_parameter_initial['A'] = - np.eye(du.get('n_node'))
 x_parameter_initial['B'] = [np.zeros((du.get('n_node'), du.get('n_node'))) for _ in range(du.get('n_stimuli'))]
@@ -431,6 +431,8 @@ for i in range(dr.n_region):
     plt.plot(x_axis, du_hat.get('y')[:, i], '--')
 
 
+
+# repeated jobs
 for n_setting in [1, 2, 3, 4]:
 
     if n_setting == 1:

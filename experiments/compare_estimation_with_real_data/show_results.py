@@ -93,6 +93,40 @@ def prepare_bar_plot(du_rnn, spm, variable):
     return [ticket, {'rnn': height_rnn, 'spm': height_spm}]
 
 
+def prepare_bar_plot_confidence(du_rnn, confidence_range_rnn, confidence_range_spm, variable):
+    if variable in ['A', 'C']:
+        filter = (np.abs(confidence_range_rnn[variable.lower()].flatten()) +
+                  np.abs(confidence_range_spm[variable.lower()].flatten())) > 0
+        # ticket
+        label_indexes = itertools.product(np.linspace(1, du_rnn.get('n_node'), du_rnn.get('n_node'), dtype=int),
+                                          np.linspace(1, du_rnn.get('n_node'), du_rnn.get('n_node'), dtype=int))
+        ticket = [variable + str(v) for v in label_indexes]
+        ticket = [v for i, v in enumerate(ticket) if filter[i]]
+
+        # height
+        height_rnn = confidence_range_rnn[variable.lower()].flatten()[filter]
+        height_spm = confidence_range_spm[variable.lower()].flatten()[filter]
+    elif variable == 'B':
+        b_rnn = confidence_range_rnn[variable.lower()]
+        b_spm = confidence_range_spm[variable.lower()]
+        filter = (np.abs(b_rnn.flatten()) +
+                  np.abs(b_spm.flatten())) > 0
+        # tickets
+        label_indexes = itertools.product(np.linspace(1, du_rnn.get('n_node'), du_rnn.get('n_node'), dtype=int),
+                                          np.linspace(1, du_rnn.get('n_node'), du_rnn.get('n_node'), dtype=int),
+                                          np.linspace(1, du_rnn.get('n_stimuli'), du_rnn.get('n_stimuli'), dtype=int))
+        ticket = [variable + str(v[0]) + str(v[1:]) for v in label_indexes]
+        ticket = [v for i, v in enumerate(ticket) if filter[i]]
+
+        # height
+        height_rnn = b_rnn.flatten()[filter]
+        height_spm = b_spm.flatten()[filter]
+    else:
+        raise ValueError
+
+    return [ticket, {'rnn': height_rnn, 'spm': height_spm}]
+
+
 def translate_tickets(tickets, node_names, stimulus_names):
     translated_tickets = []
     for ticket in tickets:
@@ -107,7 +141,7 @@ def translate_tickets(tickets, node_names, stimulus_names):
     return translated_tickets
 
 
-def plot_effective_connectivity(original_data, du_rnn, spm):
+def plot_effective_connectivity(original_data, du_rnn, spm, confidence_range_rnn=None, confidence_range_spm=None):
     node_names = original_data['node_names']
     stimulus_names = original_data['stimulus_names']
     heights = {'rnn': [],
@@ -121,12 +155,23 @@ def plot_effective_connectivity(original_data, du_rnn, spm):
             heights[k] = np.concatenate((heights[k], height[k]))
     tickets = translate_tickets(tickets, node_names, stimulus_names)
 
+    if confidence_range_rnn is not None and confidence_range_spm is not None:
+        confidences = {'rnn': [],
+                       'spm': []}
+        for variable in ['A', 'B', 'C']:
+            _, confidence = prepare_bar_plot_confidence(du_rnn, confidence_range_rnn, confidence_range_spm, variable)
+            for k in ['rnn', 'spm']:
+                confidences[k] = np.concatenate((confidences[k], confidence[k]))
+
+
     width = 0.9
     n_bar = len(tickets)
     left = np.array(range(n_bar)) * 3
 
-    plt.bar(left, heights['rnn'], width, label='DCM-RNN')
-    plt.bar(left + width, heights['spm'], width, label='DCM-SPM')
+    plt.bar(left, heights['rnn'], width, label='DCM-RNN',
+            yerr=confidences['rnn'], error_kw=dict(ecolor='black', lw=1, capsize=3, capthick=1))
+    plt.bar(left + width, heights['spm'], width, label='DCM-SPM',
+            yerr=confidences['spm'], error_kw=dict(ecolor='black', lw=1, capsize=3, capthick=1))
     plt.xticks(left + width / 2, tickets, rotation='vertical')
     plt.grid()
     plt.legend()
@@ -142,13 +187,26 @@ DATA_PATH = os.path.join(PROJECT_DIR, 'dcm_rnn', 'resources', 'SPM_data_attentio
 DCM_RNN_RESULT_PATH = os.path.join(RESULT_PATH, 'estimation_dcm_rnn_extended.pkl')
 SPM_RESULT_PATH = os.path.join(RESULT_PATH, 'spm_results.mat')
 
+DCM_RNN_CONFIDENCE_PATH = os.path.join(RESULT_PATH, 'confidence_range_real_rnn.mat')
+SPM_CONFIDENCE_PATH = os.path.join(RESULT_PATH, 'confidence_range_real_spm.mat')
+
 # load
 original_data = pickle.load(open(DATA_PATH, 'rb'))
+
 du_rnn = pickle.load(open(DCM_RNN_RESULT_PATH, 'rb'))
 spm = sio.loadmat(SPM_RESULT_PATH)
 spm['b'] = np.rollaxis(spm['b'], 2)    # correct matlab-python transfer error
 n_node = du_rnn.get('n_node')
 n_stimuli = du_rnn.get('n_stimuli')
+
+# scale input to proper range
+# original_data['y'] = original_data['y'] * 2.5
+spm['y_true'] = spm['y_true']
+
+confidence_range_spm = sio.loadmat(SPM_CONFIDENCE_PATH)
+confidence_range_spm['b'] = np.rollaxis(confidence_range_spm['b'], 2)
+confidence_range_rnn = sio.loadmat(DCM_RNN_CONFIDENCE_PATH)
+confidence_range_rnn['b'] = np.rollaxis(confidence_range_rnn['b'], 2)
 
 # correct the order of nodes
 # spm['y_predicted'] = spm['y_predicted'][:, [2, 0, 1]]
@@ -176,7 +234,7 @@ y_rnn = du_rnn.resample(du_rnn.extended_data['y_reproduced'], y_true.shape, orde
 y_spm = spm['y_predicted']
 x_axis = np.array(range(y_rnn.shape[0])) * du_rnn.get('t_delta')
 
-# plt.figure(figsize=(8, 4), dpi=300)
+
 plt.figure()
 for i in range(n_node):
     plt.subplot(n_node, 1, i + 1)
@@ -199,7 +257,7 @@ print('SPM DCM y rMSE = ' + str(tb.rmse(y_spm, y_true)))
 
 ## plot the effective connectivity
 plt.figure()
-plot_effective_connectivity(original_data, du_rnn, spm)
+plot_effective_connectivity(original_data, du_rnn, spm, confidence_range_rnn, confidence_range_spm)
 plt.savefig(os.path.join(IMAGE_PATH, 'ABC.pdf'), format='pdf', bbox_inches='tight')
 
 # calculate rmse

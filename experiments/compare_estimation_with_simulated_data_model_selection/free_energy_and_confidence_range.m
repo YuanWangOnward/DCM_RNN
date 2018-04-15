@@ -66,6 +66,7 @@ for hypo = [0, 1]
             READ_PATH_RNN = fullfile(RESULTS_PATH, ['free_energy_rnn_', SAVE_NAME_EXTENTION, '.mat']);
             SAVE_PATH_SPM = fullfile(RESULTS_PATH, ['confidence_range_', SAVE_NAME_EXTENTION, '_spm.mat']);
             SAVE_PATH_RNN = fullfile(RESULTS_PATH, ['confidence_range_', SAVE_NAME_EXTENTION, '_rnn.mat']);
+            scale_factor = 16 * 2;
         else
             %% read DCM
             EXPERIMENT_PATH = '/Users/yuanwang/Google_Drive/projects/Gits/DCM_RNN/experiments/compare_estimation_with_real_data';
@@ -75,6 +76,7 @@ for hypo = [0, 1]
             READ_PATH_RNN = fullfile(RESULTS_PATH, 'free_energy_rnn.mat');
             SAVE_PATH_SPM = fullfile(RESULTS_PATH, ['confidence_range_', 'real', '_spm.mat']);
             SAVE_PATH_RNN = fullfile(RESULTS_PATH, ['confidence_range_', 'real', '_rnn.mat']);
+            scale_factor = 16 * 3.22;
         end
         
         %% SPM
@@ -87,7 +89,7 @@ for hypo = [0, 1]
         % in calculation, variance is 1/(exp(h))
         % however when record the final results, it is saved as exp(-h)
         temp.Ce = dcm_spm.Ce;
-        temp.scale_factor = 32; % correction factor
+        temp.scale_factor = scale_factor; % correction factor
         
         % temp.Y.X0_weights
         [f_spm, confidence_spm] = calculate_free_energy_and_confidence_range(temp);
@@ -97,7 +99,11 @@ for hypo = [0, 1]
         c = confidence_spm.C;
         transit = confidence_spm.transit;
         decay = confidence_spm.decay;
-        epsilon = confidence_spm.epsilon;
+        try
+            epsilon = confidence_spm.epsilon;
+        catch
+            epsilon = confidence_spm.epcilon;
+        end
         save(SAVE_PATH_SPM, 'a', 'b', 'c', 'transit', 'decay','epsilon')
         
         
@@ -136,7 +142,7 @@ for hypo = [0, 1]
         temp.Ep = Ep;
         temp.Ce = Ce;
         temp.Y.X0_weights = X0_weights;
-        temp.scale_factor = 32; % correction factor
+        temp.scale_factor = scale_factor; % correction factor
         % temp.Y.y = dcm_rnn.y;
         [f_rnn, confidence_rnn] = calculate_free_energy_and_confidence_range(temp);
         f_rnn
