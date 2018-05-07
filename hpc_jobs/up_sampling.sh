@@ -13,7 +13,7 @@ module load python3/intel/3.5.3
 
 JOBNAME=up_sampling
 RUNDIR=$SCRATCH/runs/$JOBNAME-${SLURM_JOB_ID/.*}
-DATADIR=$SCRATCH/data/DCM_RNN/generated
+DATADIR=$SCRATCH/data/DCM_RNN/simulated_data
 OUTPUTDIR=$SCRATCH/results/DCM_RNN/up_sampling/run-${SLURM_JOB_ID/.*}
 SOURCEDIR=~/projects/DCM_RNN/dcm_rnn
 

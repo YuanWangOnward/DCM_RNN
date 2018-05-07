@@ -36,8 +36,8 @@ DCM_corrected.IS = 'spm_int_J';
 
 %% increase prior variance to compensate for increased data by upsampling
 [pE,pC,x]  = spm_dcm_fmri_priors_modified(DCM_corrected.a,DCM_corrected.b,DCM_corrected.c,DCM_corrected.d,DCM_corrected.options);
-DCM_corrected.options.pC = pC / (6);
-DCM_corrected.options.hC = 1/128 / (6);
+DCM_corrected.options.pC = pC / (16);
+DCM_corrected.options.hC = 1/128 / (16);
 
 
 %% set initial updating rate
@@ -53,7 +53,11 @@ DCM_corrected.Y.y = DCM_corrected.Y.y;
 
 
 %% estimation
+t = cputime;
 DCM_estimated = spm_dcm_estimate_modified(DCM_corrected);
+estimation_time = cputime-t;
+DCM_estimated.estimation_time = estimation_time;
+n_iteration = DCM_estimated.n_iter;
 % DCM_estimated = spm_dcm_estimate(DCM_corrected);
 
 %% check results
@@ -87,6 +91,7 @@ save(SAVE_PATH, ...
     'transit',...
     'decay',...
     'epsilon',...
+    'estimation_time', 'n_iteration',...
     'y_true', 'y_predicted')
     
 save([SAVE_PATH(1:end-4), '_DCM', '.mat'], 'DCM_estimated')

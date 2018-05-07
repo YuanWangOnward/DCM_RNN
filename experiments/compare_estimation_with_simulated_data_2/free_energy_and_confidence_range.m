@@ -16,7 +16,7 @@ if (~ IF_REAL_FMRI)
     temp.short_name='n';
     SETTINGS.if_noised_y = temp;
     temp = struct;
-    temp.value = 5;
+    temp.value = 1;
     temp.short_name='snr';
     SETTINGS.snr = temp;
     

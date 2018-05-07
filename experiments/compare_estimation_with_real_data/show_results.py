@@ -239,8 +239,8 @@ plt.figure()
 for i in range(n_node):
     plt.subplot(n_node, 1, i + 1)
     plt.plot(x_axis, y_true[:, i], linewidth=1.0, label='Observed')
-    plt.plot(x_axis, y_rnn[:, i], '--', linewidth=1.2, label='RNN rep.')
-    plt.plot(x_axis, y_spm[:, i], '-.', linewidth=1.2, label='SPM rep.')
+    plt.plot(x_axis, y_rnn[:, i], '--', linewidth=1.2, label='RNN pred.')
+    plt.plot(x_axis, y_spm[:, i], '-.', linewidth=1.2, label='SPM pred.')
     plt.xlim([0, 1510])
     plt.xlabel('time (second)')
     plt.ylabel(original_data['node_names'][i])
@@ -255,6 +255,72 @@ plt.savefig(os.path.join(IMAGE_PATH, 'fMRIs.pdf'), format='pdf', bbox_inches='ti
 print('DCM-RNN y rMSE = ' + str(tb.rmse(y_rnn, y_true)))
 print('SPM DCM y rMSE = ' + str(tb.rmse(y_spm, y_true)))
 
+
+## plot a zoom in version
+on_off_list = [(200, 301), (500, 601), (800, 901)]
+
+r_range = [np.int32(np.array(range(on_off[0], on_off[1])) / du_rnn.get('t_delta'))
+           for on_off in on_off_list]
+
+x_axis = [r * du_rnn.get('t_delta') - i * 150 for i, r in enumerate(r_range)]
+
+
+y_true = spm['y_true']
+y_rnn = du_rnn.resample(du_rnn.extended_data['y_reproduced'], y_true.shape, order=3)
+y_spm = spm['y_predicted']
+
+# zoom in input
+plt.figure()
+for i in range(du_rnn.get('n_stimuli')):
+    plt.subplot(du_rnn.get('n_stimuli'), 1, i + 1)
+    for i_r in range(len(r_range)):
+        plt.plot(x_axis[i_r], du_rnn.extended_data['u_upsampled'][:, i][r_range[i_r]], c='#1f77b4')
+        # plt.plot(x_axis, du_rnn.extended_data['u_upsampled'][:, i][t_range], linewidth=1.0)
+    plt.ylim([-0.05, 1.05])
+    plt.xlabel('time (second)')
+    plt.ylabel(original_data['stimulus_names'][i])
+    plt.xlim([x_axis[0][0] - 20, x_axis[-1][-1] + 160])
+    plt.xticks(np.concatenate([x_axis[i_r][::100] for i_r in range(len(x_axis))]),
+               np.concatenate([r_range[i_r][::100] * du_rnn.get('t_delta') for i_r in range(len(x_axis))]))
+
+    if i < n_node - 1:
+        plt.gca().axes.get_xaxis().set_visible(False)
+        # plt.legend(prop={'size': 10})
+plt.tight_layout()
+plt.savefig(os.path.join(IMAGE_PATH, 'input_zoom_in.pdf'), format='pdf', bbox_inches='tight')
+
+# zoom in fMRI
+plt.figure()
+for i in range(n_node):
+    plt.subplot(n_node, 1, i + 1)
+    for i_r in range(len(r_range)):
+        if i_r == 0:
+            plt.plot(x_axis[i_r][::3], y_true[:, i][r_range[i_r]][::3], 'o',
+                     alpha=1, linewidth=1.0, label='Observed', c='#1f77b4', markersize=2)
+            plt.plot(x_axis[i_r], y_rnn[:, i][r_range[i_r]], '--', linewidth=1.2, label='RNN pred.', c='#ff7f0e')
+            plt.plot(x_axis[i_r], y_spm[:, i][r_range[i_r]], '-.', linewidth=1.2, label='SPM pred.', c='#2ca02c')
+        else:
+            plt.plot(x_axis[i_r][::3], y_true[:, i][r_range[i_r]][::3], 'o',
+                     alpha=1, linewidth=1.0, c='#1f77b4', markersize=2)
+            plt.plot(x_axis[i_r], y_rnn[:, i][r_range[i_r]], '--', linewidth=1.2, c='#ff7f0e')
+            plt.plot(x_axis[i_r], y_spm[:, i][r_range[i_r]], '-.', linewidth=1.2, c='#2ca02c')
+    plt.xlabel('time (second)')
+    plt.ylabel(original_data['node_names'][i])
+    plt.legend(loc=1)
+    plt.xlim([x_axis[0][0] - 20, x_axis[-1][-1] + 160])
+    #plt.ylim([0, 2.5])
+    plt.xticks(np.concatenate([x_axis[i_r][::100] for i_r in range(len(x_axis))]),
+               np.concatenate([r_range[i_r][::100] * du_rnn.get('t_delta') for i_r in range(len(x_axis))]))
+
+    if i < n_node - 1:
+        plt.gca().axes.get_xaxis().set_visible(False)
+    # plt.legend(prop={'size': 10})
+plt.tight_layout()
+plt.savefig(os.path.join(IMAGE_PATH, 'fMRIs_zoom_in.pdf'), format='pdf', bbox_inches='tight')
+
+
+
+
 ## plot the effective connectivity
 plt.figure()
 plot_effective_connectivity(original_data, du_rnn, spm, confidence_range_rnn, confidence_range_spm)
@@ -267,26 +333,10 @@ connectivity_spm = combine_abc(spm['a'], spm['b'], spm['c'])
 print('DCM-RNN connectivity l1 = ' + str(sum(abs(connectivity_rnn))))
 print('SPM DCM connectivity l1 = ' + str(sum(abs(connectivity_spm))))
 
-'''
+# show speed
+print('DCM-RNN run time = ' + str(du_rnn.timer['end']-du_rnn.timer['start_session']))
+
+print('DCM-SPM iteration number = ' + str(spm['n_iteration']))
+print('DCM-SPM run time = ' + str(spm['estimation_time']))
 
 
-# plt hemodynamic kernels
-t_rnn, k_rnn = du_rnn.get_hemodynamic_kernel()
-du_rnn.get('hemodynamic_parameter')
-plt.plot(t_rnn, k_rnn)
-
-TEMPLATE_PATH = os.path.join(PROJECT_DIR, 'experiments', 'compare_estimation_with_simulated_data', 'data', 'du_DCM_RNN.pkl')
-du = tb.load_template(TEMPLATE_PATH)
-du_spm = copy.deepcopy(du)
-h_parameter = du_spm.get('hemodynamic_parameter')
-h_parameter['k'] = 0.64 * np.exp(spm['decay'])
-h_parameter['tao'] = 2 * np.exp(spm['transit'])
-h_parameter['epsilon'] = np.ones(spm['transit'].shape) * np.exp(spm['epsilon'])
-du_spm._secured_data['hemodynamic_parameter'] = h_parameter
-du_spm.regenerate_data()
-t_spm, k_spm = du_spm.get_hemodynamic_kernel()
-
-plt.plot(t_rnn, k_rnn)
-plt.plot(t_spm, k_spm)
-
-'''

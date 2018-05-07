@@ -11,7 +11,7 @@
 module purge
 module load python3/intel/3.5.3
 
-RUNDIR=$SCRATCH/data_generation/run-${SLURM_JOB_ID/.*}
+RUNDIR=$SCRATCH/runs/run-${SLURM_JOB_ID/.*}
 SOURCEDIR=~/projects/DCM_RNN/dcm_rnn
 OURPUTDIR=$RUNDIR/simulated_data
 

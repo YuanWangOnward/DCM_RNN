@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     print("rMSEs array shape: " + str(rMSEs.shape))
     histogram = plt.figure()
-    n_bin = 512
+    n_bin = 256
     bins = np.linspace(0, 0.5, n_bin)
     labels = ['15.625ms', '31.25ms', '62.5ms', '125ms', '250ms', '500ms']
     for n in range(1, rMSEs.shape[1]):

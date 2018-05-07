@@ -43,7 +43,7 @@ from scipy.interpolate import interp1d
 def run(data_path):
     # print('run() runs')
     key_word = os.path.splitext(os.path.basename(data_path))[0]
-    output_file = os.path.join(OUTPUT_DIR, key_word + "_t_delta.pkl")
+    output_file = os.path.join(OUTPUT_DIR, key_word + "_up_sampling.pkl")
 
     def _run():
         # print('_run() runs')

@@ -216,8 +216,8 @@ def plot_effective_connectivity(du, du_rnn, spm, confidence_range_rnn=None, conf
 SETTINGS = {
     'if_update_h_parameter': {'value': 1, 'short_name': 'h'},
     'if_extended_support': {'value': 0, 'short_name': 's'},
-    'if_noised_y': {'value': 0, 'short_name': 'n'},
-    'snr': {'value': 5, 'short_name': 'snr'},
+    'if_noised_y': {'value': 1, 'short_name': 'n'},
+    'snr': {'value': 1, 'short_name': 'snr'},
 }
 
 if SETTINGS['if_update_h_parameter']['value']:
@@ -299,7 +299,7 @@ for i in range(du.get('n_stimuli')):
     plt.xlim([0, 490])
     plt.xlabel('time (second)')
     plt.ylabel('stimulus_ ' + str(i))
-    if i < du.get('n_node') - 1:
+    if i < du.get('n_stimuli') - 1:
         plt.gca().axes.get_xaxis().set_visible(False)
 plt.savefig(os.path.join(IMAGE_PATH, 'input_' + SAVE_NAME_EXTENTION + '.pdf'), format='pdf', bbox_inches='tight')
 
@@ -417,6 +417,19 @@ print('SPM DCM connectivity rMSE = ' + str(tb.rmse(connectivity_spm, connectivit
 sum(abs(connectivity_rnn - connectivity_true))
 sum(abs(connectivity_spm - connectivity_true))
 
+
+# show speed
+print('DCM-RNN run time = ' + str(du_rnn.timer['end']-du_rnn.timer['start_session']))
+
+print('DCM-SPM iteration number = ' + str(spm['n_iteration']))
+print('DCM-SPM run time = ' + str(spm['estimation_time']))
+
+# running time
+rnn_time = [20880.009542942047, 13850.939879894257, 13728.342636108398, 13674.546900987625]
+spm_n_iter = [26, 22, 23, 21]
+spm_time = [2057.01, 1693.38, 1747.7, 1650.66]
+
+
 # plt hemodynamic kernels
 if IF_SHOW_HEMODYNAMICS:
     plt.figure()
@@ -508,3 +521,12 @@ if IF_SHOW_CROSS_SNR_RESULTS:
     plt.legend()
     plt.savefig(os.path.join(IMAGE_PATH, 'free_energy_cross_snr.pdf'), format='pdf',
                 bbox_inches='tight')
+
+
+import time
+du_test = tb.DataUnit()
+du_test.load_parameter_core(du_rnn.collect_parameter_core())
+start_time = time.time()
+du_test.recover_data_unit()
+print("--- %s seconds ---" % (time.time() - start_time))
+

@@ -1,4 +1,6 @@
-for snr = [1, 3,5]
+snrs = [0, 5, 3, 1];
+noise_flags = [0, 1, 1, 1];
+for condition = 1: length(noise_flags)
     %% read DCM basic configuration created from python
     SETTINGS = struct;
     temp = struct;
@@ -10,11 +12,11 @@ for snr = [1, 3,5]
     temp.short_name='s';
     SETTINGS.if_extended_support = temp;
     temp = struct;
-    temp.value = 1;
+    temp.value = noise_flags(condition);
     temp.short_name='n';
     SETTINGS.if_noised_y = temp;
     temp = struct;
-    temp.value = snr;
+    temp.value = snrs(condition);
     temp.short_name='snr';
     SETTINGS.snr = temp; % it is not activated if if_noised_y is False
     
@@ -167,7 +169,11 @@ for snr = [1, 3,5]
     DCM_corrected.initial_updating_rate = -10;
     
     %% estimation
+    t = cputime;
     DCM_estimated = spm_dcm_estimate_modified(DCM_corrected);
+    estimation_time = cputime-t;
+    DCM_estimated.estimation_time = estimation_time;
+    n_iteration = DCM_estimated.n_iter;
     
     
     %temp  = DCM_corrected;
@@ -231,6 +237,7 @@ for snr = [1, 3,5]
         'transit',...
         'decay',...
         'epsilon',...
+        'estimation_time','n_iteration',...
         'y_spm_simulation', 'y_true', 'y_predicted')
     
     % for use in matlab

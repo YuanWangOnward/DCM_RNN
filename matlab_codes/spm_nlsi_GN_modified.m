@@ -1,10 +1,10 @@
-function [Ep,Cp,Eh,F,L,dFdp,dFdpp] = spm_nlsi_GN_modified(M,U,Y)
+function [Ep,Cp,Eh,F, n_iter, L, dFdp,dFdpp] = spm_nlsi_GN_modified(M,U,Y)
 % Bayesian inversion of nonlinear models - Gauss-Newton/Variational Laplace
 % FORMAT [Ep,Cp,Eh,F] = spm_nlsi_GN(M,U,Y)
-%
+% MODIFIED: add number of iteration output
 % [Dynamic] MIMO models
 %__________________________________________________________________________
-%
+% 
 % M.IS - function name f(P,M,U) - generative model
 %        This function specifies the nonlinear model:
 %          y = Y.y = IS(P,M,U) + X0*P0 + e
@@ -578,7 +578,7 @@ for k = 1:M.Nmax
         drawnow
         % MODIFIED 
         % save result for each iteration
-        print(['iteration_', num2str(k),'.eps'],'-depsc')
+        % print(['iteration_', num2str(k),'.eps'],'-depsc')
         
     end
     
@@ -619,5 +619,7 @@ Cp     = V*C.Cp(ip,ip)*V';
 Eh     = C.h;
 F      = C.F;
 L      = C.L;
+%------- MODIFIED --------
+n_iter = k;
 
 

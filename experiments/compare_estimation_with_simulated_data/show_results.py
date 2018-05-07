@@ -189,7 +189,7 @@ SETTINGS = {
     'if_update_h_parameter': {'value': 1, 'short_name': 'h'},
     'if_extended_support': {'value': 0, 'short_name': 's'},
     'if_noised_y': {'value': 1, 'short_name': 'n'},
-    'snr': {'value': 5, 'short_name': 'snr'},
+    'snr': {'value': 1, 'short_name': 'snr'},
 }
 
 if SETTINGS['if_update_h_parameter']['value']:
@@ -389,6 +389,15 @@ print('SPM DCM connectivity rMSE = ' + str(tb.rmse(connectivity_spm, connectivit
 sum(abs(connectivity_rnn - connectivity_true))
 sum(abs(connectivity_spm - connectivity_true))
 
+
+# show speed
+print('DCM-RNN run time = ' + str(du_rnn.timer['end']-du_rnn.timer['start_session']))
+
+print('DCM-SPM iteration number = ' + str(spm['n_iteration']))
+print('DCM-SPM run time = ' + str(spm['estimation_time']))
+
+
+
 # plt hemodynamic kernels
 if IF_SHOW_HEMODYNAMICS:
     plt.figure()
@@ -445,8 +454,8 @@ if IF_SHOW_CROSS_SNR_RESULTS:
     e_reproduction_spm = [0.0977933660211, 0.151533392635, 0.435351827891]
     e_connectivity_rnn = [0.0394532698174, 0.0718888114636, 0.193798324935]
     e_connectivity_spm = [0.13801080453, 0.170086871558, 0.297217301838]
-    f_rnn = [-8.0638e+04, -1.2276e+05, -2.6435e+05]
-    f_spm = [-8.3593e+04, -1.2615e+05, -2.7813e+05]
+    f_rnn = np.array([-8.0638e+04, -1.2276e+05, -2.6435e+05])
+    f_spm = np.array([-8.3593e+04, -1.2615e+05, -2.7813e+05])
 
     plt.figure()
     plt.bar(snrs, e_reproduction_rnn, label='DCM-RNN')
@@ -480,3 +489,9 @@ if IF_SHOW_CROSS_SNR_RESULTS:
     plt.legend()
     plt.savefig(os.path.join(IMAGE_PATH, 'free_energy_cross_snr.pdf'), format='pdf',
                 bbox_inches='tight')
+
+# running time
+rnn_time = [8348.93864107132, 8443.370568037033, 8395.671683073044, 8372.989334106445]
+spm_n_iter = [24, 21, 20, 19]
+spm_time = [1388.16, 1194.02, 1197.26, 1145.89]
+

@@ -435,48 +435,40 @@ if IF_SHOW_CROSS_SUBJECT_RESULTS:
     # The raw error values can be found running this file. They will be printed in the console.
     # The raw free energy values can be found running compare_free_energy.m.
     width = 0.8
-    snrs = [0, 1, 2, 3, 4]
-    e_reproduction_rnn = [0.0982785623273, 0.153844540607, 0.437795959522]
-    e_reproduction_spm = [0.0977933660211, 0.151533392635, 0.435351827891]
-    e_connectivity_rnn = [0.0394532698174, 0.0718888114636, 0.193798324935]
-    e_connectivity_spm = [0.13801080453, 0.170086871558, 0.297217301838]
+    subjects = [0, 1, 2, 3, 4]
 
-    f_spm_h0 = [-1.7489e+05, -1.7079e+05, -1.7541e+05, -1.6823e+05, -1.7579e+05]
-    f_rnn_h0 = [-1.7049e+05, -1.6449e+05, -1.7316e+05, -1.7025e+05, -1.6890e+05]
+    f_spm_h0 = np.array([-1.7489e+05, -1.7079e+05, -1.7541e+05, -1.6823e+05, -1.7579e+05]) / 32
+    f_rnn_h0 = np.array([-1.7049e+05, -1.6449e+05, -1.7316e+05, -1.7025e+05, -1.6890e+05]) / 32
 
-    f_spm_h1 = [-1.8407e+05, -1.7543e+05, -1.8209e+05, -1.7717e+05, -1.7814e+05]
-    f_rnn_h1 = [-1.8280e+05, -1.7155e+05, -1.8112e+05, -1.7840e+05, -1.7483e+05]
+    f_spm_h1 = np.array([-1.8407e+05, -1.7543e+05, -1.8209e+05, -1.7717e+05, -1.7814e+05]) / 32
+    f_rnn_h1 = np.array([-1.8280e+05, -1.7155e+05, -1.8112e+05, -1.7840e+05, -1.7483e+05]) / 32
+
+    position_1 = 0
+    position_2 = 0.5
+    position_3 = 1
+    position_4 = 1.5
+
+    # plotting the lines
+    for i in range(len(f_spm_h0)):
+        plt.plot([position_1, position_2], [f_spm_h0[i], f_spm_h1[i]], '--', color='gray')
+        plt.plot([position_3, position_4], [f_rnn_h0[i], f_rnn_h1[i]], '--', color='gray')
+
+    # plotting the points
+    plt.scatter(np.ones(len(f_spm_h0)) * position_1, f_spm_h0, color="#1f77b4", label='Hypothesis 0')
+    plt.scatter(np.ones(len(f_spm_h1)) * position_2, f_spm_h1, color="#ff7f0e", label='Hypothesis 1')
+    for s in range(5):
+        plt.text(position_2 + 0.05, f_spm_h1[s], 'sub_' + str(s))
+
+    plt.scatter(np.ones(len(f_rnn_h0)) * position_3, f_rnn_h0)
+    plt.scatter(np.ones(len(f_rnn_h1)) * position_4, f_rnn_h1)
+    for s in range(5):
+        plt.text(position_4 + 0.05, f_rnn_h1[s], 'sub_' + str(s))
 
 
-    plt.figure()
-    plt.bar(snrs, e_reproduction_rnn, label='DCM-RNN')
-    plt.bar([snr + width for snr in snrs], e_reproduction_spm, label='DCM-SPM')
-    plt.xticks([snr + width / 2 for snr in snrs], snrs)
-    plt.xlabel('SNR')
-    plt.ylabel('Reproduction rRMSE')
+    plt.xticks([(position_1 + position_2) / 2, (position_3 + position_4) / 2], ['DCM-SPM', 'DCM-RNN'])
+    plt.xlim([position_1 - 0.1, position_4 + 0.25])
     plt.grid()
     plt.legend()
-    plt.savefig(os.path.join(IMAGE_PATH, 'reproduction_error_cross_snr.pdf'), format='pdf',
-                bbox_inches='tight')
-
-    plt.figure()
-    plt.bar(snrs, e_connectivity_rnn, label='DCM-RNN')
-    plt.bar([snr + width for snr in snrs], e_connectivity_spm, label='DCM-SPM')
-    plt.xticks([snr + width / 2 for snr in snrs], snrs)
-    plt.xlabel('SNR')
-    plt.ylabel('Connectivity rRMSE')
-    plt.grid()
-    plt.legend()
-    plt.savefig(os.path.join(IMAGE_PATH, 'connectivity_error_cross_snr.pdf'), format='pdf',
-                bbox_inches='tight')
-
-    fig = plt.figure()
-    plt.bar(snrs, [v / 100000 for v in f_rnn], label='DCM-RNN')
-    plt.bar([snr + width for snr in snrs], [v / 100000 for v in f_spm], label='DCM-SPM')
-    plt.xticks([snr + width / 2 for snr in snrs], snrs)
-    plt.xlabel('SNR')
-    plt.ylabel("Free energy value ($x10^5$)")
-    plt.grid()
-    plt.legend()
-    plt.savefig(os.path.join(IMAGE_PATH, 'free_energy_cross_snr.pdf'), format='pdf',
-                bbox_inches='tight')
+    plt.show()
+    plt.ylabel('Free energy')
+    plt.savefig(os.path.join(IMAGE_PATH, 'free_energ_model_selection.pdf'), format='pdf', bbox_inches='tight')

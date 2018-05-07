@@ -287,7 +287,7 @@ if ~DCM.options.stochastic
     % nonlinear system identification (Variational EM) - deterministic DCM
     %----------------------------------------------------------------------
     %%%% MODIFIED
-    [Ep,Cp,Eh,F] = spm_nlsi_GN_modified(M,U,Y);
+    [Ep,Cp,Eh,F, n_iter] = spm_nlsi_GN_modified(M,U,Y);
     % predicted responses (y) and residuals (R)
     %----------------------------------------------------------------------
     y      = feval(M.IS,Ep,M,U);
@@ -439,6 +439,7 @@ DCM.BIC    = evidence.bic_overall;
 [DCM.version.SPM.version, DCM.version.SPM.revision] = spm('Ver');
 DCM.version.DCM.version  = spm_dcm_ui('Version');
 DCM.version.DCM.revision = SVNid;
+DCM.n_iter = n_iter;
  
 %-Save DCM
 %--------------------------------------------------------------------------

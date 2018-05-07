@@ -69,7 +69,7 @@ SAVE_EXTENDED_PATH = os.path.join(EXPERIMENT_PATH, 'results', 'estimation_dcm_rn
 SAVE_PATH_FREE_ENERGY = os.path.join(EXPERIMENT_PATH, 'results', 'free_energy_rnn.mat')
 
 
-MAX_EPOCHS = 32 * 3
+MAX_EPOCHS = 32 * 4
 CHECK_STEPS = 1
 N_RECURRENT_STEP = 256
 DATA_SHIFT = 2
@@ -157,7 +157,7 @@ mask['Wxu'][0, 0] = 1
 
 
 # set up weights for each loss terms
-prior_weight = (6) * (N_RECURRENT_STEP / y_observation.shape[0]) * (BATCH_SIZE)
+prior_weight = (16) * (N_RECURRENT_STEP / y_observation.shape[0]) * (BATCH_SIZE)
 loss_weights_tensorflow = {
     'y': 1.,
     'q': 1.,
@@ -168,9 +168,9 @@ loss_weights_tensorflow = {
 loss_weights_du = {
     'y': 1.,
     'q': 1.,
-    'prior_x': 6,
-    'prior_h': 6,
-    'prior_hyper': 6
+    'prior_x': 16,
+    'prior_h': 16,
+    'prior_hyper': 16
 }
 
 

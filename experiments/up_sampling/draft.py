@@ -1,38 +1,50 @@
-import matplotlib.pyplot as plt
-import tensorflow as tf
-import tf_model as tfm
-import toolboxes as tb
-import numpy as np
+
 import os
 import pickle
-import datetime
-import warnings
-import sys
-import random
-import training_manager
-import multiprocessing
-from multiprocessing.pool import Pool
-import itertools
-import copy
+import numpy as np
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
 import pandas as pd
-import math as mth
-from scipy.interpolate import interp1d
-import time
-import scipy.io
-import importlib
-
-importlib.reload(tb)
-du = tb.DataUnit()
-du._secured_data['if_random_node_number'] = True
-du._secured_data['if_random_stimuli'] = True
-du._secured_data['if_random_x_state_initial'] = False
-du._secured_data['if_random_h_state_initial'] = False
-du._secured_data['t_delta'] = 0.25
-du._secured_data['t_scan'] = 5 * 60
-du.complete_data_unit(if_show_message=False)
 
 
-print(du.get('A'))
-print(du.get('B'))
-print(du.get('C'))
-plt.plot(du.get('y'))
+
+
+INPUT_DIR = 'experiments/up_sampling/results'
+OUTPUT_DIR = 'experiments/up_sampling/images'
+
+database_files = os.listdir(INPUT_DIR)
+database_files = [os.path.join(INPUT_DIR, file) for file in database_files if file.endswith(".pkl")]
+print("There are " + str(len(database_files)) + " spm_data files found.")
+
+
+rMSEs = []
+for file in database_files:
+    with open(file, 'rb') as f:
+        temp = pickle.load(f)
+    rMSEs += temp
+print("There are " + str(len(rMSEs)) + " samples")
+
+rMSEs = np.array(rMSEs)
+
+print("rMSEs array shape: " + str(rMSEs.shape))
+histogram = plt.figure()
+bins = np.linspace(0, 1, 2056)
+for n in range(0, rMSEs.shape[1]):
+    temp = rMSEs[:, n]
+    temp = temp[~np.isnan(temp)]
+    temp = temp[~np.isinf(temp)]
+    data = plt.hist(temp, bins, normed=1, alpha=1.)
+    # plt.figure(dpi=300)
+    plt.bar(data[1][:128] * 100, data[0][:128]/sum(data[0][:128]) * 100, width=(bins[1]-bins[0]) * 100)
+    plt.xlabel('relative root mean square error (%)')
+    plt.ylabel('percentage (%)')
+    # plt.legend()
+
+plt.grid()
+plt.show()
+plt.savefig(os.path.join(OUTPUT_DIR, 'resampling.pdf'), format='pdf', bbox_inches='tight')
+
+rMSEs = pd.DataFrame(rMSEs)
+rMSEs.mean(numeric_only=True)
+np.sqrt(rMSEs.var(numeric_only=True))

@@ -619,17 +619,17 @@ class Initialization:
         self.q_init_low = q_init_low or 0.6
         self.q_init_high = q_init_high or 1.
 
-        self.A_off_diagonal_low = A_off_diagonal_low or -0.8
-        self.A_off_diagonal_high = A_off_diagonal_high or 0.8
+        self.A_off_diagonal_low = A_off_diagonal_low or -0.5
+        self.A_off_diagonal_high = A_off_diagonal_high or 0.5
         self.A_diagonal_low = A_diagonal_low or -1.0
-        self.A_diagonal_high = A_diagonal_high or -0.4
+        self.A_diagonal_high = A_diagonal_high or -0.5
         self.A_generation_max_trial_number = A_generation_max_trial_number or 5000
         self.sparse_level = sparse_level or 0.5
         self.B_init_low = B_init_low or -0.5
         self.B_init_high = B_init_high or 0.5
         self.B_non_zero_probability = B_non_zero_probability or 0.5
         self.B_sign_probability = B_sign_probability or 0.5
-        self.C_init_low = C_init_low or 0.5
+        self.C_init_low = C_init_low or 0.2
         self.C_init_high = C_init_high or 1.
         self.C_negative_rate = 0.2
 
